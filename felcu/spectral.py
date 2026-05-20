@@ -1,0 +1,236 @@
+"""Spectral information and problem-spec construction for felcu."""
+
+from __future__ import annotations
+
+import math
+from typing import Optional, Sequence
+
+import numpy as np
+
+from felcu.utils import canonical_problem_name
+
+PI = float(np.pi)
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _is_hermitian(A: np.ndarray, tol: float) -> bool:
+    return bool(np.allclose(A, A.conj().T, rtol=tol, atol=tol))
+
+
+def _spectral_kind(
+    problem: str,
+    shifted: bool,
+    requested: str,
+    matrix_is_hermitian: Optional[bool],
+) -> str:
+    if requested not in {"auto", "eigenvalues", "singular_values"}:
+        raise ValueError("spectral_kind must be 'auto', 'eigenvalues', or 'singular_values'.")
+    if requested != "auto":
+        return requested
+    if problem == "inversion" and not shifted:
+        return "singular_values"
+    if problem == "action" and not shifted and matrix_is_hermitian is False:
+        return "singular_values"
+    return "eigenvalues"
+
+
+def _check_spectral_choice(
+    problem: str,
+    shifted: bool,
+    kind: str,
+    matrix_is_hermitian: Optional[bool],
+) -> None:
+    if shifted and kind != "eigenvalues":
+        raise ValueError("Shifted constructions use an eigenvalue interval.")
+    if problem == "exponentiation" and kind != "eigenvalues":
+        raise ValueError("Exponentiation uses an eigenvalue interval.")
+    if problem == "inversion" and not shifted and kind != "singular_values":
+        raise ValueError("Unshifted inversion uses singular values.")
+    if kind == "eigenvalues" and matrix_is_hermitian is False:
+        raise ValueError("Eigenvalue-based constructions require a Hermitian matrix.")
+
+
+def _definite_abs_bounds(lo: float, hi: float) -> tuple[float, float]:
+    if lo > hi:
+        raise ValueError("Require sigma_min <= sigma_max.")
+    if lo == 0 or hi == 0 or lo * hi < 0:
+        raise ValueError("This construction requires a definite Hermitian interval.")
+    return min(abs(lo), abs(hi)), max(abs(lo), abs(hi))
+
+
+def _spectral_data(
+    problem: str,
+    shifted: bool,
+    matrix: Optional[np.ndarray | Sequence[Sequence[complex]]],
+    sigma_min: Optional[float],
+    sigma_max: Optional[float],
+    spectral_kind: str,
+    hermitian_tol: float,
+    allow_missing: bool,
+) -> Optional[dict]:
+    if matrix is not None and (sigma_min is not None or sigma_max is not None):
+        raise ValueError("Provide either matrix or sigma_min/sigma_max, not both.")
+    if matrix is None and sigma_min is None and sigma_max is None:
+        if allow_missing:
+            return None
+        raise ValueError("Provide a matrix or both sigma_min and sigma_max.")
+    if matrix is None and (sigma_min is None or sigma_max is None):
+        raise ValueError("Provide both sigma_min and sigma_max.")
+
+    if matrix is not None:
+        A = np.asarray(matrix)
+        if A.ndim != 2 or A.shape[0] != A.shape[1] or A.shape[0] == 0:
+            raise ValueError("matrix must be a non-empty square array.")
+        A = A.astype(np.complex128 if np.iscomplexobj(A) else float)
+        hermitian = _is_hermitian(A, hermitian_tol)
+        kind = _spectral_kind(problem, shifted, spectral_kind, hermitian)
+        _check_spectral_choice(problem, shifted, kind, hermitian)
+        values = np.linalg.eigvalsh(A) if kind == "eigenvalues" else np.linalg.svd(A, compute_uv=False)
+        lo = float(np.min(values))
+        hi = float(np.max(values))
+        shape = (int(A.shape[0]), int(A.shape[1]))
+    else:
+        hermitian = None
+        kind = _spectral_kind(problem, shifted, spectral_kind, None)
+        _check_spectral_choice(problem, shifted, kind, hermitian)
+        lo = float(sigma_min)
+        hi = float(sigma_max)
+        shape = None
+
+    if kind == "singular_values":
+        if lo < 0 or hi < 0 or lo > hi:
+            raise ValueError("Singular-value bounds require 0 <= sigma_min <= sigma_max.")
+        if problem == "inversion" and lo <= 0:
+            raise ValueError("Inversion requires sigma_min > 0.")
+    else:
+        if lo > hi:
+            raise ValueError("Require sigma_min <= sigma_max.")
+        if problem == "inversion" and shifted:
+            _definite_abs_bounds(lo, hi)
+
+    return {
+        "sigma_min": lo,
+        "sigma_max": hi,
+        "kind": kind,
+        "matrix_shape": shape,
+        "matrix_is_hermitian": hermitian,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Public: default eta
+# ---------------------------------------------------------------------------
+
+
+def default_eta(
+    problem: str,
+    *,
+    shifted: bool = False,
+    matrix: Optional[np.ndarray | Sequence[Sequence[complex]]] = None,
+    sigma_min: Optional[float] = None,
+    sigma_max: Optional[float] = None,
+    spectral_kind: str = "auto",
+    hermitian_tol: float = 1e-12,
+) -> float:
+    """Return the default extension parameter eta for the given problem."""
+    problem = canonical_problem_name(problem)
+    if problem in {"action", "exponentiation"}:
+        return 2.0
+
+    s = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol, False)
+    assert s is not None
+    lo, hi = s["sigma_min"], s["sigma_max"]
+    if shifted:
+        lo, hi = _definite_abs_bounds(lo, hi)
+    kappa = hi / lo
+    if shifted:
+        return 2.0 if abs(kappa - 1.0) < 1e-15 else (kappa + 1.0) / (kappa - 1.0)
+    return 1.0 + 1.0 / kappa
+
+
+# ---------------------------------------------------------------------------
+# Internal: build the problem spec dict used throughout the solver
+# ---------------------------------------------------------------------------
+
+
+def _make_spec(
+    problem: str,
+    shifted: bool,
+    spectral: Optional[dict],
+    eta: Optional[float],
+    hermitian_tol: float,
+) -> dict:
+    if shifted and spectral is None:
+        raise ValueError("Shifted constructions require matrix-scale information.")
+    if problem == "inversion" and spectral is None:
+        raise ValueError("Inversion requires matrix-scale information so that the fitted interval avoids the pole.")
+
+    if eta is None:
+        if spectral is None:
+            eta = default_eta(problem)
+        else:
+            eta = default_eta(
+                problem,
+                shifted=shifted,
+                sigma_min=spectral["sigma_min"],
+                sigma_max=spectral["sigma_max"],
+                spectral_kind=spectral["kind"],
+                hermitian_tol=hermitian_tol,
+            )
+    eta = float(eta)
+    if eta <= 1.0:
+        raise ValueError("eta must exceed 1.")
+
+    xmax = PI / eta
+    base = {
+        "problem": problem,
+        "shifted": shifted,
+        "eta": eta,
+        "x_max": xmax,
+        "x_min": None,
+        "spectral": spectral,
+        "matrix_scale_provided": spectral is not None,
+    }
+
+    if spectral is None:
+        if problem == "action":
+            return base | {"basis": "odd_sine", "domain": "single", "tau": 1.0, "baseline": 0.0, "func": lambda x: x}
+        return base | {"basis": "full", "domain": "single", "tau": 1.0, "baseline": 1.0, "func": np.exp}
+
+    lo = spectral["sigma_min"]
+    hi = spectral["sigma_max"]
+    mu = 0.5 * (lo + hi)
+    halfwidth = 0.5 * (hi - lo)
+    radius = hi if spectral["kind"] == "singular_values" else max(abs(lo), abs(hi))
+
+    if problem == "action" and shifted:
+        tau = math.inf if halfwidth == 0 else PI / (eta * halfwidth)
+        func = (lambda x: np.full_like(x, mu, dtype=float)) if not np.isfinite(tau) else (lambda x, tau=tau, mu=mu: mu + x / tau)
+        return base | {"basis": "const_plus_sine", "domain": "single", "tau": tau, "baseline": mu, "func": func}
+
+    if problem == "action":
+        tau = math.inf if radius == 0 else PI / (eta * radius)
+        func = (lambda x: np.zeros_like(x, dtype=float)) if not np.isfinite(tau) else (lambda x, tau=tau: x / tau)
+        return base | {"basis": "odd_sine", "domain": "single", "tau": tau, "baseline": 0.0, "func": func}
+
+    if problem == "inversion" and shifted:
+        tau = math.inf if halfwidth == 0 else PI / (eta * halfwidth)
+        func = (lambda x: np.full_like(x, 1.0 / mu, dtype=float)) if not np.isfinite(tau) else (lambda x, tau=tau, mu=mu: tau / (x + tau * mu))
+        return base | {"basis": "full", "domain": "single", "tau": tau, "baseline": 1.0 / mu, "func": func}
+
+    if problem == "inversion":
+        tau = PI / (eta * hi)
+        return base | {"basis": "odd_sine", "domain": "double", "tau": tau, "x_min": tau * lo, "baseline": 0.0, "func": lambda x, tau=tau: tau / x}
+
+    if shifted:
+        tau = math.inf if halfwidth == 0 else PI / (eta * halfwidth)
+        func = (lambda x: np.full_like(x, math.exp(mu), dtype=float)) if not np.isfinite(tau) else (lambda x, tau=tau, mu=mu: np.exp(mu + x / tau))
+        return base | {"basis": "full", "domain": "single", "tau": tau, "baseline": math.exp(mu), "func": func}
+
+    tau = math.inf if radius == 0 else PI / (eta * radius)
+    func = (lambda x: np.ones_like(x, dtype=float)) if not np.isfinite(tau) else (lambda x, tau=tau: np.exp(x / tau))
+    return base | {"basis": "full", "domain": "single", "tau": tau, "baseline": 1.0, "func": func}

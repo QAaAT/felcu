@@ -1,0 +1,151 @@
+"""
+felcu example script
+====================
+
+Demonstrates the three supported problems — exponentiation, inversion, and
+action — with and without explicit matrix scale information.
+
+Run with:
+    python examples/demo.py
+"""
+
+import sys
+sys.path.insert(0, ".")  # run from the felcu/ project root
+
+import numpy as np
+from felcu import (
+    solve_fe_coefficients,
+    evaluate_fourier_series,
+    evaluate_target_function,
+    fitted_domain_segments,
+    to_complex_coefficients,
+)
+
+
+# ---------------------------------------------------------------------------
+# Helper
+# ---------------------------------------------------------------------------
+
+def print_result(label: str, result) -> None:
+    status = "✓ converged" if result.converged else "✗ did not converge"
+    print(f"\n{'─' * 60}")
+    print(f"  {label}")
+    print(f"{'─' * 60}")
+    print(f"  {status}")
+    print(f"  m = {result.m},  eta = {result.eta:.4f}")
+    print(f"  achieved L2   = {result.achieved_l2_error:.2e}")
+    print(f"  achieved Linf = {result.achieved_linf_error:.2e}")
+    print(f"  alpha (LCU norm) = {result.alpha:.4f}")
+
+
+def max_pointwise_error(result, n: int = 1000) -> float:
+    errors = []
+    for xs in fitted_domain_segments(result, num=n):
+        y_fit = evaluate_fourier_series(xs, result.a0, result.ak, result.bk)
+        y_true = evaluate_target_function(xs, result)
+        errors.append(float(np.max(np.abs(y_fit - y_true))))
+    return max(errors)
+
+
+# ---------------------------------------------------------------------------
+# 1. Exponentiation  f(H) = exp(H),  H has eigenvalues in [0.1, 2.0]
+# ---------------------------------------------------------------------------
+
+print("\n== 1. Exponentiation ==")
+
+result_exp = solve_fe_coefficients(
+    "exponentiation",
+    sigma_min=0.1,
+    sigma_max=2.0,
+    target_error=1e-8,
+)
+print_result("exp(H),  sigma in [0.1, 2.0],  target 1e-8", result_exp)
+print(f"  max pointwise error = {max_pointwise_error(result_exp):.2e}")
+
+# The complex coefficients feed directly into an LCU circuit
+c = result_exp.complex_coefficients
+print(f"  complex coefficient vector length = {len(c)}  (= 2m+1 = {2*result_exp.m+1})")
+
+
+# ---------------------------------------------------------------------------
+# 2. Inversion  f(H) = H⁻¹,  singular values in [0.5, 3.0]
+# ---------------------------------------------------------------------------
+
+print("\n== 2. Inversion ==")
+
+result_inv = solve_fe_coefficients(
+    "inversion",
+    sigma_min=0.5,
+    sigma_max=3.0,
+    target_error=1e-8,
+)
+print_result("H^{-1},  sigma in [0.5, 3.0],  target 1e-8", result_inv)
+print(f"  max pointwise error = {max_pointwise_error(result_inv):.2e}")
+print(f"  domain type = {result_inv.domain}  (double interval avoids the pole)")
+
+
+# ---------------------------------------------------------------------------
+# 3. Action  f(H) = H  (unshifted, odd-sine basis)
+# ---------------------------------------------------------------------------
+
+print("\n== 3. Action ==")
+
+result_act = solve_fe_coefficients(
+    "action",
+    sigma_min=-1.5,
+    sigma_max=1.5,
+    target_error=1e-10,
+)
+print_result("f(H)=H,  sigma in [-1.5, 1.5],  target 1e-10", result_act)
+
+
+# ---------------------------------------------------------------------------
+# 4. Shifted exponentiation  f(H) = exp(H),  H centred at its midpoint
+# ---------------------------------------------------------------------------
+
+print("\n== 4. Shifted exponentiation ==")
+
+result_shifted = solve_fe_coefficients(
+    "exponentiation",
+    shifted=True,
+    sigma_min=1.0,
+    sigma_max=3.0,
+    target_error=1e-8,
+)
+print_result("exp(H) shifted,  sigma in [1.0, 3.0],  target 1e-8", result_shifted)
+print(f"  tau = {result_shifted.tau:.4f}")
+
+
+# ---------------------------------------------------------------------------
+# 5. From a concrete matrix
+# ---------------------------------------------------------------------------
+
+print("\n== 5. From a concrete Hermitian matrix ==")
+
+rng = np.random.default_rng(42)
+n = 6
+Q, _ = np.linalg.qr(rng.standard_normal((n, n)))
+eigenvalues = rng.uniform(0.2, 2.0, n)
+H = Q @ np.diag(eigenvalues) @ Q.T          # random symmetric PD matrix
+
+result_matrix = solve_fe_coefficients(
+    "exponentiation",
+    matrix=H,
+    target_error=1e-6,
+)
+print_result(f"exp(H),  H is {n}x{n} symmetric,  target 1e-6", result_matrix)
+print(f"  detected spectral range: [{result_matrix.sigma_min:.4f}, {result_matrix.sigma_max:.4f}]")
+
+
+# ---------------------------------------------------------------------------
+# 6. Inspect the m-sweep
+# ---------------------------------------------------------------------------
+
+print("\n== 6. Viewing all candidate m values ==")
+
+print(f"\n  All {len(result_exp.all_results)} candidates for the exponentiation example:")
+print(f"  {'m':>6}  {'L2 error':>12}  {'Linf error':>12}  {'converged':>10}")
+for r in result_exp.all_results:
+    print(f"  {r.m:>6}  {r.achieved_l2_error:>12.2e}  {r.achieved_linf_error:>12.2e}  {str(r.converged):>10}")
+
+print()
