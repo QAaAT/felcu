@@ -2,7 +2,7 @@
 
 ## Installation
 
-`felcu` needs Python 3.10+ and NumPy.  Install from a clone of the repository:
+`felcu` needs Python 3.11+ and NumPy.  Install from a clone of the repository:
 
 ```bash
 pip install .

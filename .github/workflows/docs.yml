@@ -31,13 +31,16 @@ jobs:
       - name: Build site
         run: mkdocs build --strict
 
+      # Pages deployment is paused: the site is still built (and checked with
+      # --strict) but not uploaded or deployed.  To resume, restore
+      # `if: github.event_name != 'pull_request'` here and on the deploy job.
       - uses: actions/upload-pages-artifact@v3
-        if: github.event_name != 'pull_request'
+        if: false
         with:
           path: site
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: false  # paused; see the note on the upload step above
     needs: build
     runs-on: ubuntu-latest
     environment:

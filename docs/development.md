@@ -18,7 +18,7 @@ package into `site-packages`, and scripts run from elsewhere (such as
 python -m pytest tests/ -v
 ```
 
-CI runs the same command on Python 3.11 and 3.12 for every push to `main`
+CI runs the same command on Python 3.11 through 3.15 for every push to `main`
 and every pull request (`.github/workflows/ci.yml`).
 
 ## Linting and formatting
