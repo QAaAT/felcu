@@ -26,10 +26,11 @@ TARGET = 1e-8
 CASES = [
     ("exponentiation", dict(sigma_min=0.1, sigma_max=2.0, m_values=range(4, 33, 2))),
     ("inversion", dict(sigma_min=0.5, sigma_max=3.0, m_values=range(4, 65, 4))),
+    ("square_root", dict(shifted=True, sigma_min=0.15, sigma_max=1.0, m_values=range(8, 129, 8))),
 ]
 
 _style.apply()
-fig, axes = plt.subplots(2, 2, figsize=(11, 6.5), sharex=True)
+fig, axes = plt.subplots(2, len(CASES), figsize=(5.5 * len(CASES), 6.5), sharex=True)
 x_full = np.linspace(-np.pi, np.pi, 2001)
 
 for col, (problem, kwargs) in enumerate(CASES):
@@ -55,7 +56,7 @@ for col, (problem, kwargs) in enumerate(CASES):
         ax_err.semilogy(xs, err, color=color)
 
     _style.target_line(ax_err, TARGET)
-    ax_fit.set_title(f"{problem}  ($m = {r.m}$; shaded = not fitted)")
+    ax_fit.set_title(f"{_style.PROBLEM_LABELS.get(problem, problem)}  ($m = {r.m}$; shaded = not fitted)")
     ax_fit.legend(loc="upper left")
     ax_err.set_title(r"pointwise error $|g(x) - g_m(x)|$ on the fitted set $\Omega$")
     ax_err.set_xlabel(r"scaled variable $x$")

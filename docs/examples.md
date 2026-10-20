@@ -319,3 +319,23 @@ gap around the pole, where \(g_m\) stays bounded.  Bottom:
     ```python
     --8<-- "examples/plots/05_pointwise_error.py"
     ```
+
+### Cost of the square root versus condition number
+
+For eigenvalues in \([\kappa^{-1}, 1]\), fit \(\sqrt{\mathcal H}\) (shifted,
+with the default \(\eta_{\rm def}\) and \(r_{\rm sqrt} = \kappa^{-1/2}\)) and
+plot the shortest series that meets the target and the smallest
+subnormalisation \(\alpha_m\) over the sweep as \(\kappa\) grows.
+\(\|\sqrt{\mathcal H}\| = 1\) throughout, so the lower bound
+\(\alpha^\ast = 1\) (dotted) is constant.  Unlike inversion, \(\sqrt x\) is
+concave and the periodic closure narrows with \(\kappa\), so the paper
+predicts \(\alpha_m = O(\kappa^{1/4})\) for \(w = 1\) (dashed); over this
+range the growth stays below that rate.
+
+![Cost of the square root versus condition number](images/plots/06_sqrt_vs_kappa.png)
+
+??? example "Code: examples/plots/06_sqrt_vs_kappa.py"
+
+    ```python
+    --8<-- "examples/plots/06_sqrt_vs_kappa.py"
+    ```

@@ -30,10 +30,13 @@ GRID = "#e1e0d9"
 AXIS = "#c3c2b7"
 
 # One fixed colour per problem, the same in every figure
+PROBLEM_LABELS = {"square_root": "square root"}  # display names where the API name has an underscore
+
 PROBLEM_COLORS = {
     "action": "#2a78d6",
     "inversion": "#eb6834",
     "exponentiation": "#1baf7a",
+    "square_root": "#eda100",  # low contrast on SURFACE: always direct-label it
 }
 
 # Single-hue blue steps, light to dark
@@ -111,11 +114,14 @@ def alpha_floor(result) -> float:
 ALPHA_FLOOR_LABEL = r"$\alpha^\ast = \|g\|_{L^\infty(\Omega)}$"
 
 
-def label_end(ax, x, y, text: str, at: str = "end", gap: float = 5) -> None:
-    """Direct-label a line at its last (or first) point, in secondary ink."""
+def label_end(ax, x, y, text: str, at: str = "end", gap: float = 5, dy: float = 0) -> None:
+    """Direct-label a line at its last (or first) point, in secondary ink.
+
+    *dy* shifts the label vertically (in points) to separate close lines.
+    """
     i, dx, ha = (-1, gap, "left") if at == "end" else (0, -gap, "right")
     ax.annotate(
-        text, (x[i], y[i]), xytext=(dx, 0), textcoords="offset points", color=INK_2, va="center", ha=ha, fontsize=9
+        text, (x[i], y[i]), xytext=(dx, dy), textcoords="offset points", color=INK_2, va="center", ha=ha, fontsize=9
     )
 
 

@@ -26,10 +26,13 @@ from felcu import solve_fe_coefficients
 
 TARGET = 1e-5
 M_VALUES = range(4, 129, 4)
+# Vertical label nudges (points) for the action and square-root lines, which end close together.
+LABEL_DY = {"action": -5, "square_root": 5}
 PROBLEMS = [
     ("action", dict(sigma_min=-1.0, sigma_max=1.0)),
     ("inversion", dict(sigma_min=0.5, sigma_max=3.0)),
     ("exponentiation", dict(sigma_min=0.1, sigma_max=2.0)),
+    ("square_root", dict(shifted=True, sigma_min=0.15, sigma_max=1.0)),
 ]
 
 _style.apply()
@@ -43,12 +46,18 @@ for problem, kwargs in PROBLEMS:
     alpha_star = _style.alpha_floor(result)
 
     ax_err.semilogy(
-        [c.m for c in cands], [c.achieved_linf_error for c in cands], marker="o", color=color, label=problem
+        [c.m for c in cands],
+        [c.achieved_linf_error for c in cands],
+        marker="o",
+        color=color,
+        label=_style.PROBLEM_LABELS.get(problem, problem),
     )
     ms, alphas = [c.m for c in feasible], [c.alpha for c in feasible]
     _style.ref_line(ax_alpha, alpha_star, color=color)
     ax_alpha.semilogy(ms, alphas, marker="o", color=color)
-    _style.label_end(ax_alpha, ms, alphas, problem, gap=11)
+    _style.label_end(
+        ax_alpha, ms, alphas, _style.PROBLEM_LABELS.get(problem, problem), gap=11, dy=LABEL_DY.get(problem, 0)
+    )
     ax_alpha.plot(
         result.m,
         result.alpha,
