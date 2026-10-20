@@ -186,3 +186,96 @@ series that meets the target instead, and stops the sweep there.
 ```python title="examples/exponentiation/07_selection_and_candidates.py"
 --8<-- "examples/exponentiation/07_selection_and_candidates.py"
 ```
+
+## Plots
+
+These scripts sweep a parameter and plot how the error and the LCU
+normalisation \(\alpha\) respond.  They need matplotlib:
+
+```bash
+pip install -e ".[plots]"
+python examples/plots/01_error_alpha_vs_m.py
+```
+
+Each saves a PNG to the directory given as its first argument (default: the
+current directory), shows it when a display is available, and prints the
+numbers behind it as a table.
+
+### Error, alpha and lambda versus truncation order m
+
+Sweep m for each problem at the same target and plot, per m:
+
+- the achieved Linf error (falls until it reaches the target, then stays
+  there, because lambda absorbs the remaining slack);
+- the LCU normalisation alpha of each feasible order;
+- the regularisation strength lambda chosen for it.
+
+The ringed point is the order picked by the default selection
+('smallest_alpha').
+
+![Error, alpha and lambda versus truncation order m](images/plots/01_error_alpha_vs_m.png)
+
+??? example "Code: examples/plots/01_error_alpha_vs_m.py"
+
+    ```python
+    --8<-- "examples/plots/01_error_alpha_vs_m.py"
+    ```
+
+### The error-alpha trade-off controlled by lambda
+
+At fixed m, felcu chooses the largest lambda that still meets the target,
+so sweeping target_error traces out how error and alpha depend on lambda:
+more regularisation means a larger error but a smaller alpha.  Repeated
+for three orders m.
+
+![The error-alpha trade-off controlled by lambda](images/plots/02_error_alpha_vs_lambda.png)
+
+??? example "Code: examples/plots/02_error_alpha_vs_lambda.py"
+
+    ```python
+    --8<-- "examples/plots/02_error_alpha_vs_lambda.py"
+    ```
+
+### Alpha over the Sobolev parameters r and w
+
+The H_r^w regulariser weights the k-th harmonic by (1 + r|k|)^(2w).  At
+fixed m and target, sweep 0 < r <= 1 and w > 0.5 and plot the resulting
+LCU normalisation alpha, as a heatmap and as slices at four values of r.
+Every fit here meets the target, so only alpha changes.
+
+![Alpha over the Sobolev parameters r and w](images/plots/03_alpha_vs_r_w.png)
+
+??? example "Code: examples/plots/03_alpha_vs_r_w.py"
+
+    ```python
+    --8<-- "examples/plots/03_alpha_vs_r_w.py"
+    ```
+
+### Cost of inversion versus condition number
+
+For singular values in [1/kappa, 1], plot the shortest series that meets
+the target (selection='smallest_m') and its LCU normalisation alpha as the
+condition number kappa grows.
+
+![Cost of inversion versus condition number](images/plots/04_inversion_vs_kappa.png)
+
+??? example "Code: examples/plots/04_inversion_vs_kappa.py"
+
+    ```python
+    --8<-- "examples/plots/04_inversion_vs_kappa.py"
+    ```
+
+### The fitted series over a whole period, and its pointwise error
+
+Top: the series g over the full period [-pi, pi] against the target f on
+the fitted domain.  The shaded regions are not fitted: the extension
+region, and for unshifted inversion also the gap around the pole, where g
+stays bounded.  Bottom: |g - f| on the fitted domain.
+
+![The fitted series over a whole period, and its pointwise error](images/plots/05_pointwise_error.png)
+
+??? example "Code: examples/plots/05_pointwise_error.py"
+
+    ```python
+    --8<-- "examples/plots/05_pointwise_error.py"
+    ```

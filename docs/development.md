@@ -34,6 +34,15 @@ mkdocs serve        # live preview at http://127.0.0.1:8000
 mkdocs build --strict
 ```
 
+The plot images on the Examples page are committed under
+`docs/images/plots/`, so building the docs does not need matplotlib.  After
+changing a plotting example, regenerate them with:
+
+```bash
+pip install -e ".[plots]"
+for f in examples/plots/0*.py; do MPLBACKEND=Agg python "$f" docs/images/plots; done
+```
+
 Pushes to `main` publish the site to GitHub Pages
 (`.github/workflows/docs.yml`).  In the repository settings, under
 **Pages → Build and deployment**, the source must be set to
