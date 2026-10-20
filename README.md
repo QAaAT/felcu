@@ -66,6 +66,30 @@ for xs in fitted_domain_segments(result):
     y_fit = evaluate_fourier_series(xs, result.a0, result.ak, result.bk)
 ```
 
+## Examples
+
+Small, self-contained scripts live in `examples/`, grouped by problem.  Run
+any of them from the project root, e.g. `python examples/action/01_basic_interval.py`.
+
+| Script | Shows |
+|---|---|
+| `action/01_basic_interval.py` | f(H) = H on [-1, 1]; odd sine basis |
+| `action/02_no_scale.py` | Fitting g(x) = x with no matrix-scale information |
+| `action/03_shifted.py` | Shifted vs unshifted on an off-centre interval |
+| `action/04_hermitian_matrix.py` | From a Hermitian matrix, checked via eigendecomposition |
+| `action/05_non_hermitian_matrix.py` | Non-Hermitian matrix via singular values |
+| `inversion/01_basic_interval.py` | H⁻¹ on a two-interval domain avoiding the pole |
+| `inversion/02_condition_number.py` | How m and α grow with κ |
+| `inversion/03_non_hermitian_matrix.py` | Inverting a non-Hermitian matrix, checked against `np.linalg.inv` |
+| `inversion/04_shifted_definite.py` | Shifted inversion of positive- and negative-definite H |
+| `exponentiation/01_no_scale.py` | Fitting exp(x) on [-π/2, π/2] |
+| `exponentiation/02_target_sweep.py` | Truncation order m vs target error |
+| `exponentiation/03_shifted_vs_unshifted.py` | Effect of centring on α |
+| `exponentiation/04_matrix_exponential.py` | exp(H) from a matrix, checked against the exact exponential |
+| `exponentiation/05_lcu_coefficients.py` | Complex coefficients c₋ₘ…cₘ for an LCU circuit |
+| `exponentiation/06_sobolev_regularisation.py` | Effect of λ and `k_order` on α |
+| `exponentiation/07_selection_and_candidates.py` | Inspecting `all_results`; `smallest_m` vs `smallest_alpha` |
+
 ## Package layout
 
 ```
