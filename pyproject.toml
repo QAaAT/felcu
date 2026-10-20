@@ -44,3 +44,6 @@ ignore = ["B905"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["felcu", "_style"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

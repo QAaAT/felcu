@@ -6,6 +6,7 @@ from collections.abc import Sequence
 
 import numpy as np
 
+from felcu._coefficients import _target
 from felcu.types import ArrayLike, FourierExtensionResult
 
 
@@ -342,37 +343,9 @@ def evaluate_target_function(
         If the problem is unknown, or a shifted result has no spectral
         bounds.
     """
-    x = np.asarray(x, dtype=float)
-    p = result.problem
-
-    if not result.matrix_scale_provided:
-        if p == "action":
-            return x
-        if p == "exponentiation":
-            return np.exp(x)
-        if p == "inversion":
-            return 1.0 / x
-        raise ValueError(f"Unknown problem '{p}'.")
-
-    tau = result.tau
+    mu = 0.0
     if result.shifted:
         if result.sigma_min is None or result.sigma_max is None:
             raise ValueError("Shifted results require sigma_min and sigma_max.")
         mu = 0.5 * (result.sigma_min + result.sigma_max)
-
-    if p == "action":
-        if result.shifted:
-            return np.full_like(x, mu) if not np.isfinite(tau) else mu + x / tau
-        return np.zeros_like(x) if not np.isfinite(tau) else x / tau
-
-    if p == "inversion":
-        if result.shifted:
-            return np.full_like(x, 1.0 / mu) if not np.isfinite(tau) else tau / (x + tau * mu)
-        return tau / x
-
-    if p == "exponentiation":
-        if result.shifted:
-            return np.full_like(x, np.exp(mu)) if not np.isfinite(tau) else np.exp(mu + x / tau)
-        return np.ones_like(x) if not np.isfinite(tau) else np.exp(x / tau)
-
-    raise ValueError(f"Unknown problem '{p}'.")
+    return _target(x, result.problem, result.tau, mu)

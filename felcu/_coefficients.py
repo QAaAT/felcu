@@ -1,4 +1,4 @@
-"""Internal coefficient and basis-matrix helpers for felcu."""
+"""Internal coefficient, basis-matrix and target-function helpers for felcu."""
 
 from __future__ import annotations
 
@@ -8,101 +8,78 @@ from collections.abc import Sequence
 import numpy as np
 
 # ---------------------------------------------------------------------------
-# Basis utilities
+# Basis layout
 # ---------------------------------------------------------------------------
+#
+# Coefficient vectors and basis-matrix columns are ordered
+#
+#     [constant] + [sin(kx), k = 1..m] + [cos(kx), k = 1..m]
+#
+# where 'odd_sine' has only the sine block, 'const_plus_sine' adds the
+# constant, and 'full' has all three.
+
+
+def _has_constant(basis: str) -> bool:
+    return basis != "odd_sine"
+
+
+def _has_cosine(basis: str) -> bool:
+    return basis == "full"
 
 
 def _basis_size(basis: str, m: int) -> int:
-    if basis == "odd_sine":
-        return m
-    if basis == "const_plus_sine":
-        return m + 1
-    return 2 * m + 1
+    return int(_has_constant(basis)) + m * (2 if _has_cosine(basis) else 1)
 
 
-def _basis_matrix(x: np.ndarray, m: int, basis: str) -> np.ndarray:
+def _assemble(basis: str, constant, sine, cosine, axis: int = -1) -> np.ndarray:
+    """Concatenate the parts of *basis* in its column order."""
+    parts = [constant] if _has_constant(basis) else []
+    parts.append(sine)
+    if _has_cosine(basis):
+        parts.append(cosine)
+    return np.concatenate(parts, axis=axis)
+
+
+def _basis_matrix(x: np.ndarray, m: int, basis: str, d: int = 0) -> np.ndarray:
+    """The basis functions (or their d-th derivatives) evaluated at *x*, one column each."""
     k = np.arange(1, m + 1, dtype=float)
-    if basis == "odd_sine":
-        return np.sin(np.outer(x, k))
-    ones = np.ones((x.size, 1), dtype=float)
-    if basis == "const_plus_sine":
-        return np.hstack([ones, np.sin(np.outer(x, k))])
-    return np.hstack([ones, np.sin(np.outer(x, k)), np.cos(np.outer(x, k))])
-
-
-def _basis_derivative_matrix(x: np.ndarray, m: int, basis: str, d: int) -> np.ndarray:
-    """Compute the d-th derivative of the basis matrix."""
-    if d == 0:
-        return _basis_matrix(x, m, basis)
-
-    k = np.arange(1, m + 1, dtype=float)
-    phase = d * np.pi / 2
+    kx = np.outer(x, k) + d * np.pi / 2  # d-th derivative of sin/cos is a phase shift
     scale = k**d
-
-    if basis == "odd_sine":
-        return scale * np.sin(np.outer(x, k) + phase)
-
-    zeros = np.zeros((x.size, 1), dtype=float)
-    if basis == "const_plus_sine":
-        return np.hstack([zeros, scale * np.sin(np.outer(x, k) + phase)])
-
-    return np.hstack(
-        [
-            zeros,
-            scale * np.sin(np.outer(x, k) + phase),
-            scale * np.cos(np.outer(x, k) + phase),
-        ]
-    )
+    constant = np.full((x.size, 1), 1.0 if d == 0 else 0.0)
+    return _assemble(basis, constant, scale * np.sin(kx), scale * np.cos(kx), axis=1)
 
 
-def _target_derivative(x: np.ndarray, spec: dict, d: int) -> np.ndarray:
-    """Compute the analytical d-th derivative of the configured target function."""
-    if d == 0:
-        return spec["func"](x) - spec["baseline"]
+# ---------------------------------------------------------------------------
+# Target function
+# ---------------------------------------------------------------------------
 
-    p = spec["problem"]
-    tau = spec["tau"]
-    spectral = spec["spectral"]
 
-    if spectral is not None:
-        lo = spectral["sigma_min"]
-        hi = spectral["sigma_max"]
-        mu = 0.5 * (lo + hi)
+def _target(x: np.ndarray, problem: str, tau: float, mu: float, d: int = 0) -> np.ndarray:
+    """d-th derivative of the fitted target g(x) = F(x / tau + mu).
 
-    # Unscaled cases
-    if not spec["matrix_scale_provided"]:
-        if p == "action":
-            return np.ones_like(x) if d == 1 else np.zeros_like(x)
-        if p == "exponentiation":
-            return np.exp(x)
-        if p == "inversion":
-            return ((-1.0) ** d) * math.factorial(d) / (x ** (d + 1))
-        raise ValueError(f"Unknown problem '{p}'")
+    F is ``t``, ``1/t`` or ``exp(t)`` for action, inversion and
+    exponentiation.  Unscaled fits use ``tau = 1, mu = 0``, unshifted ones
+    ``mu = 0``, and ``tau = inf`` (a zero-width interval) makes g constant.
+    """
+    x = np.asarray(x, dtype=float)
+    t = x / tau + mu
+    if problem == "action":
+        F_d = t if d == 0 else np.full_like(t, 1.0 if d == 1 else 0.0)
+    elif problem == "inversion":
+        if math.isfinite(tau):
+            # (1 / tau^d) F^(d)(t), written without dividing x by tau.
+            return tau * (-1.0) ** d * math.factorial(d) / (x + tau * mu) ** (d + 1)
+        F_d = (-1.0) ** d * math.factorial(d) / t ** (d + 1)
+    elif problem == "exponentiation":
+        F_d = np.exp(t)
+    else:
+        raise ValueError(f"Unknown problem '{problem}'.")
+    return (1.0 / tau**d) * F_d
 
-    # Scaled / shifted cases
-    if p == "action":
-        if d == 1:
-            return np.zeros_like(x) if not np.isfinite(tau) else np.ones_like(x) / tau
-        return np.zeros_like(x)
 
-    if p == "inversion":
-        if spec["shifted"]:
-            if not np.isfinite(tau):
-                return np.zeros_like(x)
-            denom = x + tau * mu
-            return tau * ((-1.0) ** d) * math.factorial(d) / (denom ** (d + 1))
-        return tau * ((-1.0) ** d) * math.factorial(d) / (x ** (d + 1))
-
-    if p == "exponentiation":
-        if spec["shifted"]:
-            if not np.isfinite(tau):
-                return np.zeros_like(x)
-            return (1.0 / (tau**d)) * np.exp(mu + x / tau)
-        if not np.isfinite(tau):
-            return np.zeros_like(x)
-        return (1.0 / (tau**d)) * np.exp(x / tau)
-
-    raise ValueError(f"Unknown problem '{p}'")
+def _spec_target(x: np.ndarray, spec: dict, d: int = 0) -> np.ndarray:
+    """:func:`_target` for a problem spec."""
+    return _target(x, spec["problem"], spec["tau"], spec["mu"], d)
 
 
 # ---------------------------------------------------------------------------
@@ -115,25 +92,21 @@ def _pack_coefficients(a0: float, ak: Sequence, bk: Sequence, basis: str) -> np.
     bk = np.asarray(bk, dtype=float).reshape(-1)
     if ak.shape != bk.shape:
         raise ValueError("ak and bk must have the same length.")
-    if basis == "odd_sine":
-        return ak.copy()
-    if basis == "const_plus_sine":
-        return np.concatenate([[a0], ak])
-    return np.concatenate([[a0], ak, bk])
+    return _assemble(basis, [a0], ak, bk)
 
 
 def _add_baseline(c: np.ndarray, basis: str, baseline: float) -> np.ndarray:
     c = np.array(c, dtype=float, copy=True)
     if baseline != 0.0:
-        if basis == "odd_sine":
+        if not _has_constant(basis):
             raise ValueError("A nonzero baseline requires a constant basis function.")
         c[0] += baseline
     return c
 
 
 def _unpack_coefficients(c: np.ndarray, basis: str, m: int) -> tuple[float, np.ndarray, np.ndarray]:
-    if basis == "odd_sine":
-        return 0.0, c.copy(), np.zeros(m)
-    if basis == "const_plus_sine":
-        return float(c[0]), c[1:].copy(), np.zeros(m)
-    return float(c[0]), c[1 : m + 1].copy(), c[m + 1 :].copy()
+    start = int(_has_constant(basis))
+    a0 = float(c[0]) if start else 0.0
+    ak = c[start : start + m].copy()
+    bk = c[start + m :].copy() if _has_cosine(basis) else np.zeros(m)
+    return a0, ak, bk

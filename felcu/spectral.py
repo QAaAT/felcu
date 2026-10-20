@@ -319,21 +319,24 @@ def _make_spec(
     if eta <= 1.0:
         raise ValueError("eta must exceed 1.")
 
-    xmax = PI / eta
     base = {
         "problem": problem,
         "shifted": shifted,
         "eta": eta,
-        "x_max": xmax,
+        "x_max": PI / eta,
         "x_min": None,
         "spectral": spectral,
         "matrix_scale_provided": spectral is not None,
+        "domain": "single",
+        "tau": 1.0,
+        "mu": 0.0,
     }
-
+    # The fitted target is g(x) = F(x / tau + mu) (see _coefficients._target)
+    # and the baseline is the constant g would be without the scaled variable.
     if spectral is None:
         if problem == "action":
-            return base | {"basis": "odd_sine", "domain": "single", "tau": 1.0, "baseline": 0.0, "func": lambda x: x}
-        return base | {"basis": "full", "domain": "single", "tau": 1.0, "baseline": 1.0, "func": np.exp}
+            return base | {"basis": "odd_sine", "baseline": 0.0}
+        return base | {"basis": "full", "baseline": 1.0}
 
     lo = spectral["sigma_min"]
     hi = spectral["sigma_max"]
@@ -341,49 +344,22 @@ def _make_spec(
     halfwidth = 0.5 * (hi - lo)
     radius = hi if spectral["kind"] == "singular_values" else max(abs(lo), abs(hi))
 
-    if problem == "action" and shifted:
-        tau = math.inf if halfwidth == 0 else PI / (eta * halfwidth)
-        func = (
-            (lambda x: np.full_like(x, mu, dtype=float))
-            if not np.isfinite(tau)
-            else (lambda x, tau=tau, mu=mu: mu + x / tau)
-        )
-        return base | {"basis": "const_plus_sine", "domain": "single", "tau": tau, "baseline": mu, "func": func}
+    def scale(width: float) -> float:
+        return math.inf if width == 0 else PI / (eta * width)
 
-    if problem == "action":
-        tau = math.inf if radius == 0 else PI / (eta * radius)
-        func = (lambda x: np.zeros_like(x, dtype=float)) if not np.isfinite(tau) else (lambda x, tau=tau: x / tau)
-        return base | {"basis": "odd_sine", "domain": "single", "tau": tau, "baseline": 0.0, "func": func}
-
-    if problem == "inversion" and shifted:
-        tau = math.inf if halfwidth == 0 else PI / (eta * halfwidth)
-        func = (
-            (lambda x: np.full_like(x, 1.0 / mu, dtype=float))
-            if not np.isfinite(tau)
-            else (lambda x, tau=tau, mu=mu: tau / (x + tau * mu))
-        )
-        return base | {"basis": "full", "domain": "single", "tau": tau, "baseline": 1.0 / mu, "func": func}
-
-    if problem == "inversion":
+    if problem == "inversion" and not shifted:
         tau = PI / (eta * hi)
-        return base | {
-            "basis": "odd_sine",
-            "domain": "double",
-            "tau": tau,
-            "x_min": tau * lo,
-            "baseline": 0.0,
-            "func": lambda x, tau=tau: tau / x,
-        }
+        return base | {"basis": "odd_sine", "domain": "double", "tau": tau, "x_min": tau * lo, "baseline": 0.0}
 
-    if shifted:
-        tau = math.inf if halfwidth == 0 else PI / (eta * halfwidth)
-        func = (
-            (lambda x: np.full_like(x, math.exp(mu), dtype=float))
-            if not np.isfinite(tau)
-            else (lambda x, tau=tau, mu=mu: np.exp(mu + x / tau))
-        )
-        return base | {"basis": "full", "domain": "single", "tau": tau, "baseline": math.exp(mu), "func": func}
+    if not shifted:
+        tau = scale(radius)
+        if problem == "action":
+            return base | {"basis": "odd_sine", "tau": tau, "baseline": 0.0}
+        return base | {"basis": "full", "tau": tau, "baseline": 1.0}
 
-    tau = math.inf if radius == 0 else PI / (eta * radius)
-    func = (lambda x: np.ones_like(x, dtype=float)) if not np.isfinite(tau) else (lambda x, tau=tau: np.exp(x / tau))
-    return base | {"basis": "full", "domain": "single", "tau": tau, "baseline": 1.0, "func": func}
+    tau = scale(halfwidth)
+    if problem == "action":
+        return base | {"basis": "const_plus_sine", "tau": tau, "mu": mu, "baseline": mu}
+    if problem == "inversion":
+        return base | {"basis": "full", "tau": tau, "mu": mu, "baseline": 1.0 / mu}
+    return base | {"basis": "full", "tau": tau, "mu": mu, "baseline": math.exp(mu)}

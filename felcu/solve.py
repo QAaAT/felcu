@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import replace
 
 import numpy as np
 
 from felcu._logging import logger
-from felcu._solver import _candidate_for_m, _metric
+from felcu._solver import _candidate_for_m, _meets_target
 from felcu.spectral import _make_spec, _spectral_data, default_sobolev_r
 from felcu.types import FourierExtensionResult
 from felcu.utils import (
@@ -30,8 +31,6 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
     a0 = float(s["a0"])
     ak = np.asarray(s["ak"], dtype=float)
     bk = np.asarray(s["bk"], dtype=float)
-    chosen_error = _metric(s, metric)
-    tol = max(1e-15, abs(target) * 1e-12)
 
     return FourierExtensionResult(
         problem=spec["problem"],
@@ -43,10 +42,10 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         alpha=float(s["alpha"]),
         target_error=float(target),
         error_metric=metric,
-        achieved_error=float(chosen_error),
+        achieved_error=float(s[metric]),
         achieved_l2_error=float(s["l2"]),
         achieved_linf_error=float(s["linf"]),
-        converged=bool(chosen_error <= target + tol),
+        converged=_meets_target(s, metric, target),
         lambda_used=float(cand["lambda"]),
         sobolev_r=float(spec["sobolev_r"]),
         sobolev_w=float(spec["sobolev_w"]),
@@ -90,27 +89,62 @@ def _exact_constant_if_any(
     target: float,
     metric: str,
 ) -> FourierExtensionResult | None:
-    import math as _math
-
+    """The exact constant series when the spectral interval is a single point."""
     s = spec["spectral"]
-    if s is None:
+    if s is None or s["sigma_min"] != s["sigma_max"]:
         return None
-    lo, hi = s["sigma_min"], s["sigma_max"]
-
-    if lo != hi:
-        if spec["problem"] == "action" and not spec["shifted"] and max(abs(lo), abs(hi)) == 0:
-            return _constant_result(spec, target, metric, 0.0)
-        if spec["problem"] == "exponentiation" and not spec["shifted"] and max(abs(lo), abs(hi)) == 0:
-            return _constant_result(spec, target, metric, 1.0)
-        return None
-
+    value = s["sigma_min"]
     if spec["problem"] == "action":
-        return _constant_result(spec, target, metric, lo)
+        return _constant_result(spec, target, metric, value)
     if spec["problem"] == "inversion" and spec["shifted"]:
-        return _constant_result(spec, target, metric, 1.0 / lo)
+        return _constant_result(spec, target, metric, 1.0 / value)
     if spec["problem"] == "exponentiation":
-        return _constant_result(spec, target, metric, _math.exp(lo))
+        return _constant_result(spec, target, metric, math.exp(value))
+    # Unshifted inversion of a single singular value is fitted as usual.
     return None
+
+
+def _lambda_grid(lambdas: Sequence[float] | None) -> np.ndarray:
+    if lambdas is None:
+        return default_lambda_grid()
+    grid = np.asarray(lambdas, dtype=float)
+    if grid.ndim != 1 or grid.size == 0 or np.any(grid < 0):
+        raise ValueError("lambdas must be a non-empty sequence of positive values.")
+    return grid
+
+
+def _m_grid(m: int | None, m_values: Sequence[int] | int | None) -> np.ndarray:
+    """Ascending candidate orders: *m* alone if given, else *m_values*, else the default grid."""
+    if m is not None:
+        if m < 0:
+            raise ValueError("m must be non-negative.")
+        return np.array([int(m)], dtype=int)
+    if m_values is None:
+        return default_m_grid()
+    if np.isscalar(m_values):
+        if int(m_values) < 0:
+            raise ValueError("m_values must be non-negative.")
+        return np.array([int(m_values)], dtype=int)
+    grid = np.unique(np.asarray(m_values, dtype=int))
+    if grid.ndim != 1 or grid.size == 0 or np.any(grid < 0):
+        raise ValueError("m_values must be a non-empty sequence of non-negative integers.")
+    return grid
+
+
+def _select(candidates: list[dict], metric: str, target: float, selection: str) -> tuple[dict, bool]:
+    """Pick the candidate to return, and whether it meets *target*.
+
+    Among feasible candidates, ``'smallest_m'`` prefers the lowest order and
+    ``'smallest_alpha'`` the lowest LCU normalisation (ties broken by the
+    other, then by error).  With none feasible, the lowest error wins.
+    """
+    feasible = [c for c in candidates if _meets_target(c["solve"], metric, target)]
+    logger.info("%d/%d candidates are feasible", len(feasible), len(candidates))
+    if not feasible:
+        return min(candidates, key=lambda c: (c["solve"][metric], c["m"], c["solve"]["alpha"])), False
+    if selection == "smallest_m":
+        return min(feasible, key=lambda c: (c["m"], c["solve"]["alpha"], c["solve"][metric])), True
+    return min(feasible, key=lambda c: (c["solve"]["alpha"], c["m"], c["solve"][metric])), True
 
 
 # ---------------------------------------------------------------------------
@@ -236,35 +270,15 @@ def solve_fe_coefficients(
         f"{spec['tau']:.4f}" if np.isfinite(spec["tau"]) else "inf",
     )
 
-    exact = _exact_constant_if_any(spec, float(target_error), metric)
+    target = float(target_error)
+    exact = _exact_constant_if_any(spec, target, metric)
     if exact is not None:
         logger.info("exact constant solution found, returning immediately")
         return exact
 
-    if lambdas is None:
-        lambdas = default_lambda_grid()
-    else:
-        lambdas = np.asarray(lambdas, dtype=float)
-        if lambdas.ndim != 1 or lambdas.size == 0 or np.any(lambdas < 0):
-            raise ValueError("lambdas must be a non-empty sequence of positive values.")
-
-    if m is not None:
-        if m < 0:
-            raise ValueError("m must be non-negative.")
-        m_grid = np.array([int(m)], dtype=int)
-    elif m_values is None:
-        m_grid = default_m_grid()
-    elif np.isscalar(m_values):
-        if int(m_values) < 0:
-            raise ValueError("m_values must be non-negative.")
-        m_grid = np.array([int(m_values)], dtype=int)
-    else:
-        m_grid = np.unique(np.asarray(m_values, dtype=int))
-        if m_grid.ndim != 1 or m_grid.size == 0 or np.any(m_grid < 0):
-            raise ValueError("m_values must be a non-empty sequence of non-negative integers.")
-
+    lambdas = _lambda_grid(lambdas)
+    m_grid = _m_grid(m, m_values)
     logger.info("sweeping %d m values: %s ... %s", len(m_grid), m_grid[0], m_grid[-1])
-    tol = max(1e-15, abs(float(target_error)) * 1e-12)
 
     candidates = []
     for i, mi in enumerate(m_grid):
@@ -273,7 +287,7 @@ def solve_fe_coefficients(
             spec,
             int(mi),
             lambdas,
-            float(target_error),
+            target,
             metric,
             order_fit,
             spec["sobolev_r"],
@@ -281,44 +295,27 @@ def solve_fe_coefficients(
             fit_oversample,
             val_n,
         )
-        err = _metric(c["solve"], metric)
         logger.info(
             "[%d/%d] m=%d  done: error=%.3e  feasible=%s  lam=%.3e  alpha=%.3e",
             i + 1,
             len(m_grid),
             mi,
-            err,
+            c["solve"][metric],
             c["feasible"],
             c["lambda"],
             c["solve"]["alpha"],
         )
         candidates.append(c)
-        if selection == "smallest_m" and _metric(c["solve"], metric) <= float(target_error) + tol:
+        if selection == "smallest_m" and _meets_target(c["solve"], metric, target):
             # m_grid is ascending, so no later m can be smaller.
             logger.info("smallest feasible m found, stopping sweep")
             break
 
-    feasible = [c for c in candidates if _metric(c["solve"], metric) <= float(target_error) + tol]
-    logger.info("%d/%d candidates are feasible", len(feasible), len(candidates))
+    best, converged = _select(candidates, metric, target, selection)
+    logger.info("selected: m=%d  error=%.3e  converged=%s", best["m"], best["solve"][metric], converged)
 
-    if feasible and selection == "smallest_m":
-        best = min(feasible, key=lambda c: (c["m"], c["solve"]["alpha"], _metric(c["solve"], metric)))
-    elif feasible:
-        best = min(feasible, key=lambda c: (c["solve"]["alpha"], c["m"], _metric(c["solve"], metric)))
-    else:
-        best = min(candidates, key=lambda c: (_metric(c["solve"], metric), c["m"], c["solve"]["alpha"]))
-
-    logger.info(
-        "selected: m=%d  error=%.3e  converged=%s",
-        best["m"],
-        _metric(best["solve"], metric),
-        bool(feasible),
-    )
-
-    all_results = tuple(
-        _make_result(spec, float(target_error), metric, c) for c in sorted(candidates, key=lambda c: c["m"])
-    )
-    selected = _make_result(spec, float(target_error), metric, best)
+    all_results = tuple(_make_result(spec, target, metric, c) for c in sorted(candidates, key=lambda c: c["m"]))
+    selected = _make_result(spec, target, metric, best)
     return replace(selected, all_results=all_results)
 
 

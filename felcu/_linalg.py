@@ -6,6 +6,8 @@ import math
 
 import numpy as np
 
+from felcu._coefficients import _assemble
+
 
 def _trapz(y: np.ndarray, x: np.ndarray) -> float:
     if hasattr(np, "trapezoid"):
@@ -30,13 +32,9 @@ def _gauss_interval(a: float, b: float, n: int) -> tuple[np.ndarray, np.ndarray]
 
 
 def _penalty(m: int, basis: str, lam: float, r: float, w: float) -> np.ndarray:
-    k = np.arange(1, m + 1, dtype=float)
-    p = lam * (1.0 + r * k) ** w
-    if basis == "odd_sine":
-        return p
-    if basis == "const_plus_sine":
-        return np.concatenate([[lam], p])
-    return np.concatenate([[lam], p, p])
+    """Diagonal of the H_r^w penalty: lam for the constant, lam (1 + r k)^w per harmonic."""
+    p = lam * (1.0 + r * np.arange(1, m + 1, dtype=float)) ** w
+    return _assemble(basis, [lam], p, p)
 
 
 def _alpha(a0: float, ak: np.ndarray, bk: np.ndarray) -> float:
@@ -57,7 +55,7 @@ def _validation_errors(
     return math.sqrt(max(integral, 0.0)), linf
 
 
-def _qr_solve(A: np.ndarray, b: np.ndarray) -> np.ndarray:
+def _lstsq(A: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Least-squares solve via LAPACK (numpy.linalg.lstsq)."""
     x, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
     return x
