@@ -136,7 +136,51 @@ def default_eta(
     spectral_kind: str = "auto",
     hermitian_tol: float = 1e-12,
 ) -> float:
-    """Return the default extension parameter eta for the given problem."""
+    """Return the default extension parameter eta for the given problem.
+
+    The series is fitted on ``[-pi/eta, pi/eta]``, so ``eta > 1`` sets how
+    much of the period is left free.  The defaults are
+
+    - action and exponentiation: ``2``;
+    - unshifted inversion: ``1 + 1/kappa``, with
+      ``kappa = sigma_max / sigma_min``;
+    - shifted inversion: ``(kappa + 1) / (kappa - 1)``, with *kappa* the
+      ratio of the largest to smallest ``|lambda|`` (``2`` if
+      ``kappa == 1``).
+
+    Parameters
+    ----------
+    problem:
+        One of ``'action'``, ``'inversion'``, or ``'exponentiation'`` (or
+        an alias; see :func:`~felcu.canonical_problem_name`).
+    shifted:
+        Use the shifted (centred) construction.
+    matrix:
+        Square matrix to read the spectral interval from.  Mutually
+        exclusive with *sigma_min* / *sigma_max*.
+    sigma_min, sigma_max:
+        Spectral interval bounds.
+    spectral_kind:
+        ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.
+    hermitian_tol:
+        Tolerance for the Hermitian test.
+
+    Returns
+    -------
+    float
+        The default *eta*.
+
+    Raises
+    ------
+    ValueError
+        For inversion, if no spectral information is given or the interval
+        is invalid (see :func:`~felcu.solve_fe_coefficients`).
+
+    Notes
+    -----
+    Spectral information is only used for inversion; for action and
+    exponentiation it is ignored.
+    """
     problem = canonical_problem_name(problem)
     if problem in {"action", "exponentiation"}:
         return 2.0

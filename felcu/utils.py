@@ -10,7 +10,28 @@ from felcu.types import ArrayLike, FourierExtensionResult
 
 
 def canonical_problem_name(name: str) -> str:
-    """Normalise a problem name to one of 'action', 'inversion', 'exponentiation'."""
+    """Normalise a problem name to one of 'action', 'inversion', 'exponentiation'.
+
+    Matching ignores case and surrounding whitespace.
+
+    Parameters
+    ----------
+    name:
+        Problem name.  Accepted aliases are ``'identity'`` and
+        ``'matrix-action'`` for ``'action'``; ``'inverse'`` for
+        ``'inversion'``; and ``'exp'`` and ``'exponential'`` for
+        ``'exponentiation'``.
+
+    Returns
+    -------
+    str
+        ``'action'``, ``'inversion'``, or ``'exponentiation'``.
+
+    Raises
+    ------
+    ValueError
+        If *name* is not a recognised problem or alias.
+    """
     aliases = {
         "action": "action",
         "identity": "action",
@@ -28,7 +49,27 @@ def canonical_problem_name(name: str) -> str:
 
 
 def canonical_error_metric(name: str) -> str:
-    """Normalise an error-metric name to 'l2' or 'linf'."""
+    """Normalise an error-metric name to 'l2' or 'linf'.
+
+    Matching ignores case and surrounding whitespace.
+
+    Parameters
+    ----------
+    name:
+        Metric name.  ``'2'`` is accepted for ``'l2'``; ``'inf'``,
+        ``'max'``, ``'infinity'``, ``'l_inf'`` and ``'l-infinity'`` for
+        ``'linf'``.
+
+    Returns
+    -------
+    str
+        ``'l2'`` or ``'linf'``.
+
+    Raises
+    ------
+    ValueError
+        If *name* is not a recognised metric or alias.
+    """
     aliases = {
         "l2": "l2",
         "2": "l2",
@@ -51,7 +92,34 @@ def default_m_grid(
     count: int = 32,
     power: float = 2.0,
 ) -> np.ndarray:
-    """Return a grid of candidate Fourier truncation orders."""
+    """Return a grid of candidate Fourier truncation orders.
+
+    The grid is ``m_min + (m_max - m_min) * t**power`` for *count* equally
+    spaced ``t`` in ``[0, 1]``, truncated to integers.  With ``power > 1``
+    the grid is denser at small ``m``.  This is the default ``m_values``
+    for :func:`~felcu.solve_fe_coefficients`.
+
+    Parameters
+    ----------
+    m_min, m_max:
+        Smallest and largest order.
+    count:
+        Number of grid points before duplicates are removed.
+    power:
+        Spacing exponent; ``1`` gives a uniform grid.
+
+    Returns
+    -------
+    numpy.ndarray
+        Sorted unique integer orders.  Truncation can merge neighbouring
+        points, so there may be fewer than *count*.  If ``count == 1`` the
+        grid is ``[m_max]``.
+
+    Raises
+    ------
+    ValueError
+        Unless ``0 <= m_min <= m_max`` and ``count > 0``.
+    """
     if m_min < 0 or m_max < m_min or count <= 0:
         raise ValueError("Require 0 <= m_min <= m_max and count > 0.")
     if count == 1:
@@ -65,7 +133,31 @@ def default_lambda_grid(
     lambda_min: float = 1e-16,
     count: int = 12,
 ) -> np.ndarray:
-    """Return a log-spaced grid of regularisation parameters."""
+    """Return a log-spaced grid of regularisation parameters.
+
+    This is the default ``lambdas`` for
+    :func:`~felcu.solve_fe_coefficients`.  The solver sorts the grid
+    itself and searches beyond it, so the grid only needs to bracket the
+    answer roughly.
+
+    Parameters
+    ----------
+    lambda_max, lambda_min:
+        Largest and smallest value.
+    count:
+        Number of values.
+
+    Returns
+    -------
+    numpy.ndarray
+        *count* geometrically spaced values from *lambda_max* down to
+        *lambda_min*.
+
+    Raises
+    ------
+    ValueError
+        Unless ``0 < lambda_min <= lambda_max`` and ``count >= 2``.
+    """
     if lambda_min <= 0 or lambda_max <= 0 or lambda_min > lambda_max or count < 2:
         raise ValueError("Require 0 < lambda_min <= lambda_max and count >= 2.")
     return np.geomspace(lambda_max, lambda_min, count)
@@ -77,7 +169,31 @@ def evaluate_fourier_series(
     ak: Sequence,
     bk: Sequence,
 ) -> np.ndarray:
-    """Evaluate the real Fourier series g(x) = a0 + sum_k ak sin(kx) + bk cos(kx)."""
+    """Evaluate the real Fourier series g(x) = a0 + sum_k ak sin(kx) + bk cos(kx).
+
+    The sum runs over ``k = 1, ..., len(ak)``.
+
+    Parameters
+    ----------
+    x:
+        Evaluation points, of any shape.
+    a0:
+        Constant term.
+    ak, bk:
+        Sine and cosine coefficients, of equal length.  Complex values are
+        allowed.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``g(x)``, with the same shape as *x*.  The result is complex if any
+        coefficient is complex.
+
+    Raises
+    ------
+    ValueError
+        If *ak* and *bk* have different lengths.
+    """
     x = np.asarray(x)
     x_flat = x.reshape(-1)
     ak = np.asarray(ak).reshape(-1)
@@ -99,7 +215,36 @@ def to_complex_coefficients(
     ak: Sequence | None = None,
     bk: Sequence | None = None,
 ) -> np.ndarray:
-    r"""Convert a0, ak, bk to [c_{-m}, ..., c_0, ..., c_m]."""
+    r"""Convert a0, ak, bk to [c_{-m}, ..., c_0, ..., c_m].
+
+    The complex coefficients give the same series in exponential form,
+    ``g(x) = sum_{k=-m}^{m} c_k exp(i k x)``, with
+
+    - ``c_0 = a0``,
+    - ``c_k = (bk[k-1] - i ak[k-1]) / 2`` for ``k > 0``,
+    - ``c_{-k} = (bk[k-1] + i ak[k-1]) / 2``.
+
+    Parameters
+    ----------
+    a0_or_result:
+        Either a :class:`~felcu.FourierExtensionResult`, in which case its
+        coefficients are used and *ak* / *bk* are ignored, or the constant
+        term ``a0``.
+    ak, bk:
+        Sine and cosine coefficients, of equal length.  Required unless a
+        result is passed.
+
+    Returns
+    -------
+    numpy.ndarray
+        Complex array of length ``2m + 1``, ordered from ``c_{-m}`` to
+        ``c_m``.
+
+    Raises
+    ------
+    ValueError
+        If *ak* or *bk* is missing, or their lengths differ.
+    """
     if isinstance(a0_or_result, FourierExtensionResult):
         a0 = a0_or_result.a0
         ak = a0_or_result.ak
@@ -126,7 +271,32 @@ def fitted_domain_segments(
     result: FourierExtensionResult,
     num: int = 2001,
 ) -> list[np.ndarray]:
-    """Return x-arrays covering the fitted domain of *result*."""
+    """Return x-arrays covering the fitted domain of *result*.
+
+    Use these to plot or check a fit, e.g. by comparing
+    :func:`evaluate_fourier_series` with :func:`evaluate_target_function`
+    on each segment.
+
+    Parameters
+    ----------
+    result:
+        A result from :func:`~felcu.solve_fe_coefficients`.
+    num:
+        Number of points.  For a double-interval domain, each interval
+        gets ``num // 2`` points.
+
+    Returns
+    -------
+    list of numpy.ndarray
+        One array spanning ``[-x_max, x_max]`` for a single-interval
+        domain, or two arrays spanning ``[-x_max, -x_min]`` and
+        ``[x_min, x_max]`` for a double-interval one.
+
+    Raises
+    ------
+    ValueError
+        If ``num < 2``, or a double-interval result has no ``x_min``.
+    """
     if num < 2:
         raise ValueError("num must be at least 2.")
     if result.domain == "single":
@@ -144,7 +314,34 @@ def evaluate_target_function(
     x: ArrayLike,
     result: FourierExtensionResult,
 ) -> np.ndarray:
-    """Evaluate the exact target function for *result* at points *x*."""
+    """Evaluate the exact target function for *result* at points *x*.
+
+    This is the function the series was fitted to, in the scaled variable,
+    so it can be compared directly with :func:`evaluate_fourier_series`.
+    With matrix-scale information it is ``x / tau``, ``tau / x`` or
+    ``exp(x / tau)`` (and ``mu + x / tau``, ``1 / (mu + x / tau)`` or
+    ``exp(mu + x / tau)`` when shifted), not the unscaled ``f``.  Without
+    it, it is ``x``, ``1 / x`` or ``exp(x)``.  If ``tau`` is infinite
+    (a zero-width interval), the target is constant.
+
+    Parameters
+    ----------
+    x:
+        Evaluation points in the scaled variable.
+    result:
+        A result from :func:`~felcu.solve_fe_coefficients`.
+
+    Returns
+    -------
+    numpy.ndarray
+        Target values, with the same shape as *x*.
+
+    Raises
+    ------
+    ValueError
+        If the problem is unknown, or a shifted result has no spectral
+        bounds.
+    """
     x = np.asarray(x, dtype=float)
     p = result.problem
 

@@ -273,6 +273,19 @@ def solve_fe_coefficients(
 
 
 def compute_fe_coefficients(*args, **kwargs) -> tuple[float, np.ndarray, np.ndarray]:
-    """Convenience wrapper; returns ``(a0, ak, bk)`` directly."""
+    """Convenience wrapper; returns ``(a0, ak, bk)`` directly.
+
+    Takes the same arguments as :func:`solve_fe_coefficients` and discards
+    everything but the coefficients.  Use :func:`solve_fe_coefficients`
+    when you also need ``tau``, the achieved error, or whether the fit
+    converged.
+
+    Returns
+    -------
+    a0 : float
+        Constant term.
+    ak, bk : numpy.ndarray
+        Sine and cosine coefficients (copies), each of length ``m``.
+    """
     result = solve_fe_coefficients(*args, **kwargs)
     return result.a0, result.ak.copy(), result.bk.copy()
