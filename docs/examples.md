@@ -178,10 +178,10 @@ lambda_used and the LCU normalisation alpha change.
 
 ### Choosing between candidate truncation orders
 
-felcu solves for every m in m_values and keeps all candidates in
-result.all_results.  selection='smallest_m' (default) picks the shortest
-series that meets the target; 'smallest_alpha' picks the one with the
-smallest LCU normalisation instead.
+With the default selection='smallest_alpha', felcu solves for every m in
+m_values, keeps all candidates in result.all_results, and picks the one
+with the smallest LCU normalisation.  'smallest_m' picks the shortest
+series that meets the target instead, and stops the sweep there.
 
 ```python title="examples/exponentiation/07_selection_and_candidates.py"
 --8<-- "examples/exponentiation/07_selection_and_candidates.py"

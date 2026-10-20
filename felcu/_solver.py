@@ -62,53 +62,70 @@ def _make_fit_data(spec: dict, m: int, fit_oversample: int, val_n: int) -> dict:
     return {"x": x, "sw": np.sqrt(weights), "val": val}
 
 
-def _linear_solve(
-    data: dict,
-    spec: dict,
-    m: int,
-    lam: float,
-    order_fit: int,
-    sobolev_r: float,
-    sobolev_w: float,
-) -> dict:
+def _fit_system(data: dict, spec: dict, m: int, order_fit: int) -> tuple[np.ndarray, np.ndarray]:
     basis = spec["basis"]
-    ncols = _basis_size(basis, m)
-    logger.debug("    linear_solve: m=%d  lam=%.3e  ncols=%d  order_fit=%d  r=%.3g  w=%.3g",
-                 m, lam, ncols, order_fit, sobolev_r, sobolev_w)
+    x = data["x"]
+    sw = data["sw"]
+    A_blocks = []
+    b_blocks = []
+    for d in range(order_fit + 1):
+        Ad = _basis_derivative_matrix(x, m, basis, d)
+        bd = _target_derivative(x, spec, d)
+        A_blocks.append(Ad * sw[:, None])
+        b_blocks.append(bd * sw)
+    return np.vstack(A_blocks), np.concatenate(b_blocks)
 
-    if ncols == 0:
-        residual_coeffs = np.zeros(0)
-    else:
-        A_blocks = []
-        b_blocks = []
-        x = data["x"]
-        sw = data["sw"]
 
-        for d in range(order_fit + 1):
-            Ad = _basis_derivative_matrix(x, m, basis, d)
-            bd = _target_derivative(x, spec, d)
-            A_blocks.append(Ad * sw[:, None])
-            b_blocks.append(bd * sw)
-
-        A_fit = np.vstack(A_blocks)
-        b_fit = np.concatenate(b_blocks)
-        logger.debug("    lstsq system shape: %s", A_fit.shape)
-
-        if lam == 0.0:
-            residual_coeffs = _qr_solve(A_fit, b_fit)
-        else:
-            p = _penalty(m, basis, lam, sobolev_r, sobolev_w)
-            A_aug = np.vstack([A_fit, np.diag(p)])
-            b_aug = np.concatenate([b_fit, np.zeros(ncols)])
-            logger.debug("    augmented system shape: %s", A_aug.shape)
-            residual_coeffs = _qr_solve(A_aug, b_aug)
-
+def _finish_solve(residual_coeffs: np.ndarray, data: dict, spec: dict, m: int) -> dict:
+    basis = spec["basis"]
     coeffs = _add_baseline(residual_coeffs, basis, spec["baseline"])
     a0, ak, bk = _unpack_coefficients(coeffs, basis, m)
     l2, linf = _validation_errors(coeffs, data["val"])
-    logger.debug("    linear_solve done: l2=%.3e  linf=%.3e  alpha=%.3e",
-                 l2, linf, _alpha(a0, ak, bk))
-    return {"a0": a0, "ak": ak, "bk": bk, "l2": l2, "linf": linf, "alpha": _alpha(a0, ak, bk)}
+    alpha = _alpha(a0, ak, bk)
+    logger.debug("    solve done: l2=%.3e  linf=%.3e  alpha=%.3e", l2, linf, alpha)
+    return {"a0": a0, "ak": ak, "bk": bk, "l2": l2, "linf": linf, "alpha": alpha}
+
+
+def _make_linear_solver(
+    data: dict,
+    spec: dict,
+    m: int,
+    order_fit: int,
+    sobolev_r: float,
+    sobolev_w: float,
+) -> Callable[[float], dict]:
+    """Return ``solve(lam)`` for one m, building the fit system only once.
+
+    The penalty is ``lam * D`` with ``D`` diagonal and invertible, so
+    substituting ``y = D c`` turns ``min ||A c - b||^2 + lam^2 ||D c||^2``
+    into ridge regression on ``A D^{-1}``.  One SVD of that matrix then
+    solves every ``lam > 0`` cheaply.  ``lam = 0`` keeps the plain
+    least-squares solve on ``A``.
+    """
+    basis = spec["basis"]
+    ncols = _basis_size(basis, m)
+    if ncols == 0:
+        return lambda lam: _finish_solve(np.zeros(0), data, spec, m)
+
+    A, b = _fit_system(data, spec, m, order_fit)
+    logger.debug("    fit system shape: %s", A.shape)
+    d = _penalty(m, basis, 1.0, sobolev_r, sobolev_w)
+    svd: dict[str, np.ndarray] = {}
+
+    def solve(lam: float) -> dict:
+        logger.debug("    solve: m=%d  lam=%.3e", m, lam)
+        if lam == 0.0:
+            return _finish_solve(_qr_solve(A, b), data, spec, m)
+        if not svd:
+            # Factorise lazily: an m that is infeasible at lam = 0 never needs it.
+            U, s, Vt = np.linalg.svd(A / d, full_matrices=False)
+            keep = s > np.finfo(float).eps * max(A.shape) * s[0]
+            svd.update(s=s[keep], Ut_b=U[:, keep].T @ b, V=Vt[keep].T)
+        s = svd["s"]
+        y = svd["V"] @ (s / (s**2 + lam**2) * svd["Ut_b"])
+        return _finish_solve(y / d, data, spec, m)
+
+    return solve
 
 
 def _candidate_for_m(
@@ -125,12 +142,13 @@ def _candidate_for_m(
 ) -> dict:
     logger.debug("candidate_for_m: m=%d  target=%.3e  metric=%s", m, target, metric)
     data = _make_fit_data(spec, m, fit_oversample, val_n)
+    linear_solve = _make_linear_solver(data, spec, m, order_fit, sobolev_r, sobolev_w)
     cache: dict[float, dict] = {}
 
     def solve(lam: float) -> dict:
         lam = float(lam)
         if lam not in cache:
-            cache[lam] = _linear_solve(data, spec, m, lam, order_fit, sobolev_r, sobolev_w)
+            cache[lam] = linear_solve(lam)
         return cache[lam]
 
     tol = max(1e-15, abs(target) * 1e-12)

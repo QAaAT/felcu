@@ -141,6 +141,47 @@ class TestSobolevRegulariser:
 
 
 # ---------------------------------------------------------------------------
+# Candidate selection and the fast lambda solve
+# ---------------------------------------------------------------------------
+
+class TestSelection:
+    common = dict(sigma_min=0.1, sigma_max=2.0, target_error=1e-8, m_values=range(8, 41, 4))
+
+    def test_smallest_alpha_is_default(self):
+        result = solve_fe_coefficients("exponentiation", **self.common)
+        feasible = [c for c in result.all_results if c.converged]
+        assert result.alpha == min(c.alpha for c in feasible)
+        assert [c.m for c in result.all_results] == list(self.common["m_values"])
+
+    def test_smallest_m_stops_at_first_feasible(self):
+        result = solve_fe_coefficients("exponentiation", selection="smallest_m", **self.common)
+        assert result.converged
+        assert result.all_results[-1].m == result.m
+        assert not any(c.converged for c in result.all_results[:-1])
+
+
+class TestLinearSolver:
+    @pytest.mark.parametrize("lam", [1e-6, 1e-3, 1e-1])
+    def test_matches_augmented_lstsq(self, lam):
+        from felcu._linalg import _penalty
+        from felcu._solver import _fit_system, _make_fit_data, _make_linear_solver
+        from felcu.spectral import _make_spec, _spectral_data
+
+        spectral = _spectral_data("exponentiation", False, None, 0.1, 2.0, "auto", 1e-12, True)
+        spec = _make_spec("exponentiation", False, spectral, None, 1e-12)
+        m, r, w = 16, 0.5, 1.5
+        data = _make_fit_data(spec, m, 8, 401)
+
+        fast = _make_linear_solver(data, spec, m, 1, r, w)(lam)
+
+        A, b = _fit_system(data, spec, m, 1)
+        p = _penalty(m, spec["basis"], lam, r, w)
+        c, *_ = np.linalg.lstsq(np.vstack([A, np.diag(p)]), np.concatenate([b, np.zeros(len(p))]), rcond=None)
+        np.testing.assert_allclose(fast["ak"], c[1:m + 1], rtol=1e-8, atol=1e-12)
+        np.testing.assert_allclose(fast["bk"], c[m + 1:], rtol=1e-8, atol=1e-12)
+
+
+# ---------------------------------------------------------------------------
 # compute_fe_coefficients convenience wrapper
 # ---------------------------------------------------------------------------
 

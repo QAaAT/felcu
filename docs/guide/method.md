@@ -100,6 +100,13 @@ Regularisation trades accuracy for smaller coefficients.  For each \(m\),
 The result is a fit that sits just inside the target error, with as much
 smoothing as that allows.  `result.lambda_used` reports the value chosen.
 
+The search is cheap because the penalty is \(\lambda D\) with \(D\)
+diagonal and fixed.  Substituting \(y = Dc\) turns every \(\lambda > 0\)
+solve into ridge regression on \(AD^{-1}\), where \(A\) is the fit matrix.
+One SVD of \(AD^{-1}\) per \(m\) then gives each solve in a few
+matrix–vector products.  The \(\lambda = 0\) solve is a separate
+least-squares solve on \(A\).
+
 ## Errors
 
 Errors are measured on a separate uniform validation grid of `val_n`
@@ -126,14 +133,19 @@ high-frequency coefficients.  `result.alpha` reports it.
 
 ## Choosing \(m\)
 
-The solver repeats the above for every \(m\) in `m_values` (by default a
-quadratically spaced grid from 4 to 256), then selects among the orders
-that meet the target:
+The solver repeats the above for the orders in `m_values` (by default a
+quadratically spaced grid from 4 to 256), in increasing order, and selects
+among those that meet the target:
 
-- `selection="smallest_m"` (default): the shortest series; ties broken by
-  \(\alpha\).
-- `selection="smallest_alpha"`: the smallest normalisation; ties broken by
-  \(m\).
+- `selection="smallest_alpha"` (default): the smallest normalisation; ties
+  broken by \(m\).  Every order in the grid is solved.
+- `selection="smallest_m"`: the shortest series.  The sweep stops at the
+  first order that meets the target, so `result.all_results` only holds the
+  orders up to it.
+
+\(\alpha\) often keeps falling slowly as \(m\) grows, so `smallest_alpha`
+tends to pick a large order from the grid.  Cap `m_values` if circuit depth
+(which grows with \(m\)) matters as well as \(\alpha\).
 
 If no order meets the target, the candidate with the smallest error is
 returned and `result.converged` is `False`.

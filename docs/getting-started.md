@@ -36,14 +36,16 @@ print(result.achieved_linf_error)  # error on the fitted interval
 print(result.alpha)                # LCU normalisation
 ```
 
-The solver tries a range of truncation orders \(m\) and returns the smallest
-one that meets the target.  Every candidate it tried is kept in
-`result.all_results`.
+The solver tries a range of truncation orders \(m\) and, among those that
+meet the target, returns the one with the smallest LCU normalisation
+\(\alpha\).  Pass `selection="smallest_m"` for the shortest series instead.
+Every candidate it tried is kept in `result.all_results`.
 
-!!! tip "Speed"
-    By default the solver sweeps \(m\) up to 256, which can take tens of
-    seconds.  If you have a rough idea of the order you need, pass a short
-    range such as `m_values=range(4, 41, 2)`.  See
+!!! tip "Choosing the range of m"
+    By default the solver sweeps \(m\) up to 256.  Because \(\alpha\) usually
+    keeps falling as \(m\) grows, the default `smallest_alpha` selection
+    often picks the top of the range.  If circuit depth matters, cap the
+    range, e.g. `m_values=range(4, 41, 2)`.  See
     [Tuning the solver](guide/parameters.md#truncation-order).
 
 ## Applying the result to a matrix

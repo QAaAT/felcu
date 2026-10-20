@@ -19,5 +19,6 @@ for kappa in [2, 5, 10, 20]:
         sigma_max=1.0,
         target_error=1e-4,
         m_values=range(4, 101, 4),  # short sweep for speed; default goes to m=256
+        selection="smallest_m",     # report the shortest series that meets the target
     )
     print(f"{kappa:>6}  {r.m:>4}  {r.alpha:>10.3f}  {r.achieved_linf_error:>9.1e}  {r.converged}")

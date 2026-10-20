@@ -138,7 +138,7 @@ def solve_fe_coefficients(
     order_fit: int = 1,
     fit_oversample: int = 8,
     val_n: int = 4001,
-    selection: str = "smallest_m",
+    selection: str = "smallest_alpha",
     hermitian_tol: float = 1e-12,
 ) -> FourierExtensionResult:
     """Compute Fourier-extension LCU block-encoding coefficients.
@@ -184,7 +184,11 @@ def solve_fe_coefficients(
     val_n:
         Number of validation points.
     selection:
-        ``'smallest_m'`` (default) or ``'smallest_alpha'``.
+        ``'smallest_alpha'`` (default) picks the feasible order with the
+        smallest LCU normalisation, which requires solving every order in
+        the sweep.  ``'smallest_m'`` picks the shortest feasible series and
+        stops the sweep there, so ``result.all_results`` only holds the
+        orders up to it.
     hermitian_tol:
         Tolerance for the Hermitian test.
 
@@ -256,6 +260,7 @@ def solve_fe_coefficients(
             raise ValueError("m_values must be a non-empty sequence of non-negative integers.")
 
     logger.info("sweeping %d m values: %s ... %s", len(m_grid), m_grid[0], m_grid[-1])
+    tol = max(1e-15, abs(float(target_error)) * 1e-12)
 
     candidates = []
     for i, mi in enumerate(m_grid):
@@ -270,8 +275,11 @@ def solve_fe_coefficients(
             i + 1, len(m_grid), mi, err, c["feasible"], c["lambda"], c["solve"]["alpha"],
         )
         candidates.append(c)
+        if selection == "smallest_m" and _metric(c["solve"], metric) <= float(target_error) + tol:
+            # m_grid is ascending, so no later m can be smaller.
+            logger.info("smallest feasible m found, stopping sweep")
+            break
 
-    tol = max(1e-15, abs(float(target_error)) * 1e-12)
     feasible = [c for c in candidates if _metric(c["solve"], metric) <= float(target_error) + tol]
     logger.info("%d/%d candidates are feasible", len(feasible), len(candidates))
 

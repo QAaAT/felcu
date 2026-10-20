@@ -19,5 +19,6 @@ for target in [1e-2, 1e-4, 1e-6, 1e-8, 1e-10, 1e-12]:
         sigma_max=2.0,
         target_error=target,
         m_values=range(4, 41, 2),  # short sweep for speed; default goes to m=256
+        selection="smallest_m",    # report the shortest series that meets the target
     )
     print(f"{target:>8.0e}  {r.m:>4}  {r.achieved_linf_error:>9.1e}  {r.alpha:>8.4f}")
