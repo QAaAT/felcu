@@ -188,6 +188,29 @@ series that meets the target instead, and stops the sweep there.
 --8<-- "examples/exponentiation/07_selection_and_candidates.py"
 ```
 
+## Square root
+
+### Square root on a positive-definite interval
+
+Fit f(H) = sqrt(H) for eigenvalues in [0.15, 1], the square-root example of
+the paper.  sqrt has a branch point at 0, so it uses the shifted
+construction, and the default eta = (kappa + 1) / (kappa - 1) places the
+branch point on the periodic boundary.  The Sobolev scale defaults to
+r = kappa^(-1/2) for w = 1.
+
+```python title="examples/square_root/01_basic_interval.py"
+--8<-- "examples/square_root/01_basic_interval.py"
+```
+
+### Matrix square root from a positive-definite matrix
+
+Fit sqrt(H) from H directly, then check that the block-encoded operator
+g(tau (H - mu I)) squares back to H.
+
+```python title="examples/square_root/02_matrix_square_root.py"
+--8<-- "examples/square_root/02_matrix_square_root.py"
+```
+
 ## Plots
 
 These scripts sweep a parameter and plot how the error \(\epsilon_m\) and

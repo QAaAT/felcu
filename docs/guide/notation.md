@@ -2,9 +2,7 @@
 
 `felcu` implements the Sobolev-regularised Fourier extensions of
 
-> P. Brearley, T. L. Howarth and B. Adcock, *Fourier extensions for
-> matrix-function block encodings with error-independent subnormalization
-> bounds*.
+> P. Brearley, T. L. Howarth and B. Adcock, [*Fourier extensions for matrix-function block encodings with error-independent subnormalization bounds*](https://arxiv.org/abs/2601.18024), arXiv:2601.18024.
 
 These docs use the paper's notation.  The table maps each symbol to the
 corresponding argument or result field.
@@ -36,7 +34,7 @@ corresponding argument or result field.
 | \(\Omega\) | the fitted set in general | `fitted_domain_segments(result)` |
 | \(\tau\) | scale, \(\mathcal G = \tau(\mathcal H - \mu I)\) | `result.tau` |
 | \(\mathcal G\) | scaled matrix with \(\operatorname{spec}(\mathcal G) \subseteq \Omega\) | |
-| \(f\) | the matrix function, \(f(\mathcal H)\) | `problem=` |
+| \(f\) | the matrix function: \(x\), \(x^{-1}\), \(e^x\) or \(\sqrt x\) | `problem=` |
 | \(g(x) = f(\mu + x/\tau)\) | fitted (scaled) target, \(f(\mathcal H) = g(\mathcal G)\) | `evaluate_target_function(x, result)` |
 
 Unshifted constructions take \(\mu = 0\), so \(\mathcal G = \tau\mathcal H\)

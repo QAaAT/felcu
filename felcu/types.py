@@ -23,7 +23,7 @@ class FourierExtensionResult:
     Attributes
     ----------
     problem : str
-        ``'action'``, ``'inversion'``, or ``'exponentiation'``.
+        ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``.
     shifted : bool
         Whether the shifted (centred) construction was used.
     basis_used : str

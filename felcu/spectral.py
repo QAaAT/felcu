@@ -11,6 +11,10 @@ from felcu.utils import canonical_problem_name
 
 PI = float(np.pi)
 
+# Functions with a branch point at 0, fitted on a positive-definite interval
+# by the shifted construction only (Sec. VI D of the paper).
+POSITIVE_DEFINITE_PROBLEMS = frozenset({"square_root"})
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -48,6 +52,8 @@ def _check_spectral_choice(
         raise ValueError("Shifted constructions use an eigenvalue interval.")
     if problem == "exponentiation" and kind != "eigenvalues":
         raise ValueError("Exponentiation uses an eigenvalue interval.")
+    if problem in POSITIVE_DEFINITE_PROBLEMS and not shifted:
+        raise ValueError(f"{problem} requires shifted=True: it is fitted on the centred positive-definite interval.")
     if problem == "inversion" and not shifted and kind != "singular_values":
         raise ValueError("Unshifted inversion uses singular values.")
     if kind == "eigenvalues" and matrix_is_hermitian is False:
@@ -111,6 +117,8 @@ def _spectral_data(
             raise ValueError("Require sigma_min <= sigma_max.")
         if problem == "inversion" and shifted:
             _definite_abs_bounds(lo, hi)
+        if problem in POSITIVE_DEFINITE_PROBLEMS and lo <= 0:
+            raise ValueError(f"{problem} requires a positive-definite interval, 0 < sigma_min <= sigma_max.")
 
     return {
         "sigma_min": lo,
@@ -144,14 +152,14 @@ def default_eta(
     - action and exponentiation: ``2``;
     - unshifted inversion: ``1 + 1/kappa``, with
       ``kappa = sigma_max / sigma_min``;
-    - shifted inversion: ``(kappa + 1) / (kappa - 1)``, with *kappa* the
-      ratio of the largest to smallest ``|lambda|`` (``2`` if
-      ``kappa == 1``).
+    - shifted inversion and square root:
+      ``(kappa + 1) / (kappa - 1)``, with *kappa* the ratio of the largest
+      to smallest ``|lambda|`` (``2`` if ``kappa == 1``).
 
     Parameters
     ----------
     problem:
-        One of ``'action'``, ``'inversion'``, or ``'exponentiation'`` (or
+        One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
         an alias; see :func:`~felcu.canonical_problem_name`).
     shifted:
         Use the shifted (centred) construction.
@@ -178,8 +186,10 @@ def default_eta(
 
     Notes
     -----
-    Spectral information is only used for inversion; for action and
-    exponentiation it is ignored.
+    Spectral information is only used for inversion and square root; for
+    action and exponentiation it is ignored.  The square root uses the
+    shifted-inversion rule, which places the branch point at 0 on the
+    periodic boundary.
     """
     problem = canonical_problem_name(problem)
     if problem in {"action", "exponentiation"}:
@@ -211,6 +221,7 @@ def default_sobolev_r(
     spectral_kind: str = "auto",
     hermitian_tol: float = 1e-12,
     eta: float | None = None,
+    sobolev_w: float = 1.0,
 ) -> float:
     """Return the default scale r of the H_r^w regulariser for the given problem.
 
@@ -226,12 +237,15 @@ def default_sobolev_r(
       radius instead of the half-width ``delta``;
     - inversion: the gap to the pole, ``r_def = min(1, 2 pi / (kappa + 1))``
       for the shifted (definite) fit and ``r_indef = min(1, pi / (kappa + 1))``
-      for the unshifted two-interval fit.
+      for the unshifted two-interval fit;
+    - square root: ``r_sqrt = kappa^(-(2w - 1) / (2w))``, which balances the
+      two contributions to the extension's H_r^w norm (``kappa^(-1/2)`` for
+      ``w = 1``).
 
     Parameters
     ----------
     problem:
-        One of ``'action'``, ``'inversion'``, or ``'exponentiation'`` (or
+        One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
         an alias; see :func:`~felcu.canonical_problem_name`).
     shifted:
         Use the shifted (centred) construction.
@@ -248,6 +262,8 @@ def default_sobolev_r(
     eta:
         Extension parameter of the fit.  Defaults to
         :func:`~felcu.default_eta` for the same problem.
+    sobolev_w:
+        Order *w* of the regulariser; only the square-root rule uses it.
 
     Returns
     -------
@@ -270,9 +286,12 @@ def default_sobolev_r(
         tau = _make_spec(problem, shifted, s, eta, hermitian_tol)["tau"]
         return 1.0 / (1.0 + 1.0 / tau)
 
-    # Inversion: the interval is definite (shifted) or of singular values.
+    # The remaining problems have a pole or branch point at 0, and the
+    # interval is definite (shifted) or of singular values.
     lo, hi = abs(s["sigma_min"]), abs(s["sigma_max"])
     kappa = max(lo, hi) / min(lo, hi)
+    if problem == "square_root":
+        return kappa ** (-(2.0 * sobolev_w - 1.0) / (2.0 * sobolev_w))
     return min(1.0, (2.0 if shifted else 1.0) * PI / (kappa + 1.0))
 
 
@@ -292,6 +311,8 @@ def _make_spec(
         raise ValueError("Shifted constructions require matrix-scale information.")
     if problem == "inversion" and spectral is None:
         raise ValueError("Inversion requires matrix-scale information so that the fitted interval avoids the pole.")
+    if problem in POSITIVE_DEFINITE_PROBLEMS and spectral is None:
+        raise ValueError(f"{problem} requires matrix-scale information so that the fitted interval avoids 0.")
 
     if eta is None:
         if spectral is None:
@@ -352,4 +373,6 @@ def _make_spec(
         return base | {"basis": "const_plus_sine", "tau": tau, "mu": mu, "baseline": mu}
     if problem == "inversion":
         return base | {"basis": "full", "tau": tau, "mu": mu, "baseline": 1.0 / mu}
+    if problem == "square_root":
+        return base | {"basis": "full", "tau": tau, "mu": mu, "baseline": math.sqrt(mu)}
     return base | {"basis": "full", "tau": tau, "mu": mu, "baseline": math.exp(mu)}

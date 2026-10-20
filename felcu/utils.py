@@ -20,13 +20,15 @@ def canonical_problem_name(name: str) -> str:
     name:
         Problem name.  Accepted aliases are ``'identity'`` and
         ``'matrix-action'`` for ``'action'``; ``'inverse'`` for
-        ``'inversion'``; and ``'exp'`` and ``'exponential'`` for
-        ``'exponentiation'``.
+        ``'inversion'``; ``'exp'`` and ``'exponential'`` for
+        ``'exponentiation'``; and ``'sqrt'`` and ``'square-root'`` for
+        ``'square_root'``.
 
     Returns
     -------
     str
-        ``'action'``, ``'inversion'``, or ``'exponentiation'``.
+        ``'action'``, ``'inversion'``, ``'exponentiation'``, or
+        ``'square_root'``.
 
     Raises
     ------
@@ -42,10 +44,13 @@ def canonical_problem_name(name: str) -> str:
         "exp": "exponentiation",
         "exponentiation": "exponentiation",
         "exponential": "exponentiation",
+        "square_root": "square_root",
+        "square-root": "square_root",
+        "sqrt": "square_root",
     }
     key = name.strip().lower()
     if key not in aliases:
-        raise ValueError("problem must be 'action', 'inversion', or 'exponentiation'.")
+        raise ValueError("problem must be 'action', 'inversion', 'exponentiation', or 'square_root'.")
     return aliases[key]
 
 
@@ -319,9 +324,10 @@ def evaluate_target_function(
 
     This is the function the series was fitted to, in the scaled variable,
     so it can be compared directly with :func:`evaluate_fourier_series`.
-    With matrix-scale information it is ``x / tau``, ``tau / x`` or
-    ``exp(x / tau)`` (and ``mu + x / tau``, ``1 / (mu + x / tau)`` or
-    ``exp(mu + x / tau)`` when shifted), not the unscaled ``f``.  Without
+    With matrix-scale information it is ``g(x) = f(mu + x / tau)``, not the
+    unscaled ``f``: for example ``x / tau``, ``tau / x`` or ``exp(x / tau)``
+    unshifted, and ``mu + x / tau``, ``1 / (mu + x / tau)``,
+    ``exp(mu + x / tau)`` or ``sqrt(mu + x / tau)`` shifted.  Without
     it, it is ``x``, ``1 / x`` or ``exp(x)``.  If ``tau`` is infinite
     (a zero-width interval), the target is constant.
 

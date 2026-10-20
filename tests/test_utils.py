@@ -27,6 +27,8 @@ class TestCanonicalProblemName:
         assert canonical_problem_name("exp") == "exponentiation"
         assert canonical_problem_name("exponentiation") == "exponentiation"
         assert canonical_problem_name("exponential") == "exponentiation"
+        assert canonical_problem_name("sqrt") == "square_root"
+        assert canonical_problem_name("square-root") == "square_root"
 
     def test_case_and_whitespace_insensitive(self):
         assert canonical_problem_name("  ACTION  ") == "action"

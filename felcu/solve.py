@@ -100,6 +100,8 @@ def _exact_constant_if_any(
         return _constant_result(spec, target, metric, 1.0 / value)
     if spec["problem"] == "exponentiation":
         return _constant_result(spec, target, metric, math.exp(value))
+    if spec["problem"] == "square_root":
+        return _constant_result(spec, target, metric, math.sqrt(value))
     # Unshifted inversion of a single singular value is fitted as usual.
     return None
 
@@ -179,7 +181,7 @@ def solve_fe_coefficients(
     Parameters
     ----------
     problem:
-        One of ``'action'``, ``'inversion'``, or ``'exponentiation'``
+        One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``
         (several aliases accepted; see :func:`~felcu.utils.canonical_problem_name`).
     shifted:
         Use the shifted (centred) construction.
@@ -257,6 +259,7 @@ def solve_fe_coefficients(
             spectral_kind="auto" if spectral is None else spectral["kind"],
             hermitian_tol=hermitian_tol,
             eta=spec["eta"],
+            sobolev_w=sobolev_w,
         )
     if not 0 < sobolev_r <= 1:
         raise ValueError("sobolev_r must satisfy 0 < sobolev_r <= 1.")
