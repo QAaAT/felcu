@@ -135,7 +135,7 @@ def _select(candidates: list[dict], metric: str, target: float, selection: str) 
     """Pick the candidate to return, and whether it meets *target*.
 
     Among feasible candidates, ``'smallest_m'`` prefers the lowest order and
-    ``'smallest_alpha'`` the lowest LCU normalisation (ties broken by the
+    ``'smallest_alpha'`` the lowest subnormalisation alpha (ties broken by the
     other, then by error).  With none feasible, the lowest error wins.
     """
     feasible = [c for c in candidates if _meets_target(c["solve"], metric, target)]
@@ -202,10 +202,14 @@ def solve_fe_coefficients(
     m_values:
         Candidate truncation orders to search over.
     lambdas:
-        Regularisation parameter grid.
+        Grid of regularisation strengths ``lambda = sqrt(2 pi gamma)``, where
+        *gamma* is the weight of the H_r^w penalty in the paper's
+        regularised problem.  The largest lambda meeting *target_error* is
+        used.
     sobolev_w:
-        Order *w* of the H_r^w regulariser, which penalises the k-th
-        harmonic with weight ``(1 + r|k|)^(2w)``.  Must exceed ``0.5``.
+        Order *w* of the H_r^w regulariser, which weights the k-th Fourier
+        mode by ``1 + (r|k|)^(2w)``.  Must exceed ``0.5``; the paper's
+        bounds cover ``0.5 < w <= 1``.
     sobolev_r:
         Scale *r* of the H_r^w regulariser, with ``0 < r <= 1``.  Chosen by
         :func:`~felcu.default_sobolev_r` when omitted.
@@ -218,7 +222,7 @@ def solve_fe_coefficients(
         Number of validation points.
     selection:
         ``'smallest_alpha'`` (default) picks the feasible order with the
-        smallest LCU normalisation, which requires solving every order in
+        smallest subnormalisation alpha, which requires solving every order in
         the sweep.  ``'smallest_m'`` picks the shortest feasible series and
         stops the sweep there, so ``result.all_results`` only holds the
         orders up to it.

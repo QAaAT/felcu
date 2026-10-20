@@ -3,7 +3,10 @@
 **Sobolev-regularised Fourier-extension coefficients for LCU block encodings.**
 
 `felcu` computes coefficients for representing matrix functions via Linear
-Combination of Unitaries (LCU), using Sobolev-regularised Fourier extensions.
+Combination of Unitaries (LCU), using the Sobolev-regularised Fourier
+extensions of P. Brearley, T. L. Howarth and B. Adcock, *Fourier extensions
+for matrix-function block encodings with error-independent subnormalization
+bounds*.
 It supports the three standard problems:
 
 | Problem | Function |
@@ -53,6 +56,7 @@ for xs in fitted_domain_segments(result):
 
 Full documentation is at **https://thomashowarth.github.io/felcu/**:
 
+- [Notation](https://thomashowarth.github.io/felcu/guide/notation/): the paper's symbols and their names in the code
 - [Problems and constructions](https://thomashowarth.github.io/felcu/guide/problems/): shifted vs unshifted, scaling, bases
 - [Method](https://thomashowarth.github.io/felcu/guide/method/): the Sobolev-regularised Fourier extension
 - [Tuning the solver](https://thomashowarth.github.io/felcu/guide/parameters/): every parameter

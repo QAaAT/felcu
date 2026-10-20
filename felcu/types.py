@@ -39,7 +39,7 @@ class FourierExtensionResult:
         without matrix-scale information; infinite for a zero-width
         interval.
     alpha : float
-        LCU normalisation, ``|a0| + sum_k sqrt(ak**2 + bk**2)``.
+        Subnormalisation ``alpha_m = sum_k |c_k| = |a0| + sum_k sqrt(ak**2 + bk**2)``.
     target_error : float
         The requested error.
     error_metric : str

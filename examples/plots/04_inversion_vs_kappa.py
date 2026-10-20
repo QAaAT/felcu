@@ -3,9 +3,10 @@ Cost of inversion versus condition number
 =========================================
 
 For singular values in [1/kappa, 1], plot the shortest series that meets
-the target (selection='smallest_m') and its LCU normalisation alpha as the
-condition number kappa grows.  The optimal alpha* = max |f| on the fitted
-domain (dotted) equals kappa here, so it is a line rather than a constant.
+the target (selection='smallest_m') and its subnormalisation alpha_m as the
+condition number kappa grows.  The lower bound alpha* = ||g||_inf on the
+fitted set (dotted) equals ||A^-1|| = kappa here, so it is a line rather
+than a constant.
 Needs matplotlib.
 
 Run with:
@@ -36,11 +37,11 @@ ok = conv.astype(bool)
 _style.apply()
 fig, (ax_m, ax_alpha) = plt.subplots(1, 2, figsize=(10, 4))
 ax_m.loglog(kappa[ok], m[ok], marker="o", color=color)
-ax_m.set_title(r"Shortest feasible order $m$  (target $10^{-4}$)")
+ax_m.set_title(r"Shortest feasible order $m$  ($\epsilon_{\mathrm{t}} = 10^{-4}$)")
 ax_alpha.loglog(kappa, alpha_star, color=_style.INK_2, linewidth=1, linestyle=":", label=_style.ALPHA_FLOOR_LABEL)
-ax_alpha.loglog(kappa[ok], alpha[ok], marker="o", color=color, label=r"$\alpha$")
+ax_alpha.loglog(kappa[ok], alpha[ok], marker="o", color=color, label=r"$\alpha_m$")
 ax_alpha.legend(loc="upper left")
-ax_alpha.set_title(r"LCU normalisation $\alpha$")
+ax_alpha.set_title(r"Subnormalisation $\alpha_m$")
 for ax in (ax_m, ax_alpha):
     ax.set_xlabel(r"condition number $\kappa$")
     ax.set_xticks([2, 5, 10, 20, 50], labels=["$2$", "$5$", "$10$", "$20$", "$50$"])

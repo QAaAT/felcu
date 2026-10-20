@@ -7,13 +7,13 @@ defaults suit most problems; this page explains when to change them.
 ## Accuracy
 
 `target_error` (default `1e-12`)
-:   The error the fit must meet.  Tightening it increases \(m\) roughly
+:   The target tolerance \(\epsilon_{\rm t}\) the fit must meet.  Tightening it increases \(m\) roughly
     logarithmically for smooth targets such as \(e^{x}\), and much faster for
     inversion with a large condition number.
 
 `error_metric` (default `"linf"`)
-:   `"linf"` bounds the worst-case pointwise error on the fitted interval,
-    which is usually what an operator-norm bound needs.  `"l2"` bounds the
+:   `"linf"` bounds \(\epsilon_m = \|g - g_m\|_{L^\infty(\Omega)}\), which
+    bounds the block-encoding error \(\|f(\mathcal H) - g_m(\mathcal G)\|\).  `"l2"` bounds the
     integrated error and is looser.  Aliases: `"inf"`, `"max"`,
     `"infinity"`, `"l_inf"`, `"l-infinity"`, `"2"`.
 
@@ -47,27 +47,32 @@ defaults suit most problems; this page explains when to change them.
 ## Regularisation
 
 `lambdas`
-:   Initial grid of regularisation strengths.  Defaults to
+:   Initial grid of regularisation strengths \(\lambda = \sqrt{2\pi\gamma}\),
+    where \(\gamma\) is the weight of the \(H^w_r\) penalty (see
+    [The regularised problem](method.md#the-regularised-problem)).  Defaults to
     [`default_lambda_grid()`](../api.md#felcu.default_lambda_grid): 12
     log-spaced values from \(10^{-16}\) to \(1\).  The solver expands beyond
     it and bisects, so the grid only needs to bracket the answer roughly.
 
 `sobolev_w` (default `1`)
 :   Order \(w\) of the \(H_r^w\) regulariser, which weights the \(k\)-th
-    harmonic by \((1 + r|k|)^{2w}\).  Must exceed \(1/2\); need not be an
-    integer.
+    Fourier mode by \(1 + (r|k|)^{2w}\).  Must exceed \(1/2\); need not be
+    an integer.  The paper's bounds cover \(1/2 < w \le 1\).
 
 `sobolev_r` (default: problem-dependent)
 :   Scale \(r\) of the \(H_r^w\) regulariser, with \(0 < r \le 1\).  When
     omitted it comes from
-    [`default_sobolev_r`](../api.md#felcu.default_sobolev_r): \(1\) for
-    action, \(1/\kappa\) for inversion and \(1/(1 + \eta w/\pi)\) for
-    exponentiation, with \(w\) the spectral half-width.  The value used is reported as
-    `result.sobolev_r`.
+    [`default_sobolev_r`](../api.md#felcu.default_sobolev_r), the paper's
+    scale-adapted choices: \(r_{\rm id} = 1\) for action,
+    \(r_{\exp} = (1 + 1/\tau)^{-1}\) for exponentiation, and
+    \(r_{\rm def} = \min\{1, 2\pi/(\kappa+1)\}\) or
+    \(r_{\rm indef} = \min\{1, \pi/(\kappa+1)\}\) for shifted or unshifted
+    inversion (see [The Sobolev penalty](method.md#the-sobolev-penalty)).
+    The value used is reported as `result.sobolev_r`.
 
 `order_fit` (default `1`)
-:   Number of derivatives matched in the fit.  `1` fits in the \(H^1\)
-    norm; `0` falls back to plain \(L^2\).  See
+:   Number of derivatives matched in the fit.  `1` fits in
+    \(H^1(\Omega)\), as in the paper; `0` falls back to \(L^2(\Omega)\).  See
     [The fit](method.md#the-fit).
 
 !!! note
@@ -81,7 +86,7 @@ defaults suit most problems; this page explains when to change them.
 :   Gauss–Legendre nodes per unknown.
 
 `eta`
-:   The extension parameter; see
+:   The domain extension factor \(\eta > 1\); see
     [The extension parameter](problems.md#the-extension-parameter-eta).
 
 ## Spectral input

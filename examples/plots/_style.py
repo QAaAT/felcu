@@ -100,15 +100,15 @@ def apply() -> None:
 
 
 def alpha_floor(result) -> float:
-    """max |f| over the fitted domain: the smallest LCU normalisation possible.
+    """||g||_inf over the fitted set Omega: the smallest subnormalisation possible.
 
-    Every series satisfies |g(x)| <= alpha, so a fit with error eps needs
-    alpha >= max |f| - eps.
+    Every series satisfies |g_m(x)| <= alpha_m, so a fit with error eps_m
+    needs alpha_m >= ||g||_inf - eps_m (the paper's norm-saturation criterion).
     """
     return max(float(np.max(np.abs(evaluate_target_function(xs, result)))) for xs in fitted_domain_segments(result))
 
 
-ALPHA_FLOOR_LABEL = r"$\alpha^\ast = \max_{x \in D} |f(x)|$"
+ALPHA_FLOOR_LABEL = r"$\alpha^\ast = \|g\|_{L^\infty(\Omega)}$"
 
 
 def label_end(ax, x, y, text: str, at: str = "end", gap: float = 5) -> None:

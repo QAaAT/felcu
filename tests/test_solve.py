@@ -154,10 +154,22 @@ class TestSobolevRegulariser:
     def test_default_r_in_range(self, problem, kwargs):
         assert 0 < default_sobolev_r(problem, **kwargs) <= 1
 
-    def test_default_r_uses_eta(self):
+    def test_default_r_exponentiation(self):
+        # r_exp = 1 / (1 + eta delta / pi) shifted; unshifted uses the radius 3 instead of delta = 1
         kwargs = dict(sigma_min=1.0, sigma_max=3.0)
-        assert default_sobolev_r("exponentiation", **kwargs) == pytest.approx(1 / (1 + 2.0 / np.pi))
-        assert default_sobolev_r("exponentiation", eta=4.0, **kwargs) == pytest.approx(1 / (1 + 4.0 / np.pi))
+        assert default_sobolev_r("exponentiation", shifted=True, **kwargs) == pytest.approx(1 / (1 + 2.0 / np.pi))
+        assert default_sobolev_r("exponentiation", shifted=True, eta=4.0, **kwargs) == pytest.approx(
+            1 / (1 + 4.0 / np.pi)
+        )
+        assert default_sobolev_r("exponentiation", **kwargs) == pytest.approx(1 / (1 + 6.0 / np.pi))
+
+    def test_default_r_inversion(self):
+        # r_def = min(1, 2 pi / (kappa + 1)), r_indef = min(1, pi / (kappa + 1))
+        assert default_sobolev_r("inversion", shifted=True, sigma_min=1.0, sigma_max=20.0) == pytest.approx(
+            2 * np.pi / 21
+        )
+        assert default_sobolev_r("inversion", sigma_min=0.05, sigma_max=1.0) == pytest.approx(np.pi / 21)
+        assert default_sobolev_r("inversion", sigma_min=0.5, sigma_max=1.0) == 1.0
 
     def test_solver_passes_eta_to_default_r(self):
         result = solve_fe_coefficients("exponentiation", eta=4.0, **self.common)

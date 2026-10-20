@@ -28,6 +28,7 @@ nav:
   - Home: index.md
   - Getting started: getting-started.md
   - User guide:
+      - Notation: guide/notation.md
       - Problems and constructions: guide/problems.md
       - Method: guide/method.md
       - Tuning the solver: guide/parameters.md

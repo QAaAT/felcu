@@ -3,7 +3,7 @@ Cost of inversion versus condition number
 =========================================
 
 Fix sigma_max = 1 and shrink sigma_min, so kappa = 1 / sigma_min grows.
-Both the truncation order m and the LCU normalisation alpha increase.
+Both the truncation order m and the subnormalisation alpha increase.
 
 Run with:
     python examples/inversion/02_condition_number.py

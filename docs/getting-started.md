@@ -17,8 +17,9 @@ pip install -e ".[dev]"
 
 ## A first fit
 
-Fit \(e^{H}\) for a Hermitian \(H\) with eigenvalues in \([0.1, 2]\) to an
-\(L^\infty\) error of \(10^{-10}\):
+Fit \(e^{\mathcal H}\) for a Hermitian \(\mathcal H\) with
+\(\operatorname{spec}(\mathcal H) \subseteq [0.1, 2]\) to a target tolerance
+\(\epsilon_{\rm t} = 10^{-10}\):
 
 ```python
 from felcu import solve_fe_coefficients
@@ -32,13 +33,13 @@ result = solve_fe_coefficients(
 
 print(result.converged)            # True if target_error was met
 print(result.m)                    # truncation order chosen
-print(result.achieved_linf_error)  # error on the fitted interval
-print(result.alpha)                # LCU normalisation
+print(result.achieved_linf_error)  # epsilon_m on the fitted set
+print(result.alpha)                # subnormalisation alpha_m
 ```
 
 The solver tries a range of truncation orders \(m\) and, among those that
-meet the target, returns the one with the smallest LCU normalisation
-\(\alpha\).  Pass `selection="smallest_m"` for the shortest series instead.
+meet the target, returns the one with the smallest subnormalisation
+\(\alpha_m\).  Pass `selection="smallest_m"` for the shortest series instead.
 Every candidate it tried is kept in `result.all_results`.
 
 !!! tip "Choosing the range of m"
@@ -51,12 +52,12 @@ Every candidate it tried is kept in `result.all_results`.
 ## Applying the result to a matrix
 
 The fit is done in a scaled variable \(x\), so the operator you implement
-is \(g\) evaluated at a scaled copy of \(H\):
+is the series \(g_m\) evaluated at the scaled matrix \(\mathcal G\):
 
 | Construction | Operator |
 |---|---|
-| unshifted | \(f(H) \approx g(\tau H)\) |
-| shifted | \(f(H) \approx g\bigl(\tau (H - \mu I)\bigr)\), with \(\mu = (\sigma_{\min} + \sigma_{\max})/2\) |
+| unshifted | \(f(\mathcal H) \approx g_m(\mathcal G)\), \(\mathcal G = \tau\mathcal H\) |
+| shifted | \(f(\mathcal H) \approx g_m(\mathcal G)\), \(\mathcal G = \tau(\mathcal H - \mu I)\), with \(\mu = (\lambda_{\min} + \lambda_{\max})/2\) |
 
 `result.tau` holds \(\tau\).  For a Hermitian matrix you can check the
 approximation classically through an eigendecomposition:
@@ -78,11 +79,11 @@ spectral interval from the matrix itself.
 
 ## Coefficients for an LCU circuit
 
-The real coefficients `a0`, `ak`, `bk` describe \(g\) in the sine/cosine basis.
-For a circuit you usually want the exponential form
+The real coefficients `a0`, `ak`, `bk` describe \(g_m\) in the sine/cosine
+basis.  For a circuit you usually want the exponential form
 
 \[
-g(x) = \sum_{k=-m}^{m} c_k e^{ikx},
+g_m(x) = \sum_{k=-m}^{m} c_k e^{ikx}, \qquad c_0 = a_0,\quad c_{\pm k} = \frac{b_k \mp i a_k}{2},
 \]
 
 which is available as `result.complex_coefficients`, ordered

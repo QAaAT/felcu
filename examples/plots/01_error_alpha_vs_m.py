@@ -4,11 +4,12 @@ Error, alpha and lambda versus truncation order m
 
 Sweep m for each problem at the same target and plot, per m:
 
-- the achieved Linf error (falls until it reaches the target, then stays
-  there, because lambda absorbs the remaining slack);
-- the LCU normalisation alpha of each feasible order, against the optimal
-  alpha* = max |f| on the fitted domain (dotted), which no fit can beat;
-- the regularisation strength lambda chosen for it.
+- the achieved error eps_m = ||g - g_m||_inf on the fitted set (falls until
+  it reaches the target eps_t, then stays there, because the
+  regularisation absorbs the remaining slack);
+- the subnormalisation alpha_m of each feasible order, against the lower
+  bound alpha* = ||g||_inf on the fitted set (dotted), which no fit can beat;
+- the regularisation strength lambda = sqrt(2 pi gamma) chosen for it.
 
 The ringed point is the order picked by the default selection
 ('smallest_alpha').  Needs matplotlib.
@@ -59,20 +60,20 @@ for problem, kwargs in PROBLEMS:
     )
     ax_lam.semilogy(ms, [c.lambda_used for c in feasible], marker="o", color=color)
 
-    print(f"\n{problem}: selected m={result.m}, alpha={result.alpha:.4f}, alpha* = max|f| = {alpha_star:.4f}")
+    print(f"\n{problem}: selected m={result.m}, alpha={result.alpha:.4f}, alpha* = ||g||_inf = {alpha_star:.4f}")
     print(f"  {'m':>4}  {'Linf':>9}  {'alpha':>9}  {'lambda':>9}")
     for c in cands:
         print(f"  {c.m:>4}  {c.achieved_linf_error:>9.2e}  {c.alpha:>9.4f}  {c.lambda_used:>9.2e}")
 
 _style.target_line(ax_err, TARGET)
-ax_err.set_title(r"Achieved $L^\infty$ error")
+ax_err.set_title(r"Achieved error $\epsilon_m = \|g - g_m\|_{L^\infty(\Omega)}$")
 ax_err.legend(loc="upper right", bbox_to_anchor=(1, 0.9))
-ax_alpha.set_title(r"LCU normalisation $\alpha$ (feasible orders; ring = selected)")
+ax_alpha.set_title(r"Subnormalisation $\alpha_m$ (feasible orders; ring = selected)")
 ax_alpha.legend(
     handles=[Line2D([], [], color=_style.INK_2, linewidth=1, linestyle=":", label=_style.ALPHA_FLOOR_LABEL)],
     loc="upper right",
 )
-ax_lam.set_title(r"Regularisation strength $\lambda$ chosen")
+ax_lam.set_title(r"Regularisation strength $\sqrt{2\pi\gamma}$ chosen")
 ax_lam.set_xlabel(r"truncation order $m$")
 fig.tight_layout()
 _style.finish(fig, "01_error_alpha_vs_m")

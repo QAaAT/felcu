@@ -32,8 +32,14 @@ def _gauss_interval(a: float, b: float, n: int) -> tuple[np.ndarray, np.ndarray]
 
 
 def _penalty(m: int, basis: str, lam: float, r: float, w: float) -> np.ndarray:
-    """Diagonal of the H_r^w penalty: lam for the constant, lam (1 + r k)^w per harmonic."""
-    p = lam * (1.0 + r * np.arange(1, m + 1, dtype=float)) ** w
+    """Diagonal D of the H_r^w penalty, so that ||D c||^2 = lam^2 ||h||_{H_r^w}^2 / (2 pi).
+
+    In the complex basis the norm is 2 pi sum_k (1 + (r|k|)^(2w)) |c_k|^2.  With
+    c_0 = a0 and |c_k|^2 + |c_-k|^2 = (|a_k|^2 + |b_k|^2) / 2, each real sine or
+    cosine coefficient gets weight (1 + (r k)^(2w)) / 2 and the constant weight 1.
+    """
+    k = np.arange(1, m + 1, dtype=float)
+    p = lam * np.sqrt(0.5 * (1.0 + (r * k) ** (2.0 * w)))
     return _assemble(basis, [lam], p, p)
 
 

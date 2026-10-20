@@ -3,9 +3,10 @@ Effect of the Sobolev regulariser
 =================================
 
 At fixed m, felcu regularises with the H_r^w norm, weighting the k-th
-harmonic by (1 + r|k|)^(2w), and picks the largest lambda that still
-meets target_error.  Vary the order w and the scale r and see how
-lambda_used and the LCU normalisation alpha change.
+Fourier mode by 1 + (r|k|)^(2w), and picks the largest regularisation
+weight that still meets target_error.  Vary the order w and the scale r
+and see how lambda_used (= sqrt(2 pi gamma)) and the subnormalisation
+alpha change.
 
 Run with:
     python examples/exponentiation/06_sobolev_regularisation.py

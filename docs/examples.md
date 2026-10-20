@@ -85,7 +85,7 @@ unconstrained.
 ### Cost of inversion versus condition number
 
 Fix sigma_max = 1 and shrink sigma_min, so kappa = 1 / sigma_min grows.
-Both the truncation order m and the LCU normalisation alpha increase.
+Both the truncation order m and the subnormalisation alpha increase.
 
 ```python title="examples/inversion/02_condition_number.py"
 --8<-- "examples/inversion/02_condition_number.py"
@@ -159,7 +159,7 @@ exponential computed by eigendecomposition.
 
 An LCU circuit implements sum_k c_k e^{i k x}.  felcu returns these as
 result.complex_coefficients = [c_{-m}, ..., c_0, ..., c_m].  The LCU
-normalisation alpha is the sum of the magnitudes of the paired terms.
+subnormalisation alpha is the sum of the magnitudes |c_k|.
 
 ```python title="examples/exponentiation/05_lcu_coefficients.py"
 --8<-- "examples/exponentiation/05_lcu_coefficients.py"
@@ -167,10 +167,11 @@ normalisation alpha is the sum of the magnitudes of the paired terms.
 
 ### Effect of the Sobolev regulariser
 
-At fixed m, felcu regularises with the H_r^w norm, weighting the k-th
-harmonic by (1 + r|k|)^(2w), and picks the largest lambda that still
-meets target_error.  Vary the order w and the scale r and see how
-lambda_used and the LCU normalisation alpha change.
+At fixed \(m\), felcu regularises with the \(H_r^w\) norm, weighting the
+\(k\)-th Fourier mode by \(1 + (r|k|)^{2w}\), and picks the largest
+regularisation weight \(\gamma\) that still meets `target_error`.  Vary
+the order \(w\) and the scale \(r\) and see how `lambda_used`
+(\(= \sqrt{2\pi\gamma}\)) and the subnormalisation \(\alpha_m\) change.
 
 ```python title="examples/exponentiation/06_sobolev_regularisation.py"
 --8<-- "examples/exponentiation/06_sobolev_regularisation.py"
@@ -180,7 +181,7 @@ lambda_used and the LCU normalisation alpha change.
 
 With the default selection='smallest_alpha', felcu solves for every m in
 m_values, keeps all candidates in result.all_results, and picks the one
-with the smallest LCU normalisation.  'smallest_m' picks the shortest
+with the smallest subnormalisation.  'smallest_m' picks the shortest
 series that meets the target instead, and stops the sweep there.
 
 ```python title="examples/exponentiation/07_selection_and_candidates.py"
@@ -189,11 +190,12 @@ series that meets the target instead, and stops the sweep there.
 
 ## Plots
 
-These scripts sweep a parameter and plot how the error and the LCU
-normalisation \(\alpha\) respond.  Where \(\alpha\) is shown, a dotted line
-marks the optimal value \(\alpha^\ast = \max_{x \in D} |f(x)|\) over the fitted
-domain \(D\): every series satisfies \(|g(x)| \le \alpha\), so no fit can do
-better.  They need matplotlib:
+These scripts sweep a parameter and plot how the error \(\epsilon_m\) and
+the subnormalisation \(\alpha_m\) respond.  Where \(\alpha_m\) is shown, a
+dotted line marks the lower bound
+\(\alpha^\ast = \|g\|_{L^\infty(\Omega)}\) over the fitted set \(\Omega\):
+every series satisfies \(|g_m(x)| \le \alpha_m\), so no fit can do better
+(the paper's norm-saturation criterion).  They need matplotlib:
 
 ```bash
 pip install -e ".[plots]"
@@ -208,13 +210,16 @@ mathtext otherwise.
 
 ### Error, alpha and lambda versus truncation order m
 
-Sweep m for each problem at the same target and plot, per m:
+Sweep \(m\) for each problem at the same target \(\epsilon_{\rm t}\) and
+plot, per \(m\):
 
-- the achieved Linf error (falls until it reaches the target, then stays
-  there, because lambda absorbs the remaining slack);
-- the LCU normalisation alpha of each feasible order, against the optimal
-  alpha* = max |f| on the fitted domain (dotted), which no fit can beat;
-- the regularisation strength lambda chosen for it.
+- the achieved error \(\epsilon_m = \|g - g_m\|_{L^\infty(\Omega)}\) (falls
+  until it reaches the target, then stays there, because the
+  regularisation absorbs the remaining slack);
+- the subnormalisation \(\alpha_m\) of each feasible order, against the
+  lower bound \(\alpha^\ast\) (dotted), which no fit can beat;
+- the regularisation strength \(\sqrt{2\pi\gamma}\) (`lambda_used`) chosen
+  for it.
 
 The ringed point is the order picked by the default selection
 ('smallest_alpha').
@@ -229,11 +234,11 @@ The ringed point is the order picked by the default selection
 
 ### The error-alpha trade-off controlled by lambda
 
-At fixed m, felcu chooses the largest lambda that still meets the target,
-so sweeping target_error traces out how error and alpha depend on lambda:
-more regularisation means a larger error but a smaller alpha, which
-approaches the optimal alpha* = max |f| on the fitted domain (dotted).
-Repeated for three orders m.
+At fixed \(m\), felcu chooses the largest regularisation weight
+\(\gamma\) that still meets the target, so sweeping `target_error` traces
+out how \(\epsilon_m\) and \(\alpha_m\) depend on it: more regularisation
+means a larger error but a smaller \(\alpha_m\), which approaches the lower
+bound \(\alpha^\ast\) (dotted).  Repeated for three orders \(m\).
 
 ![The error-alpha trade-off controlled by lambda](images/plots/02_error_alpha_vs_lambda.png)
 
@@ -245,11 +250,12 @@ Repeated for three orders m.
 
 ### Alpha over the Sobolev parameters r and w
 
-The H_r^w regulariser weights the k-th harmonic by (1 + r|k|)^(2w).  At
-fixed m and target, sweep 0 < r <= 1 and w > 0.5 and plot the resulting
-LCU normalisation alpha, as a heatmap and as slices at four values of r,
-against the optimal alpha* = max |f| on the fitted domain (dotted).  Every
-fit here meets the target, so only alpha changes.
+The \(H_r^w\) regulariser weights the \(k\)-th Fourier mode by
+\(1 + (r|k|)^{2w}\).  At fixed \(m\) and target, sweep \(0 < r \le 1\) and
+\(w > 1/2\) and plot the resulting subnormalisation \(\alpha_m\), as a
+heatmap and as slices at four values of \(r\), against the lower bound
+\(\alpha^\ast\) (dotted).  Every fit here meets the target, so only
+\(\alpha_m\) changes.
 
 ![Alpha over the Sobolev parameters r and w](images/plots/03_alpha_vs_r_w.png)
 
@@ -261,10 +267,11 @@ fit here meets the target, so only alpha changes.
 
 ### Cost of inversion versus condition number
 
-For singular values in [1/kappa, 1], plot the shortest series that meets
-the target (selection='smallest_m') and its LCU normalisation alpha as the
-condition number kappa grows.  The optimal alpha* = max |f| on the fitted
-domain (dotted) equals kappa here, so it is a line rather than a constant.
+For singular values in \([\kappa^{-1}, 1]\), plot the shortest series that
+meets the target (`selection='smallest_m'`) and its subnormalisation
+\(\alpha_m\) as the condition number \(\kappa\) grows.  The lower bound
+\(\alpha^\ast = \|A^{-1}\| = \kappa\) (dotted) is a line rather than a
+constant.
 
 ![Cost of inversion versus condition number](images/plots/04_inversion_vs_kappa.png)
 
@@ -276,10 +283,11 @@ domain (dotted) equals kappa here, so it is a line rather than a constant.
 
 ### The fitted series over a whole period, and its pointwise error
 
-Top: the series g over the full period [-pi, pi] against the target f on
-the fitted domain.  The shaded regions are not fitted: the extension
-region, and for unshifted inversion also the gap around the pole, where g
-stays bounded.  Bottom: |g - f| on the fitted domain.
+Top: the series \(g_m\) over the full period \(\mathbb T = [-\pi, \pi)\)
+against the target \(g\) on the fitted set \(\Omega\).  The shaded regions
+are not fitted: the extension region, and for unshifted inversion also the
+gap around the pole, where \(g_m\) stays bounded.  Bottom:
+\(|g - g_m|\) on \(\Omega\).
 
 ![The fitted series over a whole period, and its pointwise error](images/plots/05_pointwise_error.png)
 

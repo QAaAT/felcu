@@ -4,7 +4,7 @@ Complex coefficients for an LCU circuit
 
 An LCU circuit implements sum_k c_k e^{i k x}.  felcu returns these as
 result.complex_coefficients = [c_{-m}, ..., c_0, ..., c_m].  The LCU
-normalisation alpha is the sum of the magnitudes of the paired terms.
+subnormalisation alpha is the sum of the magnitudes |c_k|.
 
 Run with:
     python examples/exponentiation/05_lcu_coefficients.py

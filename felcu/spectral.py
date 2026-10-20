@@ -214,8 +214,19 @@ def default_sobolev_r(
 ) -> float:
     """Return the default scale r of the H_r^w regulariser for the given problem.
 
-    The regulariser weights the k-th harmonic by ``(1 + r|k|)^w``, so *r*
-    sets the frequency at which the penalty starts to grow.
+    The regulariser weights the k-th Fourier mode by ``1 + (r|k|)^(2w)``, so
+    *r* should match the shortest length scale the fitted function g has
+    to resolve.  The defaults follow the scale-adapted choices of
+    Brearley, Howarth and Adcock (Sec. VI):
+
+    - action: ``r_id = 1``, since g is linear;
+    - exponentiation: ``r_exp = 1 / (1 + 1/tau)``, since ``g' = g / tau``.
+      For the shifted fit ``tau = pi / (eta delta)``, giving
+      ``1 / (1 + eta delta / pi)``; unshifted fits scale by the spectral
+      radius instead of the half-width ``delta``;
+    - inversion: the gap to the pole, ``r_def = min(1, 2 pi / (kappa + 1))``
+      for the shifted (definite) fit and ``r_indef = min(1, pi / (kappa + 1))``
+      for the unshifted two-interval fit.
 
     Parameters
     ----------
@@ -241,19 +252,11 @@ def default_sobolev_r(
     Returns
     -------
     float
-        The default *r*, which must lie in ``(0, 1]``.
+        The default *r*, which lies in ``(0, 1]``.
 
     Notes
     -----
-    The defaults are
-
-    - action: ``1``;
-    - inversion: ``1/kappa``, with *kappa* the condition number of the
-      spectral interval;
-    - exponentiation: ``1 / (1 + eta * w / pi)``, with *w* the half-width
-      of the spectral interval.
-
-    Without spectral information the default is ``1``.
+    Without spectral information (an unscaled fit) the default is ``1``.
     """
     problem = canonical_problem_name(problem)
     s = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol, True)
@@ -261,29 +264,16 @@ def default_sobolev_r(
         # No spectral information: fitting the unscaled function.
         return 1.0
 
-    lo, hi = s["sigma_min"], s["sigma_max"]
-    half_width = 0.5 * (hi - lo)
-    radius = max(abs(lo), abs(hi))
-    # Condition number; infinite when the interval touches or contains 0.
-    kappa = radius / min(abs(lo), abs(hi)) if lo * hi > 0 else math.inf
-
-    if eta is None:
-        eta = default_eta(
-            problem,
-            shifted=shifted,
-            sigma_min=lo,
-            sigma_max=hi,
-            spectral_kind=s["kind"],
-            hermitian_tol=hermitian_tol,
-        )
-
     if problem == "action":
         return 1.0
-    if problem == "inversion":
-        return 1.0 / kappa
     if problem == "exponentiation":
-        return 1.0 / (1.0 + eta * half_width / np.pi)
-    return 1.0
+        tau = _make_spec(problem, shifted, s, eta, hermitian_tol)["tau"]
+        return 1.0 / (1.0 + 1.0 / tau)
+
+    # Inversion: the interval is definite (shifted) or of singular values.
+    lo, hi = abs(s["sigma_min"]), abs(s["sigma_max"])
+    kappa = max(lo, hi) / min(lo, hi)
+    return min(1.0, (2.0 if shifted else 1.0) * PI / (kappa + 1.0))
 
 
 # ---------------------------------------------------------------------------

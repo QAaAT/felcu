@@ -27,28 +27,38 @@ constructions require a Hermitian matrix (tested to `hermitian_tol`).
 
 ## The scaled variable
 
-With spectral information, the fit is carried out in a scaled variable \(x\)
-on an interval \([-\pi/\eta, \pi/\eta]\) strictly inside one period
-\([-\pi, \pi]\).  This is what makes it a Fourier *extension*: \(g\) only
-has to match \(f\) on part of the period, so a smooth non-periodic \(f\)
-can still be fitted to high accuracy.
+Following Sec. II of the paper, the fit is carried out in a scaled
+variable \(x\) on the fitted interval \(\Omega_\eta = [-\pi/\eta, \pi/\eta]\),
+strictly inside one period \(\mathbb T = [-\pi, \pi)\).  This is what makes
+it a Fourier *extension*: the series \(g_m\) only has to match the target
+on part of the period, so a smooth non-periodic function can still be
+fitted to high accuracy.
 
-The scale \(\tau\) maps the spectral interval onto the fitted interval.  Write
-\(r\) for the spectral radius (\(\max|\lambda|\), or \(\sigma_{\max}\) for
-singular values), \(\mu\) for the centre and \(h\) for the half-width of
-\([\sigma_{\min}, \sigma_{\max}]\).
+The scale \(\tau\) maps the spectrum onto the fitted set, giving the scaled
+matrix \(\mathcal G = \tau(\mathcal H - \mu I)\) and the fitted function
 
-| Problem | Construction | Fitted \(g(x)\) | \(\tau\) | Basis | Domain |
+\[
+g(x) = f\!\left(\mu + \frac{x}{\tau}\right), \qquad f(\mathcal H) = g(\mathcal G),
+\]
+
+with spectral midpoint \(\mu\) and half-width \(\delta\) (see
+[Notation](notation.md)).  The shifted constructions are exactly the
+paper's \(\tau = \pi/(\eta\delta)\).  Unshifted constructions take
+\(\mu = 0\) and scale by the spectral norm \(\|\mathcal H\|\) instead
+(\(\max|\lambda|\), or \(\Sigma_{\max}\) for singular values):
+
+| Problem | Construction | Fitted \(g(x)\) | \(\tau\) | Basis | Fitted set |
 |---|---|---|---|---|---|
-| action | unshifted | \(x/\tau\) | \(\pi/(\eta r)\) | odd sine | single |
-| action | shifted | \(\mu + x/\tau\) | \(\pi/(\eta h)\) | constant + sine | single |
-| inversion | unshifted | \(\tau/x\) | \(\pi/(\eta\sigma_{\max})\) | odd sine | double |
-| inversion | shifted | \(1/(\mu + x/\tau)\) | \(\pi/(\eta h)\) | full | single |
-| exponentiation | unshifted | \(e^{x/\tau}\) | \(\pi/(\eta r)\) | full | single |
-| exponentiation | shifted | \(e^{\mu + x/\tau}\) | \(\pi/(\eta h)\) | full | single |
+| action | unshifted | \(x/\tau\) | \(\pi/(\eta\|\mathcal H\|)\) | odd sine | \(\Omega_\eta\) |
+| action | shifted | \(\mu + x/\tau\) | \(\pi/(\eta\delta)\) | constant + sine | \(\Omega_\eta\) |
+| inversion | unshifted | \(\tau/x\) | \(\pi/(\eta\Sigma_{\max})\) | odd sine | \(\Omega^{\rm indef}_{\eta,\kappa}\) |
+| inversion | shifted | \((\mu + x/\tau)^{-1}\) | \(\pi/(\eta\delta)\) | full | \(\Omega_\eta\) |
+| exponentiation | unshifted | \(e^{x/\tau}\) | \(\pi/(\eta\|\mathcal H\|)\) | full | \(\Omega_\eta\) |
+| exponentiation | shifted | \(e^{\mu + x/\tau}\) | \(\pi/(\eta\delta)\) | full | \(\Omega_\eta\) |
 
-In every case \(f(H) = g(\tau H)\) (unshifted) or
-\(f(H) = g(\tau(H - \mu I))\) (shifted).
+The block encoding then implements \(g_m(\mathcal G) = \sum_k c_k e^{ik\mathcal G}\),
+where each \(e^{ik\mathcal G} = e^{-ik\tau\mu} e^{ik\tau\mathcal H}\) is a
+Hamiltonian simulation of \(\mathcal H\) up to a known phase.
 
 ### Bases
 
@@ -60,25 +70,30 @@ In every case \(f(H) = g(\tau H)\) (unshifted) or
 Restricting the basis halves the number of unknowns and guarantees the
 right symmetry exactly.
 
-### Unshifted inversion: the double interval
+### Unshifted inversion: the two-interval fit
 
-\(1/x\) has a pole at zero.  Unshifted inversion therefore fits on two
-intervals,
+\(x^{-1}\) has a pole at zero, and an indefinite (or dilated, see below)
+spectrum lies on both sides of it.  Unshifted inversion therefore fits
+\(g(x) = \tau/x\) on the disconnected set of Sec. VI C of the paper,
 
 \[
-[-\pi/\eta,\ -\tau\sigma_{\min}] \cup [\tau\sigma_{\min},\ \pi/\eta],
+\Omega^{\rm indef}_{\eta,\kappa} = [-x_{\max}, -x_{\min}] \cup [x_{\min}, x_{\max}],
+\qquad x_{\max} = \frac{\pi}{\eta},\quad x_{\min} = \frac{\pi}{\kappa\eta},
 \]
 
 and leaves the gap around the pole unconstrained.  `result.domain` is
-`"double"` and `result.x_min` holds the inner edge.
+`"double"` and `result.x_min` holds \(x_{\min}\).  This is the fit used
+for a general \(A\) through its Hermitian dilation, whose spectrum is
+\(\pm\operatorname{sv}(A)\).
 
 ## Shifted versus unshifted
 
 The shifted construction centres the spectrum before fitting.  For an
 interval far from zero, such as \([2, 5]\), the unshifted fit has to cover
-\([-5, 5]\) while the shifted fit only covers the half-width \(1.5\).  This
-usually lowers both \(m\) and \(\alpha\), at the cost of implementing
-\(H - \mu I\) in the circuit.  Shifted constructions always need spectral
+\([-5, 5]\) while the shifted fit only covers the half-width
+\(\delta = 1.5\), and the constant part \(c_0 I\) carries \(\mu\) exactly.
+This usually lowers both \(m\) and \(\alpha_m\); the shift only adds the
+known phase \(e^{-ik\tau\mu}\) to each Hamiltonian simulation.  Shifted constructions always need spectral
 information.
 
 Shifted inversion requires a *definite* interval (both bounds the same sign,
@@ -86,29 +101,32 @@ neither zero); negative-definite matrices work too.
 
 ## The extension parameter \(\eta\)
 
-\(\eta > 1\) controls how much of the period is left free.  Larger \(\eta\)
+\(\eta > 1\) sets how much of the period is left free.  Larger \(\eta\)
 gives the series more room to turn around, but packs the spectrum into a
-smaller interval.  The defaults are:
+smaller interval.  The defaults are the paper's choices for
+Sobolev-regularised extensions (Sec. VI):
 
-| Problem | Default \(\eta\) |
-|---|---|
-| action, exponentiation | \(2\) |
-| inversion, unshifted | \(1 + 1/\kappa\) |
-| inversion, shifted | \((\kappa + 1)/(\kappa - 1)\) |
+| Problem | Default \(\eta\) | Reason |
+|---|---|---|
+| action, exponentiation | \(2\) | entire \(f\); optimal for reflected extensions |
+| inversion, shifted | \(\eta_{\rm def} = (\kappa + 1)/(\kappa - 1)\) | puts the pole \(x_{\rm pole} = -\tau\mu\) at the periodic boundary |
+| inversion, unshifted | \(\eta_{\rm indef} = 1 + 1/\kappa\) | inner gap to the pole equals the outer gap to the boundary |
 
-where \(\kappa = \sigma_{\max}/\sigma_{\min}\) (for shifted inversion, the ratio
-of the largest to smallest \(|\lambda|\)).  Override with `eta=`, or query
+Here \(\kappa = \Sigma_{\max}/\Sigma_{\min}\) for unshifted inversion and
+\(\kappa = \max|\lambda|/\min|\lambda|\) for the definite interval of shifted
+inversion (\(\eta = 2\) if \(\kappa = 1\)).  Override with `eta=`, or query
 the default with [`default_eta`](../api.md#felcu.default_eta).
 
 ## No spectral information
 
 If neither `matrix` nor bounds are given, `felcu` fits the unscaled function
-on \([-\pi/\eta, \pi/\eta]\) with \(\tau = 1\):
+on \(\Omega_\eta\) with \(\tau = 1\) and \(\mu = 0\):
 
 - `action` fits \(g(x) = x\);
 - `exponentiation` fits \(g(x) = e^{x}\).
 
-You are then responsible for scaling \(H\) into that interval.  Inversion
+You are then responsible for scaling \(\mathcal H\) so that its spectrum
+lies in \(\Omega_\eta\).  Inversion
 and all shifted constructions need spectral information and raise an error
 without it.
 

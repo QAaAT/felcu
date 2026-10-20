@@ -2,10 +2,11 @@
 The error-alpha trade-off controlled by lambda
 ==============================================
 
-At fixed m, felcu chooses the largest lambda that still meets the target,
-so sweeping target_error traces out how error and alpha depend on lambda:
-more regularisation means a larger error but a smaller alpha, which
-approaches the optimal alpha* = max |f| on the fitted domain (dotted).
+At fixed m, felcu chooses the largest regularisation weight gamma that
+still meets the target eps_t, so sweeping target_error traces out how the
+error eps_m and subnormalisation alpha_m depend on lambda = sqrt(2 pi gamma):
+more regularisation means a larger error but a smaller alpha_m, which
+approaches the lower bound alpha* = ||g||_inf on the fitted set (dotted).
 Repeated for three orders m.  Needs matplotlib.
 
 Run with:
@@ -43,12 +44,12 @@ for m, color in zip(M_ORDERS, _style.ramp(len(M_ORDERS))):
 
 alpha_star = _style.alpha_floor(r)
 _style.ref_line(ax_alpha, alpha_star, _style.ALPHA_FLOOR_LABEL + f" $= {alpha_star:.3f}$", side="left")
-print(f"\nalpha* = max|f| = {alpha_star:.4f}")
+print(f"\nalpha* = ||g||_inf = {alpha_star:.4f}")
 
 ax_alpha.set_xlim(left=ax_alpha.get_xlim()[0] / 10)  # room for the start labels
-ax_err.set_title(r"Achieved $L^\infty$ error  ($e^{H}$, eigenvalues in $[0.1, 2]$)")
+ax_err.set_title(r"Achieved error $\epsilon_m$  ($e^{\mathcal{H}}$, $\mathrm{spec}(\mathcal{H}) \subseteq [0.1, 2]$)")
 ax_err.legend(loc="upper left")
-ax_alpha.set_title(r"LCU normalisation $\alpha$")
-ax_alpha.set_xlabel(r"regularisation strength $\lambda$")
+ax_alpha.set_title(r"Subnormalisation $\alpha_m$")
+ax_alpha.set_xlabel(r"regularisation strength $\sqrt{2\pi\gamma}$")
 fig.tight_layout()
 _style.finish(fig, "02_error_alpha_vs_lambda")

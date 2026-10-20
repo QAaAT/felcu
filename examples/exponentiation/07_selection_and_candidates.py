@@ -4,7 +4,7 @@ Choosing between candidate truncation orders
 
 With the default selection='smallest_alpha', felcu solves for every m in
 m_values, keeps all candidates in result.all_results, and picks the one
-with the smallest LCU normalisation.  'smallest_m' picks the shortest
+with the smallest subnormalisation.  'smallest_m' picks the shortest
 series that meets the target instead, and stops the sweep there.
 
 Run with:
