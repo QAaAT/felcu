@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -142,3 +143,85 @@ class FourierExtensionResult:
     def achieved_inf_error(self) -> float:
         """Alias for :attr:`achieved_linf_error`."""
         return self.achieved_linf_error
+
+    def to_dict(self, include_candidates: bool = False) -> dict:
+        """Return the result as a JSON-compatible dictionary.
+
+        Arrays become lists, ``complex_coefficients`` becomes
+        ``{"k": [-m..m], "real": [...], "imag": [...]}``, and non-finite
+        floats (``tau`` is infinite for a zero-width interval) become the
+        strings ``"inf"``, ``"-inf"`` or ``"nan"``.  The dictionary also
+        records ``format``, ``format_version`` and ``felcu_version``.
+
+        Parameters
+        ----------
+        include_candidates:
+            Also store :attr:`all_results`, every order tried in the sweep.
+        """
+        from felcu._io import to_dict
+
+        return to_dict(self, include_candidates)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> FourierExtensionResult:
+        """Rebuild a result from :meth:`to_dict` output.
+
+        Raises
+        ------
+        ValueError
+            If *data* is not a saved felcu result, has an unsupported
+            ``format_version``, or is missing a field.
+        """
+        from felcu._io import from_dict
+
+        return from_dict(cls, data)
+
+    def to_json(
+        self, path: str | Path | None = None, *, indent: int | None = 2, include_candidates: bool = False
+    ) -> str:
+        """Serialise the result to JSON, and write it to *path* if given.
+
+        The file is standard JSON (no ``NaN`` or ``Infinity`` literals) and
+        can be read from any language; floats are written with enough
+        digits to round-trip exactly.  See :meth:`to_dict` for the layout.
+
+        Parameters
+        ----------
+        path:
+            File to write.  If omitted, only the string is returned.
+        indent:
+            Indentation passed to :func:`json.dumps`; ``None`` for one line.
+        include_candidates:
+            Also store :attr:`all_results`.
+
+        Returns
+        -------
+        str
+            The JSON text.
+
+        Examples
+        --------
+        >>> result.to_json("exp_coefficients.json")
+        >>> loaded = FourierExtensionResult.from_json("exp_coefficients.json")
+        """
+        from felcu._io import to_json
+
+        return to_json(self, path, indent=indent, include_candidates=include_candidates)
+
+    @classmethod
+    def from_json(cls, source: str | Path) -> FourierExtensionResult:
+        """Load a result saved with :meth:`to_json`.
+
+        Parameters
+        ----------
+        source:
+            A path to a JSON file, or the JSON text itself.
+
+        Raises
+        ------
+        ValueError
+            As for :meth:`from_dict`.
+        """
+        from felcu._io import from_json
+
+        return from_json(cls, source)

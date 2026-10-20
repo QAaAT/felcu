@@ -90,3 +90,30 @@ which is available as `result.complex_coefficients`, ordered
 \([c_{-m}, \dots, c_0, \dots, c_m]\).  You can also convert any
 `(a0, ak, bk)` triple with
 [`to_complex_coefficients`](api.md#felcu.to_complex_coefficients).
+
+## Saving and loading results
+
+A result can be written to JSON and read back exactly:
+
+```python
+from felcu import FourierExtensionResult
+
+result.to_json("exp_coefficients.json")
+loaded = FourierExtensionResult.from_json("exp_coefficients.json")
+```
+
+The file is standard JSON, so it can also be read outside Python.  It
+holds every field of the result: the parameters (`problem`, `eta`, `tau`,
+`sobolev_r`, ...), the errors and \(\alpha_m\), the real coefficients
+`a0`, `ak`, `bk`, and the complex coefficients as
+
+```json
+"complex_coefficients": {"k": [-m, ..., m], "real": [...], "imag": [...]}
+```
+
+Floats are written with enough digits to round-trip exactly; an infinite
+\(\tau\) (a zero-width interval) is stored as the string `"inf"`.  Pass
+`include_candidates=True` to also keep `all_results`, every order tried
+in the sweep.  [`to_dict`](api.md#felcu.FourierExtensionResult.to_dict)
+and [`from_dict`](api.md#felcu.FourierExtensionResult.from_dict) give the
+same data as a Python dictionary.
