@@ -183,21 +183,21 @@ class TestSobolevRegulariser:
 
 
 # ---------------------------------------------------------------------------
-# Square root
+# Square root and logarithm
 # ---------------------------------------------------------------------------
 
 
-class TestSquareRoot:
+class TestSquareRootAndLogarithm:
     common = dict(shifted=True, sigma_min=0.15, sigma_max=1.0, target_error=1e-6, m_values=range(8, 65, 8))
 
-    @pytest.mark.parametrize("problem", ["square_root"])
+    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
     def test_converges(self, problem):
         result = solve_fe_coefficients(problem, **self.common)
         assert result.converged
         assert result.basis_used == "full"
         assert _max_error(result) <= 1e-6 * 1.01
 
-    @pytest.mark.parametrize("problem, f", [("sqrt", np.sqrt)])
+    @pytest.mark.parametrize("problem, f", [("sqrt", np.sqrt), ("log", np.log)])
     def test_matrix_function(self, problem, f):
         rng = np.random.default_rng(5)
         Q, _ = np.linalg.qr(rng.standard_normal((6, 6)))
@@ -208,7 +208,7 @@ class TestSquareRoot:
         g = evaluate_fourier_series(r.tau * (lam - mu), r.a0, r.ak, r.bk)
         np.testing.assert_allclose(Q @ np.diag(g) @ Q.T, Q @ np.diag(f(lam)) @ Q.T, atol=1e-7)
 
-    @pytest.mark.parametrize("problem", ["square_root"])
+    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
     def test_target_derivatives(self, problem):
         from felcu._coefficients import _target
 
@@ -217,29 +217,29 @@ class TestSquareRoot:
             fd = (_target(x + h, problem, 1.3, 2.0, d - 1) - _target(x - h, problem, 1.3, 2.0, d - 1)) / (2 * h)
             np.testing.assert_allclose(_target(x, problem, 1.3, 2.0, d), fd, rtol=1e-6)
 
-    @pytest.mark.parametrize("problem", ["square_root"])
+    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
     def test_requires_shifted(self, problem):
         with pytest.raises(ValueError, match="shifted=True"):
             solve_fe_coefficients(problem, sigma_min=0.5, sigma_max=1.0)
 
-    @pytest.mark.parametrize("problem", ["square_root"])
+    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
     @pytest.mark.parametrize("lo", [0.0, -0.5])
     def test_requires_positive_definite(self, problem, lo):
         with pytest.raises(ValueError, match="positive-definite"):
             solve_fe_coefficients(problem, shifted=True, sigma_min=lo, sigma_max=1.0)
 
-    @pytest.mark.parametrize("problem", ["square_root"])
+    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
     def test_requires_spectral_information(self, problem):
         with pytest.raises(ValueError):
             solve_fe_coefficients(problem, shifted=True)
 
-    @pytest.mark.parametrize("problem, f", [("square_root", np.sqrt)])
+    @pytest.mark.parametrize("problem, f", [("square_root", np.sqrt), ("logarithm", np.log)])
     def test_zero_width_is_exact_constant(self, problem, f):
         result = solve_fe_coefficients(problem, shifted=True, sigma_min=2.0, sigma_max=2.0)
         assert result.m == 0
         assert result.a0 == pytest.approx(f(2.0))
 
-    @pytest.mark.parametrize("problem", ["square_root"])
+    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
     def test_default_eta_puts_branch_point_on_boundary(self, problem):
         kappa = 1.0 / 0.15
         assert default_eta(problem, shifted=True, sigma_min=0.15, sigma_max=1.0) == pytest.approx(
@@ -250,6 +250,7 @@ class TestSquareRoot:
         kwargs = dict(shifted=True, sigma_min=0.04, sigma_max=1.0)  # kappa = 25
         assert default_sobolev_r("square_root", **kwargs) == pytest.approx(25**-0.5)
         assert default_sobolev_r("square_root", sobolev_w=0.75, **kwargs) == pytest.approx(25 ** (-1 / 3))
+        assert default_sobolev_r("logarithm", **kwargs) == pytest.approx(2 * np.pi / 26)
 
 
 # ---------------------------------------------------------------------------

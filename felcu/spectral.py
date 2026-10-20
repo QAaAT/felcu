@@ -13,7 +13,7 @@ PI = float(np.pi)
 
 # Functions with a branch point at 0, fitted on a positive-definite interval
 # by the shifted construction only (Sec. VI D of the paper).
-POSITIVE_DEFINITE_PROBLEMS = frozenset({"square_root"})
+POSITIVE_DEFINITE_PROBLEMS = frozenset({"square_root", "logarithm"})
 
 
 # ---------------------------------------------------------------------------
@@ -152,14 +152,14 @@ def default_eta(
     - action and exponentiation: ``2``;
     - unshifted inversion: ``1 + 1/kappa``, with
       ``kappa = sigma_max / sigma_min``;
-    - shifted inversion and square root:
+    - shifted inversion, square root and logarithm:
       ``(kappa + 1) / (kappa - 1)``, with *kappa* the ratio of the largest
       to smallest ``|lambda|`` (``2`` if ``kappa == 1``).
 
     Parameters
     ----------
     problem:
-        One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
+        One of ``'action'``, ``'inversion'``, ``'exponentiation'``, ``'square_root'``, or ``'logarithm'`` (or
         an alias; see :func:`~felcu.canonical_problem_name`).
     shifted:
         Use the shifted (centred) construction.
@@ -186,10 +186,10 @@ def default_eta(
 
     Notes
     -----
-    Spectral information is only used for inversion and square root; for
-    action and exponentiation it is ignored.  The square root uses the
-    shifted-inversion rule, which places the branch point at 0 on the
-    periodic boundary.
+    Spectral information is only used for inversion, square root and
+    logarithm; for action and exponentiation it is ignored.  Square root and
+    logarithm use the shifted-inversion rule, which places the branch point
+    at 0 on the periodic boundary.
     """
     problem = canonical_problem_name(problem)
     if problem in {"action", "exponentiation"}:
@@ -240,12 +240,15 @@ def default_sobolev_r(
       for the unshifted two-interval fit;
     - square root: ``r_sqrt = kappa^(-(2w - 1) / (2w))``, which balances the
       two contributions to the extension's H_r^w norm (``kappa^(-1/2)`` for
-      ``w = 1``).
+      ``w = 1``);
+    - logarithm: ``r_def``, the gap to the branch point.  The paper does
+      not treat the logarithm; this follows the inversion argument, since
+      ``log`` has the same ``1/x`` derivative scale near 0.
 
     Parameters
     ----------
     problem:
-        One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
+        One of ``'action'``, ``'inversion'``, ``'exponentiation'``, ``'square_root'``, or ``'logarithm'`` (or
         an alias; see :func:`~felcu.canonical_problem_name`).
     shifted:
         Use the shifted (centred) construction.
@@ -375,4 +378,6 @@ def _make_spec(
         return base | {"basis": "full", "tau": tau, "mu": mu, "baseline": 1.0 / mu}
     if problem == "square_root":
         return base | {"basis": "full", "tau": tau, "mu": mu, "baseline": math.sqrt(mu)}
+    if problem == "logarithm":
+        return base | {"basis": "full", "tau": tau, "mu": mu, "baseline": math.log(mu)}
     return base | {"basis": "full", "tau": tau, "mu": mu, "baseline": math.exp(mu)}

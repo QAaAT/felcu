@@ -21,14 +21,14 @@ def canonical_problem_name(name: str) -> str:
         Problem name.  Accepted aliases are ``'identity'`` and
         ``'matrix-action'`` for ``'action'``; ``'inverse'`` for
         ``'inversion'``; ``'exp'`` and ``'exponential'`` for
-        ``'exponentiation'``; and ``'sqrt'`` and ``'square-root'`` for
-        ``'square_root'``.
+        ``'exponentiation'``; ``'sqrt'`` and ``'square-root'`` for
+        ``'square_root'``; and ``'log'`` and ``'ln'`` for ``'logarithm'``.
 
     Returns
     -------
     str
-        ``'action'``, ``'inversion'``, ``'exponentiation'``, or
-        ``'square_root'``.
+        ``'action'``, ``'inversion'``, ``'exponentiation'``,
+        ``'square_root'``, or ``'logarithm'``.
 
     Raises
     ------
@@ -47,10 +47,13 @@ def canonical_problem_name(name: str) -> str:
         "square_root": "square_root",
         "square-root": "square_root",
         "sqrt": "square_root",
+        "logarithm": "logarithm",
+        "log": "logarithm",
+        "ln": "logarithm",
     }
     key = name.strip().lower()
     if key not in aliases:
-        raise ValueError("problem must be 'action', 'inversion', 'exponentiation', or 'square_root'.")
+        raise ValueError("problem must be 'action', 'inversion', 'exponentiation', 'square_root', or 'logarithm'.")
     return aliases[key]
 
 
@@ -327,7 +330,8 @@ def evaluate_target_function(
     With matrix-scale information it is ``g(x) = f(mu + x / tau)``, not the
     unscaled ``f``: for example ``x / tau``, ``tau / x`` or ``exp(x / tau)``
     unshifted, and ``mu + x / tau``, ``1 / (mu + x / tau)``,
-    ``exp(mu + x / tau)`` or ``sqrt(mu + x / tau)`` shifted.  Without
+    ``exp(mu + x / tau)``, ``sqrt(mu + x / tau)`` or ``log(mu + x / tau)``
+    shifted.  Without
     it, it is ``x``, ``1 / x`` or ``exp(x)``.  If ``tau`` is infinite
     (a zero-width interval), the target is constant.
 

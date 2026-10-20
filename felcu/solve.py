@@ -102,6 +102,8 @@ def _exact_constant_if_any(
         return _constant_result(spec, target, metric, math.exp(value))
     if spec["problem"] == "square_root":
         return _constant_result(spec, target, metric, math.sqrt(value))
+    if spec["problem"] == "logarithm":
+        return _constant_result(spec, target, metric, math.log(value))
     # Unshifted inversion of a single singular value is fitted as usual.
     return None
 
@@ -181,7 +183,7 @@ def solve_fe_coefficients(
     Parameters
     ----------
     problem:
-        One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``
+        One of ``'action'``, ``'inversion'``, ``'exponentiation'``, ``'square_root'``, or ``'logarithm'``
         (several aliases accepted; see :func:`~felcu.utils.canonical_problem_name`).
     shifted:
         Use the shifted (centred) construction.

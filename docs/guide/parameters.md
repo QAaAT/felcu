@@ -67,8 +67,8 @@ defaults suit most problems; this page explains when to change them.
     \(r_{\exp} = (1 + 1/\tau)^{-1}\) for exponentiation, and
     \(r_{\rm def} = \min\{1, 2\pi/(\kappa+1)\}\) or
     \(r_{\rm indef} = \min\{1, \pi/(\kappa+1)\}\) for shifted or unshifted
-    inversion, and \(r_{\rm sqrt} = \kappa^{-(2w-1)/(2w)}\) for the square
-    root (see
+    inversion, \(r_{\rm sqrt} = \kappa^{-(2w-1)/(2w)}\) for the square root,
+    and \(r_{\rm def}\) for the logarithm (see
     [The Sobolev penalty](method.md#the-sobolev-penalty)).
     The value used is reported as `result.sobolev_r`.
 

@@ -5,7 +5,7 @@
 `felcu` computes coefficients for representing matrix functions via Linear
 Combination of Unitaries (LCU), using the Sobolev-regularised Fourier
 extensions of P. Brearley, T. L. Howarth and B. Adcock, [*Fourier extensions for matrix-function block encodings with error-independent subnormalization bounds*](https://arxiv.org/abs/2601.18024), arXiv:2601.18024.
-It supports four problems:
+It supports five problems:
 
 | Problem | Function |
 |---|---|
@@ -13,9 +13,10 @@ It supports four problems:
 | `inversion` | f(H) = H⁻¹ |
 | `exponentiation` | f(H) = exp(H) |
 | `square_root` | f(H) = √H (H positive definite) |
+| `logarithm` | f(H) = log H (H positive definite) |
 
 Both shifted (centred) and unshifted constructions are available; the
-square root uses the shifted construction.
+square root and logarithm use the shifted construction.
 
 ## Installation
 

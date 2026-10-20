@@ -21,7 +21,7 @@ target tolerance while keeping the subnormalisation
 The method is that of P. Brearley, T. L. Howarth and B. Adcock, [*Fourier extensions for matrix-function block encodings with error-independent subnormalization bounds*](https://arxiv.org/abs/2601.18024), arXiv:2601.18024; these docs follow its
 [notation](guide/notation.md).
 
-Four problems are supported:
+Five problems are supported:
 
 | Problem | Function | Spectral data |
 |---|---|---|
@@ -29,6 +29,7 @@ Four problems are supported:
 | `inversion` | \(f(\mathcal H) = \mathcal H^{-1}\) | singular values (unshifted) or a definite eigenvalue interval (shifted) |
 | `exponentiation` | \(f(\mathcal H) = e^{\mathcal H}\) | eigenvalues |
 | `square_root` | \(f(\mathcal H) = \sqrt{\mathcal H}\) | positive-definite eigenvalue interval (shifted only) |
+| `logarithm` | \(f(\mathcal H) = \log\mathcal H\) | positive-definite eigenvalue interval (shifted only) |
 
 Each comes in an *unshifted* form and a *shifted* (centred) form; see
 [Problems and constructions](guide/problems.md).
@@ -58,5 +59,5 @@ result.alpha        # subnormalisation alpha_m
 - [Notation](guide/notation.md): the paper's symbols and their names in the code.
 - [Method](guide/method.md): what the solver actually computes.
 - [Tuning the solver](guide/parameters.md): every parameter and when to change it.
-- [Examples](examples.md): eighteen short scripts, one idea each.
+- [Examples](examples.md): twenty short scripts, one idea each.
 - [API reference](api.md).

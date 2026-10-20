@@ -211,6 +211,32 @@ g(tau (H - mu I)) squares back to H.
 --8<-- "examples/square_root/02_matrix_square_root.py"
 ```
 
+## Logarithm
+
+### Logarithm on a positive-definite interval
+
+Fit f(H) = log(H) for eigenvalues in [0.2, 5].  Like the square root, log
+has a branch point at 0, so it uses the shifted construction with
+eta = (kappa + 1) / (kappa - 1).  The Sobolev scale defaults to the gap to
+the branch point, r = min(1, 2 pi / (kappa + 1)).
+
+The spectrum straddles 1, so log(H) has eigenvalues of both signs and
+||log(H)|| = max(|log 0.2|, |log 5|).
+
+```python title="examples/logarithm/01_basic_interval.py"
+--8<-- "examples/logarithm/01_basic_interval.py"
+```
+
+### Matrix logarithm from a positive-definite matrix
+
+Fit log(H) from H directly, then compare the block-encoded operator
+g(tau (H - mu I)) with the exact matrix logarithm, and check that its
+exponential recovers H.
+
+```python title="examples/logarithm/02_matrix_logarithm.py"
+--8<-- "examples/logarithm/02_matrix_logarithm.py"
+```
+
 ## Plots
 
 These scripts sweep a parameter and plot how the error \(\epsilon_m\) and
