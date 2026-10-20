@@ -11,10 +11,28 @@ requires-python = ">=3.10"
 dependencies = ["numpy>=1.24"]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-cov"]
+dev = ["pytest", "pytest-cov", "ruff==0.17.1"]
 plots = ["matplotlib>=3.7"]
 docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.5", "mkdocstrings[python]>=0.26"]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["felcu*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["build"]
+
+[tool.ruff.format]
+# Leave code blocks in the docs alone: they contain pymdownx snippet markers.
+exclude = ["*.md"]
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, import order, bugbear, pyupgrade, NumPy deprecations
+select = ["E", "F", "W", "I", "B", "UP", "NPY"]
+# zip(..., strict=...) adds noise for the many equal-length numeric zips
+ignore = ["B905"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["felcu", "_style"]

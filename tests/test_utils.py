@@ -4,18 +4,18 @@ import numpy as np
 import pytest
 
 from felcu.utils import (
-    canonical_problem_name,
     canonical_error_metric,
-    default_m_grid,
+    canonical_problem_name,
     default_lambda_grid,
+    default_m_grid,
     evaluate_fourier_series,
     to_complex_coefficients,
 )
 
-
 # ---------------------------------------------------------------------------
 # canonical_problem_name
 # ---------------------------------------------------------------------------
+
 
 class TestCanonicalProblemName:
     def test_aliases_resolve(self):
@@ -41,6 +41,7 @@ class TestCanonicalProblemName:
 # canonical_error_metric
 # ---------------------------------------------------------------------------
 
+
 class TestCanonicalErrorMetric:
     def test_aliases_resolve(self):
         assert canonical_error_metric("l2") == "l2"
@@ -57,6 +58,7 @@ class TestCanonicalErrorMetric:
 # ---------------------------------------------------------------------------
 # default_m_grid
 # ---------------------------------------------------------------------------
+
 
 class TestDefaultMGrid:
     def test_returns_integers(self):
@@ -83,6 +85,7 @@ class TestDefaultMGrid:
 # default_lambda_grid
 # ---------------------------------------------------------------------------
 
+
 class TestDefaultLambdaGrid:
     def test_decreasing(self):
         grid = default_lambda_grid()
@@ -103,6 +106,7 @@ class TestDefaultLambdaGrid:
 # ---------------------------------------------------------------------------
 # evaluate_fourier_series
 # ---------------------------------------------------------------------------
+
 
 class TestEvaluateFourierSeries:
     def test_constant(self):
@@ -135,6 +139,7 @@ class TestEvaluateFourierSeries:
 # ---------------------------------------------------------------------------
 # to_complex_coefficients
 # ---------------------------------------------------------------------------
+
 
 class TestToComplexCoefficients:
     def test_constant_only(self):

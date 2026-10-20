@@ -19,5 +19,7 @@ kwargs = dict(sigma_min=2.0, sigma_max=5.0, target_error=1e-8, m_values=range(4,
 
 for shifted in (False, True):
     r = solve_fe_coefficients("action", shifted=shifted, **kwargs)
-    print(f"shifted={str(shifted):<5}  basis={r.basis_used:<16}  m={r.m:<4}  "
-          f"a0={r.a0:.4f}  alpha={r.alpha:.4f}  Linf={r.achieved_linf_error:.1e}")
+    print(
+        f"shifted={str(shifted):<5}  basis={r.basis_used:<16}  m={r.m:<4}  "
+        f"a0={r.a0:.4f}  alpha={r.alpha:.4f}  Linf={r.achieved_linf_error:.1e}"
+    )

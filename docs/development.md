@@ -21,6 +21,23 @@ python -m pytest tests/ -v
 CI runs the same command on Python 3.11 and 3.12 for every push to `main`
 and every pull request (`.github/workflows/ci.yml`).
 
+## Linting and formatting
+
+Code is linted and formatted with [ruff](https://docs.astral.sh/ruff/),
+configured in `pyproject.toml` (line length 120; pycodestyle, pyflakes,
+import order, bugbear, pyupgrade and NumPy-deprecation rules).  Before
+pushing:
+
+```bash
+ruff check --fix .
+ruff format .
+```
+
+CI runs `ruff check .` and `ruff format --check .` and fails if either
+reports anything.  The ruff version is pinned in the `dev` extra and in CI,
+so local and CI formatting agree.  Markdown files are not formatted, so code
+blocks in `docs/` are left as written.
+
 ## Documentation
 
 The docs are built with [MkDocs](https://www.mkdocs.org/) and the

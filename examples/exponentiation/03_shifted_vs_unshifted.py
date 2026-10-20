@@ -22,5 +22,6 @@ for shifted in (False, True):
         target_error=1e-8,
         m_values=range(4, 33, 2),  # short sweep for speed; default goes to m=256
     )
-    print(f"shifted={str(shifted):<5}  tau={r.tau:.4f}  m={r.m:<4}  "
-          f"alpha={r.alpha:.4f}  Linf={r.achieved_linf_error:.1e}")
+    print(
+        f"shifted={str(shifted):<5}  tau={r.tau:.4f}  m={r.m:<4}  alpha={r.alpha:.4f}  Linf={r.achieved_linf_error:.1e}"
+    )

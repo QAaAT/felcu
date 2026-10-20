@@ -27,8 +27,7 @@ fig, (ax_err, ax_alpha) = plt.subplots(2, 1, sharex=True, figsize=(7, 6.5))
 for m, color in zip(M_ORDERS, _style.ramp(len(M_ORDERS))):
     rows = []
     for target in TARGETS:
-        r = solve_fe_coefficients("exponentiation", sigma_min=0.1, sigma_max=2.0,
-                                  target_error=target, m=m)
+        r = solve_fe_coefficients("exponentiation", sigma_min=0.1, sigma_max=2.0, target_error=target, m=m)
         if r.converged and r.lambda_used > 0:
             rows.append((r.lambda_used, r.achieved_linf_error, r.alpha))
     lam, err, alpha = map(np.array, zip(*rows))

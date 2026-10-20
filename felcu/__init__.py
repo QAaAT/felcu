@@ -20,6 +20,8 @@ Typical usage
 >>> result.a0, result.ak, result.bk
 """
 
+from felcu.solve import compute_fe_coefficients, solve_fe_coefficients
+from felcu.spectral import default_eta, default_sobolev_r
 from felcu.types import FourierExtensionResult
 from felcu.utils import (
     ArrayLike,
@@ -32,8 +34,6 @@ from felcu.utils import (
     fitted_domain_segments,
     to_complex_coefficients,
 )
-from felcu.spectral import default_eta, default_sobolev_r
-from felcu.solve import compute_fe_coefficients, solve_fe_coefficients
 
 __all__ = [
     # Types

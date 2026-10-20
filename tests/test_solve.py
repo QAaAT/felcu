@@ -3,13 +3,13 @@
 import numpy as np
 import pytest
 
-from felcu import solve_fe_coefficients, compute_fe_coefficients, default_sobolev_r, evaluate_fourier_series
-from felcu.utils import fitted_domain_segments, evaluate_target_function
-
+from felcu import compute_fe_coefficients, default_sobolev_r, evaluate_fourier_series, solve_fe_coefficients
+from felcu.utils import evaluate_target_function, fitted_domain_segments
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _max_error(result, n=500):
     """L∞ error between the fitted series and the exact target over the domain."""
@@ -25,12 +25,15 @@ def _max_error(result, n=500):
 # Basic convergence tests (small m to stay fast)
 # ---------------------------------------------------------------------------
 
+
 class TestConvergence:
     def test_exponentiation_converges(self):
         result = solve_fe_coefficients(
             "exponentiation",
-            sigma_min=0.1, sigma_max=2.0,
-            target_error=1e-3, m=16,
+            sigma_min=0.1,
+            sigma_max=2.0,
+            target_error=1e-3,
+            m=16,
         )
         assert result.converged
         assert result.achieved_l2_error <= 1e-3 * 1.01
@@ -38,23 +41,28 @@ class TestConvergence:
     def test_action_converges(self):
         result = solve_fe_coefficients(
             "action",
-            sigma_min=-1.0, sigma_max=1.0,
-            target_error=1e-3, m=8,
+            sigma_min=-1.0,
+            sigma_max=1.0,
+            target_error=1e-3,
+            m=8,
         )
         assert result.converged
 
     def test_inversion_converges(self):
         result = solve_fe_coefficients(
             "inversion",
-            sigma_min=0.5, sigma_max=2.0,
-            target_error=1e-3, m=16,
+            sigma_min=0.5,
+            sigma_max=2.0,
+            target_error=1e-3,
+            m=16,
         )
         assert result.converged
 
     def test_linf_metric(self):
         result = solve_fe_coefficients(
             "exponentiation",
-            sigma_min=0.5, sigma_max=1.5,
+            sigma_min=0.5,
+            sigma_max=1.5,
             target_error=1e-2,
             error_metric="linf",
             m=20,
@@ -67,12 +75,15 @@ class TestConvergence:
 # Result fields
 # ---------------------------------------------------------------------------
 
+
 class TestResultFields:
     def setup_method(self):
         self.result = solve_fe_coefficients(
             "exponentiation",
-            sigma_min=0.5, sigma_max=1.5,
-            target_error=1e-2, m=12,
+            sigma_min=0.5,
+            sigma_max=1.5,
+            target_error=1e-2,
+            m=12,
         )
 
     def test_ak_bk_same_length(self):
@@ -103,6 +114,7 @@ class TestResultFields:
 # H_r^w regulariser
 # ---------------------------------------------------------------------------
 
+
 class TestSobolevRegulariser:
     common = dict(sigma_min=0.5, sigma_max=1.5, target_error=1e-4, m=12)
 
@@ -130,19 +142,32 @@ class TestSobolevRegulariser:
         with pytest.raises(ValueError, match="sobolev_w"):
             solve_fe_coefficients("exponentiation", sobolev_w=w, **self.common)
 
-    @pytest.mark.parametrize("problem, kwargs", [
-        ("action", {}),
-        ("action", dict(sigma_min=-1.0, sigma_max=2.0)),
-        ("inversion", dict(sigma_min=0.5, sigma_max=3.0)),
-        ("exponentiation", dict(shifted=True, sigma_min=1.0, sigma_max=3.0)),
-    ])
+    @pytest.mark.parametrize(
+        "problem, kwargs",
+        [
+            ("action", {}),
+            ("action", dict(sigma_min=-1.0, sigma_max=2.0)),
+            ("inversion", dict(sigma_min=0.5, sigma_max=3.0)),
+            ("exponentiation", dict(shifted=True, sigma_min=1.0, sigma_max=3.0)),
+        ],
+    )
     def test_default_r_in_range(self, problem, kwargs):
         assert 0 < default_sobolev_r(problem, **kwargs) <= 1
+
+    def test_default_r_uses_eta(self):
+        kwargs = dict(sigma_min=1.0, sigma_max=3.0)
+        assert default_sobolev_r("exponentiation", **kwargs) == pytest.approx(1 / (1 + 2.0 / np.pi))
+        assert default_sobolev_r("exponentiation", eta=4.0, **kwargs) == pytest.approx(1 / (1 + 4.0 / np.pi))
+
+    def test_solver_passes_eta_to_default_r(self):
+        result = solve_fe_coefficients("exponentiation", eta=4.0, **self.common)
+        assert result.sobolev_r == default_sobolev_r("exponentiation", sigma_min=0.5, sigma_max=1.5, eta=4.0)
 
 
 # ---------------------------------------------------------------------------
 # Candidate selection and the fast lambda solve
 # ---------------------------------------------------------------------------
+
 
 class TestSelection:
     common = dict(sigma_min=0.1, sigma_max=2.0, target_error=1e-8, m_values=range(8, 41, 4))
@@ -180,19 +205,23 @@ class TestLinearSolver:
         # Two different solvers on an ill-conditioned system agree to rounding
         # relative to the coefficient vector, not to each (possibly tiny) entry.
         atol = 1e-9 * np.max(np.abs(c))
-        np.testing.assert_allclose(fast["ak"], c[1:m + 1], rtol=0, atol=atol)
-        np.testing.assert_allclose(fast["bk"], c[m + 1:], rtol=0, atol=atol)
+        np.testing.assert_allclose(fast["ak"], c[1 : m + 1], rtol=0, atol=atol)
+        np.testing.assert_allclose(fast["bk"], c[m + 1 :], rtol=0, atol=atol)
 
 
 # ---------------------------------------------------------------------------
 # compute_fe_coefficients convenience wrapper
 # ---------------------------------------------------------------------------
 
+
 class TestComputeFECoefficients:
     def test_returns_tuple(self):
         a0, ak, bk = compute_fe_coefficients(
-            "exponentiation", sigma_min=0.5, sigma_max=1.5,
-            target_error=1e-2, m=10,
+            "exponentiation",
+            sigma_min=0.5,
+            sigma_max=1.5,
+            target_error=1e-2,
+            m=10,
         )
         assert isinstance(a0, float)
         assert isinstance(ak, np.ndarray)
@@ -203,6 +232,7 @@ class TestComputeFECoefficients:
 # ---------------------------------------------------------------------------
 # Input validation
 # ---------------------------------------------------------------------------
+
 
 class TestInputValidation:
     def test_negative_target_error_raises(self):
@@ -217,8 +247,11 @@ class TestInputValidation:
     def test_invalid_selection_raises(self):
         with pytest.raises(ValueError, match="selection"):
             solve_fe_coefficients(
-                "exponentiation", sigma_min=0.5, sigma_max=1.5,
-                m=4, selection="biggest_m",
+                "exponentiation",
+                sigma_min=0.5,
+                sigma_max=1.5,
+                m=4,
+                selection="biggest_m",
             )
 
     def test_no_scale_inversion_raises(self):

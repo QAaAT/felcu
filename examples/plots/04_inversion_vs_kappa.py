@@ -25,8 +25,9 @@ color = _style.PROBLEM_COLORS["inversion"]
 
 rows = []
 for kappa in KAPPAS:
-    r = solve_fe_coefficients("inversion", sigma_min=1.0 / kappa, sigma_max=1.0,
-                              target_error=TARGET, selection="smallest_m")
+    r = solve_fe_coefficients(
+        "inversion", sigma_min=1.0 / kappa, sigma_max=1.0, target_error=TARGET, selection="smallest_m"
+    )
     rows.append((kappa, r.m, r.alpha, _style.alpha_floor(r), r.converged))
 
 kappa, m, alpha, alpha_star, conv = map(np.array, zip(*rows))
@@ -36,8 +37,7 @@ _style.apply()
 fig, (ax_m, ax_alpha) = plt.subplots(1, 2, figsize=(10, 4))
 ax_m.loglog(kappa[ok], m[ok], marker="o", color=color)
 ax_m.set_title(r"Shortest feasible order $m$  (target $10^{-4}$)")
-ax_alpha.loglog(kappa, alpha_star, color=_style.INK_2, linewidth=1, linestyle=":",
-                label=_style.ALPHA_FLOOR_LABEL)
+ax_alpha.loglog(kappa, alpha_star, color=_style.INK_2, linewidth=1, linestyle=":", label=_style.ALPHA_FLOOR_LABEL)
 ax_alpha.loglog(kappa[ok], alpha[ok], marker="o", color=color, label=r"$\alpha$")
 ax_alpha.legend(loc="upper left")
 ax_alpha.set_title(r"LCU normalisation $\alpha$")

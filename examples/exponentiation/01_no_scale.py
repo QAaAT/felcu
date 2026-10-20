@@ -10,6 +10,7 @@ Run with:
 """
 
 import numpy as np
+
 from felcu import evaluate_fourier_series, solve_fe_coefficients
 
 result = solve_fe_coefficients("exponentiation", target_error=1e-10, m_values=range(4, 33, 2))

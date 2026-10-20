@@ -60,8 +60,9 @@ defaults suit most problems; this page explains when to change them.
 `sobolev_r` (default: problem-dependent)
 :   Scale \(r\) of the \(H_r^w\) regulariser, with \(0 < r \le 1\).  When
     omitted it comes from
-    [`default_sobolev_r`](../api.md#felcu.default_sobolev_r), currently
-    \(1\) for every problem.  The value used is reported as
+    [`default_sobolev_r`](../api.md#felcu.default_sobolev_r): \(1\) for
+    action, \(1/\kappa\) for inversion and \(1/(1 + \eta w/\pi)\) for
+    exponentiation, with \(w\) the spectral half-width.  The value used is reported as
     `result.sobolev_r`.
 
 `order_fit` (default `1`)
@@ -99,6 +100,7 @@ defaults suit most problems; this page explains when to change them.
 
 ```python
 import logging
-logging.basicConfig(level=logging.INFO)   # one line per m
+
+logging.basicConfig(level=logging.INFO)  # one line per m
 logging.getLogger("felcu").setLevel(logging.DEBUG)  # every lambda step
 ```

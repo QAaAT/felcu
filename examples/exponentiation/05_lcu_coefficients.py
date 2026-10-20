@@ -11,6 +11,7 @@ Run with:
 """
 
 import numpy as np
+
 from felcu import solve_fe_coefficients
 
 result = solve_fe_coefficients(

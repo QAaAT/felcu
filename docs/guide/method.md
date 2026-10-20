@@ -76,11 +76,16 @@ the extension region is controlled as well as the fitted domain.
   \((r|k|)^{w}\) beyond it.  By default it is chosen per problem by
   [`default_sobolev_r`](../api.md#felcu.default_sobolev_r).
 
-!!! note
-    `default_sobolev_r` is currently a placeholder that returns \(r = 1\)
-    for every problem.  It already receives the spectral interval, and the
-    half-width, centre, radius and condition number are available inside
-    it for a problem-specific rule.
+The defaults are, with \(w_\sigma\) the half-width of the spectral
+interval and \(\kappa\) its condition number:
+
+| Problem | Default \(r\) |
+|---|---|
+| action | \(1\) |
+| inversion | \(1/\kappa\) |
+| exponentiation | \(1 / (1 + \eta\, w_\sigma / \pi)\) |
+
+Without spectral information the default is \(r = 1\).
 
 ## Choosing \(\lambda\)
 

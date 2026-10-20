@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import replace
-from typing import Optional, Sequence
 
 import numpy as np
 
@@ -18,7 +18,6 @@ from felcu.utils import (
     default_m_grid,
     to_complex_coefficients,
 )
-
 
 # ---------------------------------------------------------------------------
 # Internal result construction
@@ -90,7 +89,7 @@ def _exact_constant_if_any(
     spec: dict,
     target: float,
     metric: str,
-) -> Optional[FourierExtensionResult]:
+) -> FourierExtensionResult | None:
     import math as _math
 
     s = spec["spectral"]
@@ -123,18 +122,18 @@ def solve_fe_coefficients(
     problem: str,
     *,
     shifted: bool = False,
-    matrix: Optional[np.ndarray | Sequence[Sequence[complex]]] = None,
-    sigma_min: Optional[float] = None,
-    sigma_max: Optional[float] = None,
+    matrix: np.ndarray | Sequence[Sequence[complex]] | None = None,
+    sigma_min: float | None = None,
+    sigma_max: float | None = None,
     spectral_kind: str = "auto",
-    eta: Optional[float] = None,
+    eta: float | None = None,
     target_error: float = 1e-12,
     error_metric: str = "linf",
-    m: Optional[int] = None,
-    m_values: Optional[Sequence[int] | int] = None,
-    lambdas: Optional[Sequence[float]] = None,
+    m: int | None = None,
+    m_values: Sequence[int] | int | None = None,
+    lambdas: Sequence[float] | None = None,
     sobolev_w: float = 1.0,
-    sobolev_r: Optional[float] = None,
+    sobolev_r: float | None = None,
     order_fit: int = 1,
     fit_oversample: int = 8,
     val_n: int = 4001,
@@ -219,16 +218,21 @@ def solve_fe_coefficients(
             sigma_max=None if spectral is None else spectral["sigma_max"],
             spectral_kind="auto" if spectral is None else spectral["kind"],
             hermitian_tol=hermitian_tol,
+            eta=spec["eta"],
         )
     if not 0 < sobolev_r <= 1:
         raise ValueError("sobolev_r must satisfy 0 < sobolev_r <= 1.")
     spec = spec | {"sobolev_r": float(sobolev_r), "sobolev_w": float(sobolev_w)}
 
     logger.info(
-        "solve_fe_coefficients: problem=%s  shifted=%s  metric=%s  target=%.3e  "
-        "basis=%s  domain=%s  eta=%.4f  tau=%s",
-        problem, shifted, metric, target_error,
-        spec["basis"], spec["domain"], spec["eta"],
+        "solve_fe_coefficients: problem=%s  shifted=%s  metric=%s  target=%.3e  basis=%s  domain=%s  eta=%.4f  tau=%s",
+        problem,
+        shifted,
+        metric,
+        target_error,
+        spec["basis"],
+        spec["domain"],
+        spec["eta"],
         f"{spec['tau']:.4f}" if np.isfinite(spec["tau"]) else "inf",
     )
 
@@ -266,13 +270,27 @@ def solve_fe_coefficients(
     for i, mi in enumerate(m_grid):
         logger.info("[%d/%d] m=%d ...", i + 1, len(m_grid), mi)
         c = _candidate_for_m(
-            spec, int(mi), lambdas, float(target_error), metric,
-            order_fit, spec["sobolev_r"], spec["sobolev_w"], fit_oversample, val_n,
+            spec,
+            int(mi),
+            lambdas,
+            float(target_error),
+            metric,
+            order_fit,
+            spec["sobolev_r"],
+            spec["sobolev_w"],
+            fit_oversample,
+            val_n,
         )
         err = _metric(c["solve"], metric)
         logger.info(
             "[%d/%d] m=%d  done: error=%.3e  feasible=%s  lam=%.3e  alpha=%.3e",
-            i + 1, len(m_grid), mi, err, c["feasible"], c["lambda"], c["solve"]["alpha"],
+            i + 1,
+            len(m_grid),
+            mi,
+            err,
+            c["feasible"],
+            c["lambda"],
+            c["solve"]["alpha"],
         )
         candidates.append(c)
         if selection == "smallest_m" and _metric(c["solve"], metric) <= float(target_error) + tol:
@@ -292,12 +310,13 @@ def solve_fe_coefficients(
 
     logger.info(
         "selected: m=%d  error=%.3e  converged=%s",
-        best["m"], _metric(best["solve"], metric), bool(feasible),
+        best["m"],
+        _metric(best["solve"], metric),
+        bool(feasible),
     )
 
     all_results = tuple(
-        _make_result(spec, float(target_error), metric, c)
-        for c in sorted(candidates, key=lambda c: c["m"])
+        _make_result(spec, float(target_error), metric, c) for c in sorted(candidates, key=lambda c: c["m"])
     )
     selected = _make_result(spec, float(target_error), metric, best)
     return replace(selected, all_results=all_results)

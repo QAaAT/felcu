@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional, Sequence
 
 import numpy as np
-
 
 ArrayLike = np.ndarray | Sequence[float] | float
 
@@ -119,14 +118,14 @@ class FourierExtensionResult:
     k: np.ndarray
     domain: str
     x_max: float
-    x_min: Optional[float]
-    sigma_min: Optional[float]
-    sigma_max: Optional[float]
-    spectral_kind_used: Optional[str]
-    matrix_shape: Optional[tuple[int, int]]
-    matrix_is_hermitian: Optional[bool]
+    x_min: float | None
+    sigma_min: float | None
+    sigma_max: float | None
+    spectral_kind_used: str | None
+    matrix_shape: tuple[int, int] | None
+    matrix_is_hermitian: bool | None
     matrix_scale_provided: bool
-    all_results: tuple["FourierExtensionResult", ...] = ()
+    all_results: tuple[FourierExtensionResult, ...] = ()
 
     @property
     def coefficients(self) -> np.ndarray:
@@ -136,6 +135,7 @@ class FourierExtensionResult:
         and ``[a0, ak, bk]`` for ``'full'``.
         """
         from felcu._coefficients import _pack_coefficients
+
         return _pack_coefficients(self.a0, self.ak, self.bk, self.basis_used)
 
     @property

@@ -10,12 +10,13 @@ Run with:
 """
 
 import numpy as np
+
 from felcu import evaluate_fourier_series, solve_fe_coefficients
 
 rng = np.random.default_rng(0)
 n = 8
 X = rng.standard_normal((n, n)) + 1j * rng.standard_normal((n, n))
-H = (X + X.conj().T) / 4                     # random complex Hermitian
+H = (X + X.conj().T) / 4  # random complex Hermitian
 
 result = solve_fe_coefficients("action", matrix=H, target_error=1e-8, m_values=range(4, 33, 2))
 print(f"spectral kind   = {result.spectral_kind_used}")

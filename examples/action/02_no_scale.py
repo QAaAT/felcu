@@ -10,7 +10,6 @@ Run with:
     python examples/action/02_no_scale.py
 """
 
-import numpy as np
 from felcu import evaluate_fourier_series, solve_fe_coefficients
 
 result = solve_fe_coefficients("action", target_error=1e-6, m_values=range(4, 33, 2))

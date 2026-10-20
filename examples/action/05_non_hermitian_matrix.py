@@ -12,6 +12,7 @@ Run with:
 """
 
 import numpy as np
+
 from felcu import evaluate_fourier_series, solve_fe_coefficients
 
 rng = np.random.default_rng(1)

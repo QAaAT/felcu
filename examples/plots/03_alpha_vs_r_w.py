@@ -38,12 +38,28 @@ fig, (ax_map, ax_cut) = plt.subplots(1, 2, figsize=(11, 4.5))
 mesh = ax_map.pcolormesh(R, W, grid, cmap=_style.SEQUENTIAL, shading="nearest")
 fig.colorbar(mesh, ax=ax_map, label=r"$\alpha$")
 ax_map.grid(False)
-ax_map.plot(R[j], W[i], marker="o", markersize=10, markerfacecolor="none",
-            markeredgecolor=_style.INK, markeredgewidth=1.4, linestyle="none",
-            label=f"minimum $({R[j]:.2f}, {W[i]:.2f})$")
-ax_map.plot(1.0, 1.0, marker="s", markersize=9, markerfacecolor="none",
-            markeredgecolor=_style.INK, markeredgewidth=1.4, linestyle="none",
-            label="default $(1, 1)$")
+ax_map.plot(
+    R[j],
+    W[i],
+    marker="o",
+    markersize=10,
+    markerfacecolor="none",
+    markeredgecolor=_style.INK,
+    markeredgewidth=1.4,
+    linestyle="none",
+    label=f"minimum $({R[j]:.2f}, {W[i]:.2f})$",
+)
+ax_map.plot(
+    1.0,
+    1.0,
+    marker="s",
+    markersize=9,
+    markerfacecolor="none",
+    markeredgecolor=_style.INK,
+    markeredgewidth=1.4,
+    linestyle="none",
+    label="default $(1, 1)$",
+)
 ax_map.legend(loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=2)
 ax_map.set_xlabel(r"scale $r$")
 ax_map.set_ylabel(r"order $w$")

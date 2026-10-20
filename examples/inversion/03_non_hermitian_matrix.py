@@ -12,12 +12,13 @@ Run with:
 """
 
 import numpy as np
+
 from felcu import evaluate_fourier_series, solve_fe_coefficients
 
 rng = np.random.default_rng(2)
 U0, _ = np.linalg.qr(rng.standard_normal((5, 5)))
 V0, _ = np.linalg.qr(rng.standard_normal((5, 5)))
-A = U0 @ np.diag([0.4, 0.7, 1.0, 1.5, 2.0]) @ V0.T   # kappa = 5
+A = U0 @ np.diag([0.4, 0.7, 1.0, 1.5, 2.0]) @ V0.T  # kappa = 5
 
 result = solve_fe_coefficients("inversion", matrix=A, target_error=1e-6, m_values=range(4, 65, 4))
 print(f"singular values in  = [{result.sigma_min:.4f}, {result.sigma_max:.4f}]")

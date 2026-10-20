@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import math
-from typing import Callable, Sequence
+from collections.abc import Callable, Sequence
 
 import numpy as np
 
 from felcu._coefficients import (
+    _add_baseline,
     _basis_derivative_matrix,
     _basis_matrix,
     _basis_size,
     _target_derivative,
-    _add_baseline,
     _unpack_coefficients,
 )
 from felcu._linalg import (
@@ -36,8 +36,7 @@ def _make_fit_data(spec: dict, m: int, fit_oversample: int, val_n: int) -> dict:
 
     if spec["domain"] == "single":
         nq = max(fit_oversample * max(ncols, 1), 48)
-        logger.debug("  fit_data: domain=single  basis=%s  m=%d  ncols=%d  nq=%d  val_n=%d",
-                     basis, m, ncols, nq, val_n)
+        logger.debug("  fit_data: domain=single  basis=%s  m=%d  ncols=%d  nq=%d  val_n=%d", basis, m, ncols, nq, val_n)
         x, weights = _gauss_interval(-spec["x_max"], spec["x_max"], nq)
         xv = np.linspace(-spec["x_max"], spec["x_max"], max(val_n, 201))
         val = [(xv, _basis_matrix(xv, m, basis), f(xv))]
@@ -45,8 +44,7 @@ def _make_fit_data(spec: dict, m: int, fit_oversample: int, val_n: int) -> dict:
         xmin = spec["x_min"]
         xmax = spec["x_max"]
         nq = max((fit_oversample * max(ncols, 1) + 1) // 2, 32)
-        logger.debug("  fit_data: domain=double  basis=%s  m=%d  ncols=%d  nq=%d  val_n=%d",
-                     basis, m, ncols, nq, val_n)
+        logger.debug("  fit_data: domain=double  basis=%s  m=%d  ncols=%d  nq=%d  val_n=%d", basis, m, ncols, nq, val_n)
         xl, wl = _gauss_interval(-xmax, -xmin, nq)
         xr, wr = _gauss_interval(xmin, xmax, nq)
         x = np.concatenate([xl, xr])

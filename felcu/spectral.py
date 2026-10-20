@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -25,7 +25,7 @@ def _spectral_kind(
     problem: str,
     shifted: bool,
     requested: str,
-    matrix_is_hermitian: Optional[bool],
+    matrix_is_hermitian: bool | None,
 ) -> str:
     if requested not in {"auto", "eigenvalues", "singular_values"}:
         raise ValueError("spectral_kind must be 'auto', 'eigenvalues', or 'singular_values'.")
@@ -42,7 +42,7 @@ def _check_spectral_choice(
     problem: str,
     shifted: bool,
     kind: str,
-    matrix_is_hermitian: Optional[bool],
+    matrix_is_hermitian: bool | None,
 ) -> None:
     if shifted and kind != "eigenvalues":
         raise ValueError("Shifted constructions use an eigenvalue interval.")
@@ -65,13 +65,13 @@ def _definite_abs_bounds(lo: float, hi: float) -> tuple[float, float]:
 def _spectral_data(
     problem: str,
     shifted: bool,
-    matrix: Optional[np.ndarray | Sequence[Sequence[complex]]],
-    sigma_min: Optional[float],
-    sigma_max: Optional[float],
+    matrix: np.ndarray | Sequence[Sequence[complex]] | None,
+    sigma_min: float | None,
+    sigma_max: float | None,
     spectral_kind: str,
     hermitian_tol: float,
     allow_missing: bool,
-) -> Optional[dict]:
+) -> dict | None:
     if matrix is not None and (sigma_min is not None or sigma_max is not None):
         raise ValueError("Provide either matrix or sigma_min/sigma_max, not both.")
     if matrix is None and sigma_min is None and sigma_max is None:
@@ -130,9 +130,9 @@ def default_eta(
     problem: str,
     *,
     shifted: bool = False,
-    matrix: Optional[np.ndarray | Sequence[Sequence[complex]]] = None,
-    sigma_min: Optional[float] = None,
-    sigma_max: Optional[float] = None,
+    matrix: np.ndarray | Sequence[Sequence[complex]] | None = None,
+    sigma_min: float | None = None,
+    sigma_max: float | None = None,
     spectral_kind: str = "auto",
     hermitian_tol: float = 1e-12,
 ) -> float:
@@ -205,11 +205,12 @@ def default_sobolev_r(
     problem: str,
     *,
     shifted: bool = False,
-    matrix: Optional[np.ndarray | Sequence[Sequence[complex]]] = None,
-    sigma_min: Optional[float] = None,
-    sigma_max: Optional[float] = None,
+    matrix: np.ndarray | Sequence[Sequence[complex]] | None = None,
+    sigma_min: float | None = None,
+    sigma_max: float | None = None,
     spectral_kind: str = "auto",
     hermitian_tol: float = 1e-12,
+    eta: float | None = None,
 ) -> float:
     """Return the default scale r of the H_r^w regulariser for the given problem.
 
@@ -233,6 +234,9 @@ def default_sobolev_r(
         ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.
     hermitian_tol:
         Tolerance for the Hermitian test.
+    eta:
+        Extension parameter of the fit.  Defaults to
+        :func:`~felcu.default_eta` for the same problem.
 
     Returns
     -------
@@ -241,10 +245,15 @@ def default_sobolev_r(
 
     Notes
     -----
-    This is a placeholder: it currently returns ``1.0`` for every problem.
-    The spectral quantities a rule would typically depend on (half-width,
-    centre, radius, condition number) are already computed in the body,
-    ready to use.
+    The defaults are
+
+    - action: ``1``;
+    - inversion: ``1/kappa``, with *kappa* the condition number of the
+      spectral interval;
+    - exponentiation: ``1 / (1 + eta * w / pi)``, with *w* the half-width
+      of the spectral interval.
+
+    Without spectral information the default is ``1``.
     """
     problem = canonical_problem_name(problem)
     s = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol, True)
@@ -254,16 +263,26 @@ def default_sobolev_r(
 
     lo, hi = s["sigma_min"], s["sigma_max"]
     half_width = 0.5 * (hi - lo)
-    centre = 0.5 * (lo + hi)
     radius = max(abs(lo), abs(hi))
     # Condition number; infinite when the interval touches or contains 0.
     kappa = radius / min(abs(lo), abs(hi)) if lo * hi > 0 else math.inf
 
-    # TODO: choose r from half_width, centre, radius and/or kappa.
+    if eta is None:
+        eta = default_eta(
+            problem,
+            shifted=shifted,
+            sigma_min=lo,
+            sigma_max=hi,
+            spectral_kind=s["kind"],
+            hermitian_tol=hermitian_tol,
+        )
+
     if problem == "action":
         return 1.0
     if problem == "inversion":
-        return 1.0
+        return 1.0 / kappa
+    if problem == "exponentiation":
+        return 1.0 / (1.0 + eta * half_width / np.pi)
     return 1.0
 
 
@@ -275,8 +294,8 @@ def default_sobolev_r(
 def _make_spec(
     problem: str,
     shifted: bool,
-    spectral: Optional[dict],
-    eta: Optional[float],
+    spectral: dict | None,
+    eta: float | None,
     hermitian_tol: float,
 ) -> dict:
     if shifted and spectral is None:
@@ -324,7 +343,11 @@ def _make_spec(
 
     if problem == "action" and shifted:
         tau = math.inf if halfwidth == 0 else PI / (eta * halfwidth)
-        func = (lambda x: np.full_like(x, mu, dtype=float)) if not np.isfinite(tau) else (lambda x, tau=tau, mu=mu: mu + x / tau)
+        func = (
+            (lambda x: np.full_like(x, mu, dtype=float))
+            if not np.isfinite(tau)
+            else (lambda x, tau=tau, mu=mu: mu + x / tau)
+        )
         return base | {"basis": "const_plus_sine", "domain": "single", "tau": tau, "baseline": mu, "func": func}
 
     if problem == "action":
@@ -334,16 +357,31 @@ def _make_spec(
 
     if problem == "inversion" and shifted:
         tau = math.inf if halfwidth == 0 else PI / (eta * halfwidth)
-        func = (lambda x: np.full_like(x, 1.0 / mu, dtype=float)) if not np.isfinite(tau) else (lambda x, tau=tau, mu=mu: tau / (x + tau * mu))
+        func = (
+            (lambda x: np.full_like(x, 1.0 / mu, dtype=float))
+            if not np.isfinite(tau)
+            else (lambda x, tau=tau, mu=mu: tau / (x + tau * mu))
+        )
         return base | {"basis": "full", "domain": "single", "tau": tau, "baseline": 1.0 / mu, "func": func}
 
     if problem == "inversion":
         tau = PI / (eta * hi)
-        return base | {"basis": "odd_sine", "domain": "double", "tau": tau, "x_min": tau * lo, "baseline": 0.0, "func": lambda x, tau=tau: tau / x}
+        return base | {
+            "basis": "odd_sine",
+            "domain": "double",
+            "tau": tau,
+            "x_min": tau * lo,
+            "baseline": 0.0,
+            "func": lambda x, tau=tau: tau / x,
+        }
 
     if shifted:
         tau = math.inf if halfwidth == 0 else PI / (eta * halfwidth)
-        func = (lambda x: np.full_like(x, math.exp(mu), dtype=float)) if not np.isfinite(tau) else (lambda x, tau=tau, mu=mu: np.exp(mu + x / tau))
+        func = (
+            (lambda x: np.full_like(x, math.exp(mu), dtype=float))
+            if not np.isfinite(tau)
+            else (lambda x, tau=tau, mu=mu: np.exp(mu + x / tau))
+        )
         return base | {"basis": "full", "domain": "single", "tau": tau, "baseline": math.exp(mu), "func": func}
 
     tau = math.inf if radius == 0 else PI / (eta * radius)

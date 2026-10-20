@@ -10,7 +10,7 @@ import numpy as np
 def _trapz(y: np.ndarray, x: np.ndarray) -> float:
     if hasattr(np, "trapezoid"):
         return float(np.trapezoid(y, x))
-    return float(np.trapz(y, x))
+    return float(np.trapz(y, x))  # noqa: NPY201  (NumPy < 2 fallback)
 
 
 def _gauss_interval(a: float, b: float, n: int) -> tuple[np.ndarray, np.ndarray]:

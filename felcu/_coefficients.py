@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import math
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
-
 
 # ---------------------------------------------------------------------------
 # Basis utilities
@@ -38,7 +37,7 @@ def _basis_derivative_matrix(x: np.ndarray, m: int, basis: str, d: int) -> np.nd
 
     k = np.arange(1, m + 1, dtype=float)
     phase = d * np.pi / 2
-    scale = k ** d
+    scale = k**d
 
     if basis == "odd_sine":
         return scale * np.sin(np.outer(x, k) + phase)
@@ -47,11 +46,13 @@ def _basis_derivative_matrix(x: np.ndarray, m: int, basis: str, d: int) -> np.nd
     if basis == "const_plus_sine":
         return np.hstack([zeros, scale * np.sin(np.outer(x, k) + phase)])
 
-    return np.hstack([
-        zeros,
-        scale * np.sin(np.outer(x, k) + phase),
-        scale * np.cos(np.outer(x, k) + phase),
-    ])
+    return np.hstack(
+        [
+            zeros,
+            scale * np.sin(np.outer(x, k) + phase),
+            scale * np.cos(np.outer(x, k) + phase),
+        ]
+    )
 
 
 def _target_derivative(x: np.ndarray, spec: dict, d: int) -> np.ndarray:
@@ -96,10 +97,10 @@ def _target_derivative(x: np.ndarray, spec: dict, d: int) -> np.ndarray:
         if spec["shifted"]:
             if not np.isfinite(tau):
                 return np.zeros_like(x)
-            return (1.0 / (tau ** d)) * np.exp(mu + x / tau)
+            return (1.0 / (tau**d)) * np.exp(mu + x / tau)
         if not np.isfinite(tau):
             return np.zeros_like(x)
-        return (1.0 / (tau ** d)) * np.exp(x / tau)
+        return (1.0 / (tau**d)) * np.exp(x / tau)
 
     raise ValueError(f"Unknown problem '{p}'")
 
