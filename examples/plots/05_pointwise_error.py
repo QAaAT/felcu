@@ -45,20 +45,20 @@ for col, (problem, kwargs) in enumerate(CASES):
             ax.axvspan(left, right, color=_style.SHADE, linewidth=0)
 
     g = evaluate_fourier_series(x_full, r.a0, r.ak, r.bk)
-    ax_fit.plot(x_full, g, color=color, label="series g")
+    ax_fit.plot(x_full, g, color=color, label="series $g$")
     worst = 0.0
     for i, xs in enumerate(segments):
         f = evaluate_target_function(xs, r)
         err = np.abs(evaluate_fourier_series(xs, r.a0, r.ak, r.bk) - f)
         worst = max(worst, err.max())
-        ax_fit.plot(xs, f, color=_style.INK, linewidth=0.9, label="target f" if i == 0 else None)
+        ax_fit.plot(xs, f, color=_style.INK, linewidth=0.9, label="target $f$" if i == 0 else None)
         ax_err.semilogy(xs, err, color=color)
 
     _style.target_line(ax_err, TARGET)
-    ax_fit.set_title(f"{problem}  (m = {r.m}; shaded = not fitted)")
+    ax_fit.set_title(f"{problem}  ($m = {r.m}$; shaded = not fitted)")
     ax_fit.legend(loc="upper left")
-    ax_err.set_title("pointwise error |g - f| on the fitted domain")
-    ax_err.set_xlabel("scaled variable x")
+    ax_err.set_title(r"pointwise error $|g(x) - f(x)|$ on the fitted domain")
+    ax_err.set_xlabel(r"scaled variable $x$")
     print(f"{problem}: m={r.m}  domain={r.domain}  max |g - f| = {worst:.2e}  (target {TARGET:g})")
 
 fig.tight_layout()

@@ -5,6 +5,7 @@ first argument (default: the current directory), and also shows it when an
 interactive matplotlib backend is available.
 """
 
+import shutil
 import sys
 from pathlib import Path
 
@@ -12,6 +13,12 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
+
+from felcu import evaluate_target_function, fitted_domain_segments
+
+# Render text with LaTeX when it is installed; otherwise fall back to
+# matplotlib's built-in Computer Modern mathtext, which looks much the same.
+USETEX = shutil.which("latex") is not None
 
 # Surfaces and ink
 SURFACE = "#fcfcfb"
@@ -68,7 +75,26 @@ def apply() -> None:
         "legend.frameon": False,
         "legend.labelcolor": INK_2,
         "font.size": 10,
+        "text.usetex": USETEX,
+        "text.latex.preamble": r"\usepackage{amsmath}",
+        "font.family": "serif",
+        "font.serif": ["Computer Modern Roman", "CMU Serif", "DejaVu Serif"],
+        "mathtext.fontset": "cm",
+        "axes.formatter.use_mathtext": True,
     })
+
+
+def alpha_floor(result) -> float:
+    """max |f| over the fitted domain: the smallest LCU normalisation possible.
+
+    Every series satisfies |g(x)| <= alpha, so a fit with error eps needs
+    alpha >= max |f| - eps.
+    """
+    return max(float(np.max(np.abs(evaluate_target_function(xs, result))))
+               for xs in fitted_domain_segments(result))
+
+
+ALPHA_FLOOR_LABEL = r"$\alpha^\ast = \max_{x \in D} |f(x)|$"
 
 
 def label_end(ax, x, y, text: str, at: str = "end", gap: float = 5) -> None:
@@ -78,11 +104,19 @@ def label_end(ax, x, y, text: str, at: str = "end", gap: float = 5) -> None:
                 color=INK_2, va="center", ha=ha, fontsize=9)
 
 
+def ref_line(ax, y: float, text: str = "", color: str = INK_2, linestyle: str = ":",
+             side: str = "right") -> None:
+    """A thin horizontal reference line, optionally labelled at one end."""
+    ax.axhline(y, color=color, linewidth=1, linestyle=linestyle)
+    if text:
+        x, dx = (1, -2) if side == "right" else (0, 2)
+        ax.annotate(text, (x, y), xycoords=("axes fraction", "data"),
+                    xytext=(dx, 4), textcoords="offset points", ha=side,
+                    color=INK_2, fontsize=9)
+
+
 def target_line(ax, target: float) -> None:
-    ax.axhline(target, color=INK_2, linewidth=1, linestyle="--")
-    ax.annotate("target", (1, target), xycoords=("axes fraction", "data"),
-                xytext=(-2, 4), textcoords="offset points", ha="right",
-                color=INK_2, fontsize=9)
+    ref_line(ax, target, "target", linestyle="--")
 
 
 def finish(fig, name: str) -> None:

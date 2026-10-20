@@ -15,6 +15,9 @@ env/
 # MkDocs build output
 site/
 
+# Plots written by running the examples
+examples/**/*.png
+
 # pytest
 .pytest_cache/
 .coverage

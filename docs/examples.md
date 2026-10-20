@@ -190,7 +190,10 @@ series that meets the target instead, and stops the sweep there.
 ## Plots
 
 These scripts sweep a parameter and plot how the error and the LCU
-normalisation \(\alpha\) respond.  They need matplotlib:
+normalisation \(\alpha\) respond.  Where \(\alpha\) is shown, a dotted line
+marks the optimal value \(\alpha^\ast = \max_{x \in D} |f(x)|\) over the fitted
+domain \(D\): every series satisfies \(|g(x)| \le \alpha\), so no fit can do
+better.  They need matplotlib:
 
 ```bash
 pip install -e ".[plots]"
@@ -199,7 +202,9 @@ python examples/plots/01_error_alpha_vs_m.py
 
 Each saves a PNG to the directory given as its first argument (default: the
 current directory), shows it when a display is available, and prints the
-numbers behind it as a table.
+numbers behind it as a table.  Text is typeset with LaTeX when a `latex`
+binary is installed, and with matplotlib's built-in Computer Modern
+mathtext otherwise.
 
 ### Error, alpha and lambda versus truncation order m
 
@@ -207,7 +212,8 @@ Sweep m for each problem at the same target and plot, per m:
 
 - the achieved Linf error (falls until it reaches the target, then stays
   there, because lambda absorbs the remaining slack);
-- the LCU normalisation alpha of each feasible order;
+- the LCU normalisation alpha of each feasible order, against the optimal
+  alpha* = max |f| on the fitted domain (dotted), which no fit can beat;
 - the regularisation strength lambda chosen for it.
 
 The ringed point is the order picked by the default selection
@@ -225,8 +231,9 @@ The ringed point is the order picked by the default selection
 
 At fixed m, felcu chooses the largest lambda that still meets the target,
 so sweeping target_error traces out how error and alpha depend on lambda:
-more regularisation means a larger error but a smaller alpha.  Repeated
-for three orders m.
+more regularisation means a larger error but a smaller alpha, which
+approaches the optimal alpha* = max |f| on the fitted domain (dotted).
+Repeated for three orders m.
 
 ![The error-alpha trade-off controlled by lambda](images/plots/02_error_alpha_vs_lambda.png)
 
@@ -240,8 +247,9 @@ for three orders m.
 
 The H_r^w regulariser weights the k-th harmonic by (1 + r|k|)^(2w).  At
 fixed m and target, sweep 0 < r <= 1 and w > 0.5 and plot the resulting
-LCU normalisation alpha, as a heatmap and as slices at four values of r.
-Every fit here meets the target, so only alpha changes.
+LCU normalisation alpha, as a heatmap and as slices at four values of r,
+against the optimal alpha* = max |f| on the fitted domain (dotted).  Every
+fit here meets the target, so only alpha changes.
 
 ![Alpha over the Sobolev parameters r and w](images/plots/03_alpha_vs_r_w.png)
 
@@ -255,7 +263,8 @@ Every fit here meets the target, so only alpha changes.
 
 For singular values in [1/kappa, 1], plot the shortest series that meets
 the target (selection='smallest_m') and its LCU normalisation alpha as the
-condition number kappa grows.
+condition number kappa grows.  The optimal alpha* = max |f| on the fitted
+domain (dotted) equals kappa here, so it is a line rather than a constant.
 
 ![Cost of inversion versus condition number](images/plots/04_inversion_vs_kappa.png)
 
