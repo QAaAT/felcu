@@ -177,8 +177,11 @@ class TestLinearSolver:
         A, b = _fit_system(data, spec, m, 1)
         p = _penalty(m, spec["basis"], lam, r, w)
         c, *_ = np.linalg.lstsq(np.vstack([A, np.diag(p)]), np.concatenate([b, np.zeros(len(p))]), rcond=None)
-        np.testing.assert_allclose(fast["ak"], c[1:m + 1], rtol=1e-8, atol=1e-12)
-        np.testing.assert_allclose(fast["bk"], c[m + 1:], rtol=1e-8, atol=1e-12)
+        # Two different solvers on an ill-conditioned system agree to rounding
+        # relative to the coefficient vector, not to each (possibly tiny) entry.
+        atol = 1e-9 * np.max(np.abs(c))
+        np.testing.assert_allclose(fast["ak"], c[1:m + 1], rtol=0, atol=atol)
+        np.testing.assert_allclose(fast["bk"], c[m + 1:], rtol=0, atol=atol)
 
 
 # ---------------------------------------------------------------------------
