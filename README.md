@@ -1,10 +1,10 @@
 # felcu
 
-**Fourier-extension coefficients for LCU block encodings.**
+**Sobolev-regularised Fourier-extension coefficients for LCU block encodings.**
 
 `felcu` computes coefficients for representing matrix functions via Linear
-Combination of Unitaries (LCU), using a Fourier-extension approach.  It
-supports the three standard problems:
+Combination of Unitaries (LCU), using Sobolev-regularised Fourier extensions.
+It supports the three standard problems:
 
 | Problem | Function |
 |---|---|
@@ -13,6 +13,23 @@ supports the three standard problems:
 | `exponentiation` | f(H) = exp(H) |
 
 Both shifted (centred) and unshifted constructions are available.
+
+## Method
+
+For each candidate truncation order `m`, `felcu` fits a truncated Fourier
+series to f on the spectral interval by weighted least squares on a
+Gauss–Legendre grid (optionally also matching the first `order_fit`
+derivatives).  The fit is regularised with a Sobolev penalty on the
+coefficients,
+
+```
+λ · (1 + k²)^(k_order / 2)
+```
+
+for the k-th harmonic, which damps high frequencies.  For each `m`, `felcu`
+searches the `lambdas` grid and then bisects to find the largest λ that still
+meets `target_error`.  Stronger regularisation gives smaller coefficients and
+so a smaller LCU normalisation α = |a₀| + Σₖ √(aₖ² + bₖ²).
 
 ## Installation
 
@@ -42,7 +59,7 @@ result = solve_fe_coefficients(
 
 print(f"Converged: {result.converged}")
 print(f"Truncation order m = {result.m}")
-print(f"Achieved L2 error: {result.achieved_l2_error:.2e}")
+print(f"Achieved L∞ error: {result.achieved_linf_error:.2e}")
 
 # Evaluate the fitted series
 for xs in fitted_domain_segments(result):
@@ -58,6 +75,7 @@ felcu/
 ├── utils.py           # Public utility functions
 ├── spectral.py        # Spectral data extraction & problem-spec builder
 ├── solve.py           # Public solver (solve_fe_coefficients, compute_fe_coefficients)
+├── _solver.py         # Internal: Fourier-extension fitting & regularisation search
 ├── _coefficients.py   # Internal: basis matrices, coefficient packing
 └── _linalg.py         # Internal: QR solver, quadrature, penalties
 ```
@@ -77,12 +95,12 @@ solve_fe_coefficients(
     spectral_kind="auto",
     eta=None,
     target_error=1e-12,
-    error_metric="l2",   # 'l2' | 'linf'
+    error_metric="linf", # 'l2' | 'linf'
     m=None,
     m_values=None,
-    lambdas=None,
-    k_order=1,
-    order_fit=0,
+    lambdas=None,        # Sobolev regularisation strengths λ to search
+    k_order=1,           # Sobolev order of the penalty
+    order_fit=1,
     fit_oversample=8,
     val_n=4001,
     selection="smallest_m",
