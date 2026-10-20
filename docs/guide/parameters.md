@@ -75,7 +75,7 @@ defaults suit most problems; this page explains when to change them.
 `order_fit` (default `1`)
 :   Number of derivatives matched in the fit.  `1` fits in
     \(H^1(\Omega)\), as in the paper; `0` falls back to \(L^2(\Omega)\).  See
-    [The fit](method.md#the-fit).
+    [The fitting norm](method.md#the-fitting-norm).
 
 !!! note
     Passing `lambdas=[0.0]` does **not** disable regularisation: if
