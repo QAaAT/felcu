@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from felcu import solve_fe_coefficients, compute_fe_coefficients, evaluate_fourier_series
+from felcu import solve_fe_coefficients, compute_fe_coefficients, default_sobolev_r, evaluate_fourier_series
 from felcu.utils import fitted_domain_segments, evaluate_target_function
 
 
@@ -100,6 +100,47 @@ class TestResultFields:
 
 
 # ---------------------------------------------------------------------------
+# H_r^w regulariser
+# ---------------------------------------------------------------------------
+
+class TestSobolevRegulariser:
+    common = dict(sigma_min=0.5, sigma_max=1.5, target_error=1e-4, m=12)
+
+    def test_defaults_recorded(self):
+        result = solve_fe_coefficients("exponentiation", **self.common)
+        assert result.sobolev_w == 1.0
+        assert result.sobolev_r == default_sobolev_r("exponentiation", sigma_min=0.5, sigma_max=1.5)
+
+    def test_explicit_values_recorded(self):
+        result = solve_fe_coefficients("exponentiation", sobolev_r=0.5, sobolev_w=2.0, **self.common)
+        assert result.sobolev_r == 0.5
+        assert result.sobolev_w == 2.0
+        assert result.converged
+
+    def test_r_upper_bound_allowed(self):
+        assert solve_fe_coefficients("exponentiation", sobolev_r=1.0, **self.common).converged
+
+    @pytest.mark.parametrize("r", [0.0, 1.5])
+    def test_r_out_of_range_raises(self, r):
+        with pytest.raises(ValueError, match="sobolev_r"):
+            solve_fe_coefficients("exponentiation", sobolev_r=r, **self.common)
+
+    @pytest.mark.parametrize("w", [0.0, 0.5])
+    def test_w_out_of_range_raises(self, w):
+        with pytest.raises(ValueError, match="sobolev_w"):
+            solve_fe_coefficients("exponentiation", sobolev_w=w, **self.common)
+
+    @pytest.mark.parametrize("problem, kwargs", [
+        ("action", {}),
+        ("action", dict(sigma_min=-1.0, sigma_max=2.0)),
+        ("inversion", dict(sigma_min=0.5, sigma_max=3.0)),
+        ("exponentiation", dict(shifted=True, sigma_min=1.0, sigma_max=3.0)),
+    ])
+    def test_default_r_in_range(self, problem, kwargs):
+        assert 0 < default_sobolev_r(problem, **kwargs) <= 1
+
+
+# ---------------------------------------------------------------------------
 # compute_fe_coefficients convenience wrapper
 # ---------------------------------------------------------------------------
 
@@ -143,6 +184,14 @@ class TestInputValidation:
     def test_shifted_no_scale_raises(self):
         with pytest.raises(ValueError):
             solve_fe_coefficients("action", shifted=True)
+
+    def test_negative_sobolev_w_raises(self):
+        with pytest.raises(ValueError, match="sobolev_w"):
+            solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, m=4, sobolev_w=-1.0)
+
+    def test_negative_sobolev_r_raises(self):
+        with pytest.raises(ValueError, match="sobolev_r"):
+            solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, m=4, sobolev_r=-1.0)
 
     def test_matrix_input(self):
         A = np.diag([0.5, 1.0, 1.5])

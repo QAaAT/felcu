@@ -9,7 +9,7 @@ import numpy as np
 
 from felcu._logging import logger
 from felcu._solver import _candidate_for_m, _metric
-from felcu.spectral import _make_spec, _spectral_data
+from felcu.spectral import _make_spec, _spectral_data, default_sobolev_r
 from felcu.types import FourierExtensionResult
 from felcu.utils import (
     canonical_error_metric,
@@ -49,6 +49,8 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         achieved_linf_error=float(s["linf"]),
         converged=bool(chosen_error <= target + tol),
         lambda_used=float(cand["lambda"]),
+        sobolev_r=float(spec["sobolev_r"]),
+        sobolev_w=float(spec["sobolev_w"]),
         a0=a0,
         ak=ak.copy(),
         bk=bk.copy(),
@@ -131,7 +133,8 @@ def solve_fe_coefficients(
     m: Optional[int] = None,
     m_values: Optional[Sequence[int] | int] = None,
     lambdas: Optional[Sequence[float]] = None,
-    k_order: int = 1,
+    sobolev_w: float = 1.0,
+    sobolev_r: Optional[float] = None,
     order_fit: int = 1,
     fit_oversample: int = 8,
     val_n: int = 4001,
@@ -167,10 +170,15 @@ def solve_fe_coefficients(
         Candidate truncation orders to search over.
     lambdas:
         Regularisation parameter grid.
-    k_order:
-        Derivative order used in the regulariser.
+    sobolev_w:
+        Order *w* of the H_r^w regulariser, which penalises the k-th
+        harmonic with weight ``(1 + r|k|)^(2w)``.  Must exceed ``0.5``.
+    sobolev_r:
+        Scale *r* of the H_r^w regulariser, with ``0 < r <= 1``.  Chosen by
+        :func:`~felcu.default_sobolev_r` when omitted.
     order_fit:
-        Number of derivative orders included in the fit system.
+        Number of derivative orders included in the fit system: ``1``
+        (default) fits in the H^1 norm, ``0`` in plain L^2.
     fit_oversample:
         Oversampling factor for the Gauss quadrature grid.
     val_n:
@@ -189,13 +197,28 @@ def solve_fe_coefficients(
     metric = canonical_error_metric(error_metric)
     if target_error < 0:
         raise ValueError("target_error must be positive.")
-    if k_order < 0 or order_fit < 0 or fit_oversample <= 0 or val_n < 3:
-        raise ValueError("Require k_order >= 0, order_fit >= 0, fit_oversample > 0, and val_n >= 3.")
+    if order_fit < 0 or fit_oversample <= 0 or val_n < 3:
+        raise ValueError("Require order_fit >= 0, fit_oversample > 0, and val_n >= 3.")
+    if not sobolev_w > 0.5:
+        raise ValueError("sobolev_w must exceed 0.5.")
     if selection not in {"smallest_m", "smallest_alpha"}:
         raise ValueError("selection must be 'smallest_m' or 'smallest_alpha'.")
 
     spectral = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol, True)
     spec = _make_spec(problem, shifted, spectral, eta, hermitian_tol)
+
+    if sobolev_r is None:
+        sobolev_r = default_sobolev_r(
+            problem,
+            shifted=shifted,
+            sigma_min=None if spectral is None else spectral["sigma_min"],
+            sigma_max=None if spectral is None else spectral["sigma_max"],
+            spectral_kind="auto" if spectral is None else spectral["kind"],
+            hermitian_tol=hermitian_tol,
+        )
+    if not 0 < sobolev_r <= 1:
+        raise ValueError("sobolev_r must satisfy 0 < sobolev_r <= 1.")
+    spec = spec | {"sobolev_r": float(sobolev_r), "sobolev_w": float(sobolev_w)}
 
     logger.info(
         "solve_fe_coefficients: problem=%s  shifted=%s  metric=%s  target=%.3e  "
@@ -239,7 +262,7 @@ def solve_fe_coefficients(
         logger.info("[%d/%d] m=%d ...", i + 1, len(m_grid), mi)
         c = _candidate_for_m(
             spec, int(mi), lambdas, float(target_error), metric,
-            order_fit, k_order, fit_oversample, val_n,
+            order_fit, spec["sobolev_r"], spec["sobolev_w"], fit_oversample, val_n,
         )
         err = _metric(c["solve"], metric)
         logger.info(

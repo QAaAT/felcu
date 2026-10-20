@@ -55,6 +55,10 @@ class FourierExtensionResult:
         Whether *achieved_error* meets *target_error*.
     lambda_used : float
         Sobolev regularisation strength chosen for this ``m``.
+    sobolev_r : float
+        Scale *r* of the H_r^w regulariser that was used.
+    sobolev_w : float
+        Order *w* of the H_r^w regulariser that was used.
     a0 : float
         Constant term.
     ak : numpy.ndarray
@@ -106,6 +110,8 @@ class FourierExtensionResult:
     achieved_linf_error: float
     converged: bool
     lambda_used: float
+    sobolev_r: float
+    sobolev_w: float
     a0: float
     ak: np.ndarray
     bk: np.ndarray

@@ -197,6 +197,77 @@ def default_eta(
 
 
 # ---------------------------------------------------------------------------
+# Public: default Sobolev scale r
+# ---------------------------------------------------------------------------
+
+
+def default_sobolev_r(
+    problem: str,
+    *,
+    shifted: bool = False,
+    matrix: Optional[np.ndarray | Sequence[Sequence[complex]]] = None,
+    sigma_min: Optional[float] = None,
+    sigma_max: Optional[float] = None,
+    spectral_kind: str = "auto",
+    hermitian_tol: float = 1e-12,
+) -> float:
+    """Return the default scale r of the H_r^w regulariser for the given problem.
+
+    The regulariser weights the k-th harmonic by ``(1 + r|k|)^w``, so *r*
+    sets the frequency at which the penalty starts to grow.
+
+    Parameters
+    ----------
+    problem:
+        One of ``'action'``, ``'inversion'``, or ``'exponentiation'`` (or
+        an alias; see :func:`~felcu.canonical_problem_name`).
+    shifted:
+        Use the shifted (centred) construction.
+    matrix:
+        Square matrix to read the spectral interval from.  Mutually
+        exclusive with *sigma_min* / *sigma_max*.
+    sigma_min, sigma_max:
+        Spectral interval bounds.  May be omitted, in which case no
+        spectral information is available.
+    spectral_kind:
+        ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.
+    hermitian_tol:
+        Tolerance for the Hermitian test.
+
+    Returns
+    -------
+    float
+        The default *r*, which must lie in ``(0, 1]``.
+
+    Notes
+    -----
+    This is a placeholder: it currently returns ``1.0`` for every problem.
+    The spectral quantities a rule would typically depend on (half-width,
+    centre, radius, condition number) are already computed in the body,
+    ready to use.
+    """
+    problem = canonical_problem_name(problem)
+    s = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol, True)
+    if s is None:
+        # No spectral information: fitting the unscaled function.
+        return 1.0
+
+    lo, hi = s["sigma_min"], s["sigma_max"]
+    half_width = 0.5 * (hi - lo)
+    centre = 0.5 * (lo + hi)
+    radius = max(abs(lo), abs(hi))
+    # Condition number; infinite when the interval touches or contains 0.
+    kappa = radius / min(abs(lo), abs(hi)) if lo * hi > 0 else math.inf
+
+    # TODO: choose r from half_width, centre, radius and/or kappa.
+    if problem == "action":
+        return 1.0
+    if problem == "inversion":
+        return 1.0
+    return 1.0
+
+
+# ---------------------------------------------------------------------------
 # Internal: build the problem spec dict used throughout the solver
 # ---------------------------------------------------------------------------
 

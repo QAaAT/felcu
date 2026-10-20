@@ -29,14 +29,14 @@ def _gauss_interval(a: float, b: float, n: int) -> tuple[np.ndarray, np.ndarray]
     return np.concatenate(xs), np.concatenate(ws)
 
 
-def _penalty(m: int, basis: str, lam: float, order: int) -> np.ndarray:
+def _penalty(m: int, basis: str, lam: float, r: float, w: float) -> np.ndarray:
     k = np.arange(1, m + 1, dtype=float)
-    w = lam * (1.0 + k**2) ** (0.5 * order)
+    p = lam * (1.0 + r * k) ** w
     if basis == "odd_sine":
-        return w
+        return p
     if basis == "const_plus_sine":
-        return np.concatenate([[lam], w])
-    return np.concatenate([[lam], w, w])
+        return np.concatenate([[lam], p])
+    return np.concatenate([[lam], p, p])
 
 
 def _alpha(a0: float, ak: np.ndarray, bk: np.ndarray) -> float:

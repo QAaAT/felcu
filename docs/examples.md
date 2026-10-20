@@ -167,10 +167,10 @@ normalisation alpha is the sum of the magnitudes of the paired terms.
 
 ### Effect of the Sobolev regulariser
 
-At fixed m, felcu adds a penalty lambda * (1 + k^2)^(k_order / 2) on the
-k-th harmonic and picks the largest lambda that still meets target_error.
-Compare Sobolev orders 0, 1 and 2 and see how lambda_used and the LCU
-normalisation alpha change.
+At fixed m, felcu regularises with the H_r^w norm, weighting the k-th
+harmonic by (1 + r|k|)^(2w), and picks the largest lambda that still
+meets target_error.  Vary the order w and the scale r and see how
+lambda_used and the LCU normalisation alpha change.
 
 ```python title="examples/exponentiation/06_sobolev_regularisation.py"
 --8<-- "examples/exponentiation/06_sobolev_regularisation.py"

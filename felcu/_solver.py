@@ -68,12 +68,13 @@ def _linear_solve(
     m: int,
     lam: float,
     order_fit: int,
-    order_reg: int,
+    sobolev_r: float,
+    sobolev_w: float,
 ) -> dict:
     basis = spec["basis"]
     ncols = _basis_size(basis, m)
-    logger.debug("    linear_solve: m=%d  lam=%.3e  ncols=%d  order_fit=%d  order_reg=%d",
-                 m, lam, ncols, order_fit, order_reg)
+    logger.debug("    linear_solve: m=%d  lam=%.3e  ncols=%d  order_fit=%d  r=%.3g  w=%.3g",
+                 m, lam, ncols, order_fit, sobolev_r, sobolev_w)
 
     if ncols == 0:
         residual_coeffs = np.zeros(0)
@@ -96,7 +97,7 @@ def _linear_solve(
         if lam == 0.0:
             residual_coeffs = _qr_solve(A_fit, b_fit)
         else:
-            p = _penalty(m, basis, lam, order_reg)
+            p = _penalty(m, basis, lam, sobolev_r, sobolev_w)
             A_aug = np.vstack([A_fit, np.diag(p)])
             b_aug = np.concatenate([b_fit, np.zeros(ncols)])
             logger.debug("    augmented system shape: %s", A_aug.shape)
@@ -117,7 +118,8 @@ def _candidate_for_m(
     target: float,
     metric: str,
     order_fit: int,
-    order_reg: int,
+    sobolev_r: float,
+    sobolev_w: float,
     fit_oversample: int,
     val_n: int,
 ) -> dict:
@@ -128,7 +130,7 @@ def _candidate_for_m(
     def solve(lam: float) -> dict:
         lam = float(lam)
         if lam not in cache:
-            cache[lam] = _linear_solve(data, spec, m, lam, order_fit, order_reg)
+            cache[lam] = _linear_solve(data, spec, m, lam, order_fit, sobolev_r, sobolev_w)
         return cache[lam]
 
     tol = max(1e-15, abs(target) * 1e-12)

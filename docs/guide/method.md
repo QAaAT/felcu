@@ -32,10 +32,12 @@ coefficients minimise
 where \(D\) is `order_fit` and \(P\) is the diagonal Sobolev penalty
 described below.
 
-- **Derivative matching.**  With `order_fit = D > 0`, the first \(D\)
-  derivatives of \(g\) are also fitted to those of \(f\).  This is a
-  discrete Sobolev-norm fit and suppresses oscillation between nodes.  The
-  default is \(D = 1\).
+- **Fitting norm.**  Each inner sum is a quadrature approximation of the
+  \(L^2\) norm on the fitted domain, so the fit term is the \(H^D\)
+  Sobolev norm of the residual \(g - f\).  The default `order_fit = 1`
+  fits in \(H^1\), matching first derivatives as well as values, which
+  suppresses oscillation between nodes.  `order_fit = 0` falls back to
+  plain \(L^2\).
 - **Quadrature.**  The number of nodes is `fit_oversample` times the number
   of unknowns (with a floor of 48 for one interval, 32 per interval for two).
   Large node counts are split into panels of at most 120 points.
@@ -48,19 +50,37 @@ The system is solved as a stacked least-squares problem with
 
 ## The Sobolev penalty
 
-The penalty on the coefficient of the \(k\)-th harmonic is
+The regulariser is the \(H_r^w\) norm of the correction \(h\) (the series
+minus its baseline).  By Parseval,
 
 \[
-p_k = \lambda\,(1 + k^2)^{s/2},
+\|h\|_{H_r^w}^2 = \sum_{k} (1 + r|k|)^{2w}\, |\hat h_k|^2,
 \]
 
-with \(s\) = `k_order`; the constant term is penalised by \(\lambda\).  This
-is a weighted \(H^s\) Sobolev norm of the correction: high frequencies cost
-more, so the fit prefers smooth, fast-decaying coefficients.
+so the diagonal penalty \(P\) weights the coefficient of the \(k\)-th
+harmonic (both its sine and cosine term) by
 
-- `k_order = 0` is ordinary Tikhonov (ridge) regularisation.
-- `k_order = 1` (default) penalises the first derivative.
-- `k_order = 2` penalises curvature.
+\[
+p_k = \lambda\,(1 + r k)^{w},
+\]
+
+and the constant term by \(\lambda\).  Then \(\|Pc\|^2\) is, up to a
+constant factor, \(\lambda^2 \|h\|_{H_r^w}^2\) over the whole period, so
+the extension region is controlled as well as the fitted domain.
+
+- \(w\) (`sobolev_w`, default \(1\), must satisfy \(w > 1/2\)) sets how
+  fast the weight grows with frequency: roughly, how many derivatives are
+  penalised.
+- \(r\) (`sobolev_r`, must satisfy \(0 < r \le 1\)) sets the frequency
+  scale: the weight stays near 1 for \(|k| \ll 1/r\) and grows like
+  \((r|k|)^{w}\) beyond it.  By default it is chosen per problem by
+  [`default_sobolev_r`](../api.md#felcu.default_sobolev_r).
+
+!!! note
+    `default_sobolev_r` is currently a placeholder that returns \(r = 1\)
+    for every problem.  It already receives the spectral interval, and the
+    half-width, centre, radius and condition number are available inside
+    it for a problem-specific rule.
 
 ## Choosing \(\lambda\)
 

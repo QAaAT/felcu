@@ -28,6 +28,8 @@ Everything below is importable from the top-level `felcu` package.
 
 ::: felcu.default_eta
 
+::: felcu.default_sobolev_r
+
 ::: felcu.default_m_grid
 
 ::: felcu.default_lambda_grid

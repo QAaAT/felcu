@@ -32,7 +32,7 @@ from felcu.utils import (
     fitted_domain_segments,
     to_complex_coefficients,
 )
-from felcu.spectral import default_eta
+from felcu.spectral import default_eta, default_sobolev_r
 from felcu.solve import compute_fe_coefficients, solve_fe_coefficients
 
 __all__ = [
@@ -46,6 +46,7 @@ __all__ = [
     "canonical_problem_name",
     "canonical_error_metric",
     "default_eta",
+    "default_sobolev_r",
     "default_m_grid",
     "default_lambda_grid",
     "evaluate_fourier_series",

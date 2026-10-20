@@ -49,11 +49,22 @@ defaults suit most problems; this page explains when to change them.
     log-spaced values from \(10^{-16}\) to \(1\).  The solver expands beyond
     it and bisects, so the grid only needs to bracket the answer roughly.
 
-`k_order` (default `1`)
-:   Sobolev order \(s\) of the penalty \(\lambda(1 + k^2)^{s/2}\).
+`sobolev_w` (default `1`)
+:   Order \(w\) of the \(H_r^w\) regulariser, which weights the \(k\)-th
+    harmonic by \((1 + r|k|)^{2w}\).  Must exceed \(1/2\); need not be an
+    integer.
+
+`sobolev_r` (default: problem-dependent)
+:   Scale \(r\) of the \(H_r^w\) regulariser, with \(0 < r \le 1\).  When
+    omitted it comes from
+    [`default_sobolev_r`](../api.md#felcu.default_sobolev_r), currently
+    \(1\) for every problem.  The value used is reported as
+    `result.sobolev_r`.
 
 `order_fit` (default `1`)
-:   Number of derivatives matched in the fit.
+:   Number of derivatives matched in the fit.  `1` fits in the \(H^1\)
+    norm; `0` falls back to plain \(L^2\).  See
+    [The fit](method.md#the-fit).
 
 !!! note
     Passing `lambdas=[0.0]` does **not** disable regularisation: if
