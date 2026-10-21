@@ -46,3 +46,21 @@ jobs:
 
       - name: Run tests
         run: python -m pytest tests/ -v
+
+  test-min-deps:
+    # Oldest supported Python with the oldest supported NumPy, so the floor in
+    # pyproject.toml stays honest.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install package with minimum dependencies
+        run: pip install -e ".[dev]" "numpy==2.0.*"
+
+      - name: Run tests
+        run: python -m pytest tests/ -v
