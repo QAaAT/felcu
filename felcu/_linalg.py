@@ -9,12 +9,6 @@ import numpy as np
 from felcu._coefficients import _assemble
 
 
-def _trapz(y: np.ndarray, x: np.ndarray) -> float:
-    if hasattr(np, "trapezoid"):
-        return float(np.trapezoid(y, x))
-    return float(np.trapz(y, x))  # noqa: NPY201  (NumPy < 2 fallback)
-
-
 def _gauss_interval(a: float, b: float, n: int) -> tuple[np.ndarray, np.ndarray]:
     """Gauss-Legendre nodes and weights on [a, b], split into panels for large n."""
     n = max(int(n), 2)
@@ -55,7 +49,7 @@ def _validation_errors(
     linf = 0.0
     for x, A, y in val:
         r = np.abs(A @ c - y)
-        integral += _trapz(r**2, x)
+        integral += float(np.trapezoid(r**2, x))
         if r.size:
             linf = max(linf, float(np.max(r)))
     return math.sqrt(max(integral, 0.0)), linf
