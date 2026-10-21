@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from helpers import max_error
 
-from felcu import compute_fe_coefficients, default_sobolev_r, solve_fe_coefficients
+from felcu import ConvergenceWarning, compute_fe_coefficients, default_sobolev_r, solve_fe_coefficients
 
 pytestmark = pytest.mark.interface
 
@@ -142,6 +142,7 @@ class TestInputValidation:
             solve_fe_coefficients("action", method="arcsine_taylor", sigma_min=-1.0, sigma_max=1.0, eta=2.0)
 
     @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
+    @pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
     def test_extension_must_avoid_the_singularity(self, method):
         # 2 mu / delta = 2.1 for [0.025, 1].
         with pytest.raises(ValueError, match=r"2\|mu\|/delta = 2\.1"):
@@ -233,6 +234,7 @@ class TestResultFields:
 
 
 class TestExplicitMethodResults:
+    @pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
     @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
     def test_fields(self, method):
         r = solve_fe_coefficients("exponentiation", method=method, sigma_min=0.1, sigma_max=2.0, target_error=1e-2)
@@ -268,9 +270,10 @@ class TestSelection:
         assert not any(c.converged for c in result.all_results[:-1])
 
     def test_unreachable_target_returns_the_best(self):
-        r = solve_fe_coefficients(
-            "exponentiation", method="reflected", sigma_min=0.1, sigma_max=2.0, m_values=[8, 16, 32]
-        )
+        with pytest.warns(ConvergenceWarning, match="m=32"):
+            r = solve_fe_coefficients(
+                "exponentiation", method="reflected", sigma_min=0.1, sigma_max=2.0, m_values=[8, 16, 32]
+            )
         assert not r.converged
         assert r.m == 32
 
