@@ -1,10 +1,10 @@
 # felcu
 
-**Sobolev-regularised Fourier-extension coefficients for LCU block encodings.**
+**Fourier-extension coefficients for LCU block encodings of matrix functions.**
 
 `felcu` computes coefficients for representing matrix functions via Linear
-Combination of Unitaries (LCU), using the Sobolev-regularised Fourier
-extensions of P. Brearley, T. L. Howarth and B. Adcock, [*Fourier extensions for matrix-function block encodings with error-independent subnormalization bounds*](https://arxiv.org/abs/2601.18024), arXiv:2601.18024.
+Combination of Unitaries (LCU), using the Fourier extensions of
+P. Brearley, T. L. Howarth and B. Adcock, [*Fourier extensions for matrix-function block encodings with error-independent subnormalization bounds*](https://arxiv.org/abs/2601.18024), arXiv:2601.18024.
 It supports four problems:
 
 | Problem | Function |
@@ -17,7 +17,7 @@ It supports four problems:
 Both shifted (centred) and unshifted constructions are available; the
 square root uses the shifted construction.
 
-The paper's three coefficient-selection strategies are available through
+The coefficients come from one of the paper's three strategies, chosen with
 `method=`:
 
 | Method | Convergence | Subnormalisation |

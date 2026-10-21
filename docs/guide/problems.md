@@ -124,8 +124,8 @@ optimal: the paper shows
 
 \(\eta > 1\) sets how much of the period is left free.  Larger \(\eta\)
 gives the series more room to turn around, but packs the spectrum into a
-smaller interval.  The defaults are the paper's choices for
-Sobolev-regularised extensions (Sec. VI):
+smaller interval.  For `method="sobolev"` the defaults are the paper's
+choices (Sec. VI):
 
 | Problem | Default \(\eta\) | Reason |
 |---|---|---|

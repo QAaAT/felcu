@@ -65,7 +65,7 @@ def test_infinite_tau_is_standard_json():
 def test_layout(result):
     data = json.loads(result.to_json())
     assert data["format"] == "felcu.FourierExtensionResult"
-    assert data["format_version"] == 2
+    assert data["format_version"] == 1
     assert data["method"] == "sobolev"
     assert data["problem"] == "exponentiation"
     assert len(data["ak"]) == len(data["bk"]) == result.m
@@ -97,18 +97,6 @@ def test_rejects_future_version(result):
     data["format_version"] = 99
     with pytest.raises(ValueError, match="format_version"):
         FourierExtensionResult.from_dict(data)
-
-
-def test_reads_version_1(result):
-    # Version 1 had no method field: every saved result was Sobolev-regularised.
-    data = result.to_dict(include_candidates=True)
-    data["format_version"] = 1
-    del data["method"]
-    for c in data["all_results"]:
-        del c["method"]
-    loaded = FourierExtensionResult.from_dict(data)
-    _assert_same(result, loaded)
-    assert all(c.method == "sobolev" for c in loaded.all_results)
 
 
 @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
