@@ -69,3 +69,18 @@ To build it locally:
 pip install -e ".[docs]"
 mkdocs serve
 ```
+
+## Citation
+
+If you use `felcu` in your work, please cite the paper:
+
+> P. Brearley, T. L. Howarth and B. Adcock, *Fourier extensions for
+> matrix-function block encodings with error-independent subnormalization
+> bounds*, arXiv:2601.18024 (2026).
+
+GitHub's "Cite this repository" button gives the same reference in BibTeX and
+APA formats, from [`CITATION.cff`](CITATION.cff).
+
+## License
+
+`felcu` is released under the [MIT License](LICENSE).

@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use felcu, please cite the paper below."
+title: felcu
+abstract: Sobolev-regularised Fourier-extension coefficients for LCU block encodings.
+type: software
+license: MIT
+repository-code: https://github.com/QAaAT/felcu
+url: https://qaaat.github.io/felcu/
+authors:
+  - family-names: Brearley
+    given-names: Peter
+  - family-names: Howarth
+    given-names: Thomas L.
+  - family-names: Adcock
+    given-names: Ben
+preferred-citation:
+  type: article
+  title: Fourier extensions for matrix-function block encodings with error-independent subnormalization bounds
+  authors:
+    - family-names: Brearley
+      given-names: Peter
+    - family-names: Howarth
+      given-names: Thomas L.
+    - family-names: Adcock
+      given-names: Ben
+  year: 2026
+  identifiers:
+    - type: other
+      value: "arXiv:2601.18024"
+      description: arXiv preprint
+  url: https://arxiv.org/abs/2601.18024
