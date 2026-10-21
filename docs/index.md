@@ -30,7 +30,8 @@ Four problems are supported:
 | `exponentiation` | \(f(\mathcal H) = e^{\mathcal H}\) | eigenvalues |
 | `square_root` | \(f(\mathcal H) = \sqrt{\mathcal H}\) | positive-definite eigenvalue interval (shifted only) |
 
-Each comes in an *unshifted* form and a *shifted* (centred) form; see
+Each comes in an *unshifted* form and a *shifted* (centred) form, except the
+square root, which is shifted only; see
 [Problems and constructions](guide/problems.md).
 
 ## At a glance
@@ -56,7 +57,10 @@ result.alpha        # subnormalisation alpha_m
 - [Getting started](getting-started.md): install, a first fit, and how to
   apply the result to a matrix.
 - [Notation](guide/notation.md): the paper's symbols and their names in the code.
+- [Problems and constructions](guide/problems.md): shifted vs unshifted,
+  scaling and bases.
 - [Method](guide/method.md): what the solver actually computes.
 - [Tuning the solver](guide/parameters.md): every parameter and when to change it.
-- [Examples](examples.md): eighteen short scripts, one idea each.
+- [Examples](examples.md): short scripts, one idea each, plus
+  plots.
 - [API reference](api.md).

@@ -28,7 +28,7 @@ defaults suit most problems; this page explains when to change them.
 
 `m_values`
 :   Candidate orders to try, as a sequence or a single integer.  Defaults to
-    [`default_m_grid()`](../api.md#felcu.default_m_grid): 32 values from 4 to
+    [`default_m_grid()`](../api.md#felcu.default_m_grid): 31 values from 4 to
     256.
 
 `selection` (default `"smallest_alpha"`)

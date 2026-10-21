@@ -54,14 +54,14 @@ for xs in fitted_domain_segments(result):
 
 ## Documentation
 
-Full documentation is at **https://thomashowarth.github.io/felcu/**:
+Full documentation is at **https://qaaat.github.io/felcu/**:
 
-- [Notation](https://thomashowarth.github.io/felcu/guide/notation/): the paper's symbols and their names in the code
-- [Problems and constructions](https://thomashowarth.github.io/felcu/guide/problems/): shifted vs unshifted, scaling, bases
-- [Method](https://thomashowarth.github.io/felcu/guide/method/): the Sobolev-regularised Fourier extension
-- [Tuning the solver](https://thomashowarth.github.io/felcu/guide/parameters/): every parameter
-- [Examples](https://thomashowarth.github.io/felcu/examples/): the scripts in [`examples/`](examples/)
-- [API reference](https://thomashowarth.github.io/felcu/api/)
+- [Notation](https://qaaat.github.io/felcu/guide/notation/): the paper's symbols and their names in the code
+- [Problems and constructions](https://qaaat.github.io/felcu/guide/problems/): shifted vs unshifted, scaling, bases
+- [Method](https://qaaat.github.io/felcu/guide/method/): the Sobolev-regularised Fourier extension
+- [Tuning the solver](https://qaaat.github.io/felcu/guide/parameters/): every parameter
+- [Examples](https://qaaat.github.io/felcu/examples/): the scripts in [`examples/`](examples/)
+- [API reference](https://qaaat.github.io/felcu/api/)
 
 To build it locally:
 

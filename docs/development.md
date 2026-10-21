@@ -3,7 +3,7 @@
 ## Setup
 
 ```bash
-git clone git@github.com:ThomasHowarth/felcu.git
+git clone git@github.com:QAaAT/felcu.git
 cd felcu
 pip install -e ".[dev]"
 ```
@@ -71,11 +71,12 @@ Pushes to `main` publish the site to GitHub Pages
 felcu/
 ├── __init__.py        # Public API
 ├── types.py           # FourierExtensionResult dataclass
+├── _io.py             # Internal: JSON serialisation of results
 ├── utils.py           # Public utility functions
 ├── spectral.py        # Spectral data extraction & problem-spec builder
 ├── solve.py           # Public solver (solve_fe_coefficients, compute_fe_coefficients)
 ├── _solver.py         # Internal: Fourier-extension fitting & regularisation search
 ├── _coefficients.py   # Internal: basis matrices, coefficient packing
-├── _linalg.py         # Internal: QR solver, quadrature, penalties
+├── _linalg.py         # Internal: least squares, quadrature, penalties
 └── _logging.py        # Internal: package logger
 ```
