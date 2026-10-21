@@ -18,8 +18,27 @@ package into `site-packages`, and scripts run from elsewhere (such as
 python -m pytest tests/ -v
 ```
 
-CI runs the same command on Python 3.11 through 3.15 for every push to `main`
-and every pull request (`.github/workflows/ci.yml`).
+To see which lines the tests miss, add `--cov=felcu --cov-report=term-missing`.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull
+request.  A new push to a branch cancels its still-running checks.
+
+| Job | What it does |
+|---|---|
+| `lint` | `ruff check` and `ruff format --check` |
+| `test` | The test suite with a coverage report, on Ubuntu with Python 3.11 through 3.15, and on macOS and Windows with Python 3.12 |
+| `test-min-deps` | The test suite on Python 3.11 with NumPy 2.0, the oldest supported versions |
+| `examples` | Every script in `examples/`, including the plots (headless, from a scratch directory) |
+
+When you raise a minimum dependency version in `pyproject.toml`, raise it in
+`test-min-deps` too.
+
+[Dependabot](https://docs.github.com/en/code-security/dependabot)
+(`.github/dependabot.yml`) opens monthly pull requests to update the GitHub
+Actions versions and the ruff pin.  It leaves the library's minimum
+dependency versions alone; raise those by hand.
 
 ## Linting and formatting
 
@@ -34,8 +53,8 @@ ruff format .
 ```
 
 CI runs `ruff check .` and `ruff format --check .` and fails if either
-reports anything.  The ruff version is pinned in the `dev` extra and in CI,
-so local and CI formatting agree.  Markdown files are not formatted, so code
+reports anything.  The ruff version is pinned once, in the `dev` extra, and
+CI installs it from there, so local and CI formatting agree.  Markdown files are not formatted, so code
 blocks in `docs/` are left as written.
 
 ## Documentation
