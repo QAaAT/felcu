@@ -79,8 +79,12 @@ pip install -e ".[plots]"
 for f in examples/plots/0*.py; do MPLBACKEND=Agg python "$f" docs/images/plots; done
 ```
 
-Pushes to `main` publish the site to GitHub Pages
-(`.github/workflows/docs.yml`).  In the repository settings, under
+Pushes to `main` that change the site's sources (`docs/`, `mkdocs.yml`,
+`felcu/` for the API reference, `examples/` for the Examples page,
+`pyproject.toml` or the workflow itself) publish the site to GitHub Pages
+(`.github/workflows/docs.yml`); pull requests that change them build it
+without publishing.  To publish anyway, run the workflow by hand from the
+Actions tab.  In the repository settings, under
 **Pages → Build and deployment**, the source must be set to
 **GitHub Actions**.
 
