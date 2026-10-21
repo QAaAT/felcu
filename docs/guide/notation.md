@@ -17,7 +17,7 @@ corresponding argument or result field.
 | \(\Sigma_{\min}, \Sigma_{\max}\) | singular-value endpoints | `sigma_min`, `sigma_max` with singular values |
 | \(\mu = (\lambda_{\max} + \lambda_{\min})/2\) | spectral midpoint | derived; used by shifted fits |
 | \(\delta = (\lambda_{\max} - \lambda_{\min})/2\) | spectral half-width | derived; used by shifted fits |
-| \(\kappa\) | condition number, ratio of largest to smallest \(|\lambda|\) or \(\Sigma\) | derived |
+| \(\kappa\) | condition number, ratio of largest to smallest \(\lvert\lambda\rvert\) or \(\Sigma\) | derived |
 
 `sigma_min` and `sigma_max` hold whichever endpoints the construction uses
 (see [Spectral information](problems.md#spectral-information));
@@ -48,7 +48,7 @@ and \(g(x) = f(x/\tau)\).
 | \(g_m(x) = \sum_{k=-m}^{m} c_k e^{ikx}\) | the Fourier extension | `evaluate_fourier_series(x, result.a0, result.ak, result.bk)` |
 | \(a_0, a_k, b_k\) | real coefficients, \(g_m = a_0 + \sum_k [a_k \sin kx + b_k \cos kx]\) | `result.a0`, `result.ak`, `result.bk` |
 | \(c_k\), with \(c_0 = a_0\), \(c_{\pm k} = (b_k \mp i a_k)/2\) | complex (LCU) coefficients | `result.complex_coefficients` \(= [c_{-m}, \dots, c_m]\) |
-| \(\alpha_m = \sum_k |c_k|\) | subnormalisation | `result.alpha` |
+| \(\alpha_m = \sum_k \lvert c_k\rvert\) | subnormalisation | `result.alpha` |
 | \(\epsilon_m = \|g - g_m\|_{L^\infty(\Omega)}\) | approximation (and spectral) error | `result.achieved_linf_error` |
 | \(\epsilon_{\rm t}\) | target tolerance | `target_error` |
 
@@ -56,7 +56,7 @@ and \(g(x) = f(x/\tau)\).
 
 | Symbol | Meaning | In `felcu` |
 |---|---|---|
-| \(H^w_r(\mathbb T)\) | weighted fractional Sobolev norm, weight \(1 + (r|k|)^{2w}\) | |
+| \(H^w_r(\mathbb T)\) | weighted fractional Sobolev norm, weight \(1 + (r\lvert k\rvert)^{2w}\) | |
 | \(0 < r \le 1\) | Sobolev scale | `sobolev_r`, `result.sobolev_r` |
 | \(w > 1/2\) | Sobolev order | `sobolev_w`, `result.sobolev_w` |
 | \(\gamma > 0\) | regularisation weight | `lambdas`, `result.lambda_used` hold \(\sqrt{2\pi\gamma}\) |
