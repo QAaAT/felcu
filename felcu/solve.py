@@ -8,12 +8,14 @@ from dataclasses import replace
 
 import numpy as np
 
+from felcu._explicit import _explicit_candidate
 from felcu._logging import logger
 from felcu._solver import _candidate_for_m, _meets_target
 from felcu.spectral import _make_spec, _spectral_data, default_sobolev_r
 from felcu.types import FourierExtensionResult
 from felcu.utils import (
     canonical_error_metric,
+    canonical_method_name,
     canonical_problem_name,
     default_lambda_grid,
     default_m_grid,
@@ -32,8 +34,10 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
     ak = np.asarray(s["ak"], dtype=float)
     bk = np.asarray(s["bk"], dtype=float)
 
+    sobolev = spec["method"] == "sobolev"
     return FourierExtensionResult(
         problem=spec["problem"],
+        method=spec["method"],
         shifted=spec["shifted"],
         basis_used=spec["basis"],
         m=int(cand["m"]),
@@ -46,9 +50,9 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         achieved_l2_error=float(s["l2"]),
         achieved_linf_error=float(s["linf"]),
         converged=_meets_target(s, metric, target),
-        lambda_used=float(cand["lambda"]),
-        sobolev_r=float(spec["sobolev_r"]),
-        sobolev_w=float(spec["sobolev_w"]),
+        lambda_used=float(cand["lambda"]) if sobolev else None,
+        sobolev_r=float(spec["sobolev_r"]) if sobolev else None,
+        sobolev_w=float(spec["sobolev_w"]) if sobolev else None,
         a0=a0,
         ak=ak.copy(),
         bk=bk.copy(),
@@ -157,6 +161,7 @@ def _select(candidates: list[dict], metric: str, target: float, selection: str) 
 def solve_fe_coefficients(
     problem: str,
     *,
+    method: str = "sobolev",
     shifted: bool = False,
     matrix: np.ndarray | Sequence[Sequence[complex]] | None = None,
     sigma_min: float | None = None,
@@ -168,10 +173,10 @@ def solve_fe_coefficients(
     m: int | None = None,
     m_values: Sequence[int] | int | None = None,
     lambdas: Sequence[float] | None = None,
-    sobolev_w: float = 1.0,
+    sobolev_w: float | None = None,
     sobolev_r: float | None = None,
-    order_fit: int = 1,
-    fit_oversample: int = 8,
+    order_fit: int | None = None,
+    fit_oversample: int | None = None,
     val_n: int = 4001,
     selection: str = "smallest_alpha",
     hermitian_tol: float = 1e-12,
@@ -183,6 +188,29 @@ def solve_fe_coefficients(
     problem:
         One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``
         (several aliases accepted; see :func:`~felcu.utils.canonical_problem_name`).
+    method:
+        Coefficient-selection strategy (see
+        :func:`~felcu.canonical_method_name` for aliases):
+
+        - ``'sobolev'`` (default): Sobolev-regularised least squares.
+          Near-exponential convergence down to *target_error*, with
+          subnormalisation ``O(||f(H)||)``.
+        - ``'reflected'``: the Fourier series of g reflected about
+          ``x = +-pi/2``.  Optimal subnormalisation
+          ``alpha_m = ||f(H)|| - epsilon_m`` for convex endpoint-maximising f
+          (action, exponentiation, shifted inversion) at the default
+          ``eta = 2``, but only ``O(1/m)`` convergence, so the default
+          *target_error* is out of reach.
+        - ``'arcsine_taylor'``: the Taylor series of ``g(arcsin z)`` with
+          ``z = sin x``.  Exponential convergence with factor
+          ``sin(pi/eta)`` (requires ``eta > 2``) and subnormalisation
+          bounded independently of the error.
+
+        The explicit methods do not support unshifted inversion, and for
+        shifted inversion and square root need ``eta < 2 mu / delta``.
+        They have no regularisation, so the Sobolev-only options
+        (*lambdas*, *sobolev_w*, *sobolev_r*, *order_fit*,
+        *fit_oversample*) must be left unset.
     shifted:
         Use the shifted (centred) construction.
     matrix:
@@ -194,7 +222,7 @@ def solve_fe_coefficients(
         ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.
     eta:
         Fourier-extension parameter (must exceed 1).  Computed automatically
-        when omitted.
+        when omitted; see :func:`~felcu.default_eta`.
     target_error:
         Desired approximation error.
     error_metric:
@@ -211,7 +239,7 @@ def solve_fe_coefficients(
     sobolev_w:
         Order *w* of the H_r^w regulariser, which weights the k-th Fourier
         mode by ``1 + (r|k|)^(2w)``.  Must exceed ``0.5``; the paper's
-        bounds cover ``0.5 < w <= 1``.
+        bounds cover ``0.5 < w <= 1``.  Defaults to ``1``.
     sobolev_r:
         Scale *r* of the H_r^w regulariser, with ``0 < r <= 1``.  Chosen by
         :func:`~felcu.default_sobolev_r` when omitted.
@@ -219,7 +247,8 @@ def solve_fe_coefficients(
         Number of derivative orders included in the fit system: ``1``
         (default) fits in the H^1 norm, ``0`` in plain L^2.
     fit_oversample:
-        Oversampling factor for the Gauss quadrature grid.
+        Oversampling factor for the Gauss quadrature grid.  Defaults to
+        ``8``.
     val_n:
         Number of validation points.
     selection:
@@ -237,7 +266,22 @@ def solve_fe_coefficients(
         The selected result; ``result.all_results`` contains every candidate.
     """
     problem = canonical_problem_name(problem)
+    method = canonical_method_name(method)
     metric = canonical_error_metric(error_metric)
+    sobolev_options = {
+        "lambdas": lambdas,
+        "sobolev_w": sobolev_w,
+        "sobolev_r": sobolev_r,
+        "order_fit": order_fit,
+        "fit_oversample": fit_oversample,
+    }
+    if method != "sobolev":
+        given = [name for name, value in sobolev_options.items() if value is not None]
+        if given:
+            raise ValueError(f"{', '.join(given)} only apply to method='sobolev', not method='{method}'.")
+    sobolev_w = 1.0 if sobolev_w is None else sobolev_w
+    order_fit = 1 if order_fit is None else order_fit
+    fit_oversample = 8 if fit_oversample is None else fit_oversample
     if target_error < 0:
         raise ValueError("target_error must be positive.")
     if order_fit < 0 or fit_oversample <= 0 or val_n < 3:
@@ -248,26 +292,31 @@ def solve_fe_coefficients(
         raise ValueError("selection must be 'smallest_m' or 'smallest_alpha'.")
 
     spectral = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol, True)
-    spec = _make_spec(problem, shifted, spectral, eta, hermitian_tol)
+    spec = _make_spec(problem, shifted, spectral, eta, hermitian_tol, method)
 
-    if sobolev_r is None:
-        sobolev_r = default_sobolev_r(
-            problem,
-            shifted=shifted,
-            sigma_min=None if spectral is None else spectral["sigma_min"],
-            sigma_max=None if spectral is None else spectral["sigma_max"],
-            spectral_kind="auto" if spectral is None else spectral["kind"],
-            hermitian_tol=hermitian_tol,
-            eta=spec["eta"],
-            sobolev_w=sobolev_w,
-        )
-    if not 0 < sobolev_r <= 1:
-        raise ValueError("sobolev_r must satisfy 0 < sobolev_r <= 1.")
-    spec = spec | {"sobolev_r": float(sobolev_r), "sobolev_w": float(sobolev_w)}
+    if method != "sobolev":
+        spec = spec | {"sobolev_r": None, "sobolev_w": None}
+    else:
+        if sobolev_r is None:
+            sobolev_r = default_sobolev_r(
+                problem,
+                shifted=shifted,
+                sigma_min=None if spectral is None else spectral["sigma_min"],
+                sigma_max=None if spectral is None else spectral["sigma_max"],
+                spectral_kind="auto" if spectral is None else spectral["kind"],
+                hermitian_tol=hermitian_tol,
+                eta=spec["eta"],
+                sobolev_w=sobolev_w,
+            )
+        if not 0 < sobolev_r <= 1:
+            raise ValueError("sobolev_r must satisfy 0 < sobolev_r <= 1.")
+        spec = spec | {"sobolev_r": float(sobolev_r), "sobolev_w": float(sobolev_w)}
 
     logger.info(
-        "solve_fe_coefficients: problem=%s  shifted=%s  metric=%s  target=%.3e  basis=%s  domain=%s  eta=%.4f  tau=%s",
+        "solve_fe_coefficients: problem=%s  method=%s  shifted=%s  metric=%s  target=%.3e  basis=%s  domain=%s  "
+        "eta=%.4f  tau=%s",
         problem,
+        method,
         shifted,
         metric,
         target_error,
@@ -283,33 +332,36 @@ def solve_fe_coefficients(
         logger.info("exact constant solution found, returning immediately")
         return exact
 
-    lambdas = _lambda_grid(lambdas)
+    lambdas = _lambda_grid(lambdas) if method == "sobolev" else None
     m_grid = _m_grid(m, m_values)
     logger.info("sweeping %d m values: %s ... %s", len(m_grid), m_grid[0], m_grid[-1])
 
     candidates = []
     for i, mi in enumerate(m_grid):
         logger.info("[%d/%d] m=%d ...", i + 1, len(m_grid), mi)
-        c = _candidate_for_m(
-            spec,
-            int(mi),
-            lambdas,
-            target,
-            metric,
-            order_fit,
-            spec["sobolev_r"],
-            spec["sobolev_w"],
-            fit_oversample,
-            val_n,
-        )
+        if method == "sobolev":
+            c = _candidate_for_m(
+                spec,
+                int(mi),
+                lambdas,
+                target,
+                metric,
+                order_fit,
+                spec["sobolev_r"],
+                spec["sobolev_w"],
+                fit_oversample,
+                val_n,
+            )
+        else:
+            c = _explicit_candidate(spec, int(mi), target, metric, val_n)
         logger.info(
-            "[%d/%d] m=%d  done: error=%.3e  feasible=%s  lam=%.3e  alpha=%.3e",
+            "[%d/%d] m=%d  done: error=%.3e  feasible=%s  lam=%s  alpha=%.3e",
             i + 1,
             len(m_grid),
             mi,
             c["solve"][metric],
             c["feasible"],
-            c["lambda"],
+            "-" if c["lambda"] is None else f"{c['lambda']:.3e}",
             c["solve"]["alpha"],
         )
         candidates.append(c)

@@ -13,6 +13,10 @@ scaled variable x:
 When no matrix scale is supplied, the fitted function is the unscaled scalar
 function f(x), except for inversion where a nonzero interval is required.
 
+The coefficients come from one of three strategies (``method=``):
+Sobolev-regularised least squares (the default), reflected extensions, or
+arcsine-Taylor expansions.
+
 Typical usage
 -------------
 >>> from felcu import solve_fe_coefficients
@@ -26,6 +30,7 @@ from felcu.types import FourierExtensionResult
 from felcu.utils import (
     ArrayLike,
     canonical_error_metric,
+    canonical_method_name,
     canonical_problem_name,
     default_lambda_grid,
     default_m_grid,
@@ -44,6 +49,7 @@ __all__ = [
     "compute_fe_coefficients",
     # Utilities
     "canonical_problem_name",
+    "canonical_method_name",
     "canonical_error_metric",
     "default_eta",
     "default_sobolev_r",

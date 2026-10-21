@@ -17,6 +17,10 @@ a linear combination of Hamiltonian simulations.  The coefficients come from
 a Sobolev-regularised fit, which converges near-exponentially down to the
 target tolerance while keeping the subnormalisation
 \(\alpha_m = \sum_k |c_k|\) at the optimal scale \(O(\|f(\mathcal H)\|)\).
+The paper's two explicit constructions are also available through
+`method=`: reflected extensions, with optimal \(\alpha\) but algebraic
+convergence, and arcsine-Taylor expansions, with exponential convergence at
+a larger \(\alpha\) (see [Method](guide/method.md)).
 
 The method is that of P. Brearley, T. L. Howarth and B. Adcock, [*Fourier extensions for matrix-function block encodings with error-independent subnormalization bounds*](https://arxiv.org/abs/2601.18024), arXiv:2601.18024; these docs follow its
 [notation](guide/notation.md).

@@ -2,7 +2,8 @@
 
 Every fit is described by three choices: the **problem** (which \(f\)),
 whether the construction is **shifted**, and where the **spectral interval**
-comes from.
+comes from.  A fourth, the coefficient-selection **method**, is covered on
+the [Method](method.md) page.
 
 ## Spectral information
 
@@ -136,7 +137,21 @@ Sobolev-regularised extensions (Sec. VI):
 Here \(\kappa = \Sigma_{\max}/\Sigma_{\min}\) for unshifted inversion and
 \(\kappa = \max|\lambda|/\min|\lambda|\) for the definite interval of shifted
 inversion and square root (\(\eta = 2\) if \(\kappa = 1\)).  Override with `eta=`, or query
-the default with [`default_eta`](../api.md#felcu.default_eta).
+the default with [`default_eta`](../api.md#felcu.default_eta), which also
+takes `method=`.
+
+The explicit methods use their own defaults and ranges (see
+[Method](method.md#reflected-extensions)):
+
+| `method` | Default \(\eta\) | Allowed |
+|---|---|---|
+| `"reflected"` | \(2\) | \(\eta \ge 2\) |
+| `"arcsine_taylor"`, action and exponentiation | \(3\) | \(\eta > 2\) |
+| `"arcsine_taylor"`, inversion and square root | \(\min\{3,\ 1 + \mu/\delta\}\) | \(2 < \eta < 2\mu/\delta\) |
+
+with \(\mu/\delta = (\kappa + 1)/(\kappa - 1)\).  Both explicit methods
+require \(\eta < 2|\mu|/\delta\) for inversion and square root, and neither
+supports unshifted inversion.
 
 ## No spectral information
 

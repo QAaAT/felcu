@@ -4,12 +4,23 @@ All options are keyword arguments to
 [`solve_fe_coefficients`](../api.md#felcu.solve_fe_coefficients).  The
 defaults suit most problems; this page explains when to change them.
 
+## Method
+
+`method` (default `"sobolev"`)
+:   The coefficient-selection strategy: `"sobolev"` (regularised least
+    squares), `"reflected"` (optimal \(\alpha\), \(O(m^{-1})\) error) or
+    `"arcsine_taylor"` (exponential convergence at a larger \(\alpha\)).  See
+    [Method](method.md) for the trade-offs.  Aliases: `"regularised"`,
+    `"regularized"`, `"reg"`; `"refl"`, `"reflected_extension"`;
+    `"asin"`, `"arcsine"`, `"arcsine-taylor"`.
+
 ## Accuracy
 
 `target_error` (default `1e-12`)
 :   The target tolerance \(\epsilon_{\rm t}\) the fit must meet.  Tightening it increases \(m\) roughly
     logarithmically for smooth targets such as \(e^{x}\), and much faster for
-    inversion with a large condition number.
+    inversion with a large condition number.  With `method="reflected"` the
+    error falls only as \(O(m^{-1})\), so pass a loose target such as `1e-2`.
 
 `error_metric` (default `"linf"`)
 :   `"linf"` bounds \(\epsilon_m = \|g - g_m\|_{L^\infty(\Omega)}\), which
@@ -45,6 +56,9 @@ defaults suit most problems; this page explains when to change them.
     matters.
 
 ## Regularisation
+
+The options in this section, and `fit_oversample`, only apply to
+`method="sobolev"`; passing them with an explicit method raises an error.
 
 `lambdas`
 :   Initial grid of regularisation strengths \(\lambda = \sqrt{2\pi\gamma}\),
@@ -88,7 +102,8 @@ defaults suit most problems; this page explains when to change them.
 :   Gauss–Legendre nodes per unknown.
 
 `eta`
-:   The domain extension factor \(\eta > 1\); see
+:   The domain extension factor \(\eta > 1\) (\(\eta \ge 2\) for
+    `"reflected"`, \(\eta > 2\) for `"arcsine_taylor"`); see
     [The extension parameter](problems.md#the-extension-parameter-eta).
 
 ## Spectral input

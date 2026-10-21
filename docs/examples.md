@@ -211,6 +211,21 @@ g(tau (H - mu I)) squares back to H.
 --8<-- "examples/square_root/02_matrix_square_root.py"
 ```
 
+## Methods
+
+### Comparing the three coefficient-selection methods
+
+Fit exp(H) for eigenvalues in [0.1, 2] with each `method=` at the same
+orders.  The reflected extension has the optimal subnormalisation
+alpha_m = ||f(H)|| - error but converges only as O(1/m); arcsine-Taylor
+converges exponentially at a larger alpha; the Sobolev-regularised default
+reaches the target with alpha close to optimal.  See
+[Method](guide/method.md).
+
+```python title="examples/methods/01_compare_methods.py"
+--8<-- "examples/methods/01_compare_methods.py"
+```
+
 ## Plots
 
 These scripts sweep a parameter and plot how the error \(\epsilon_m\) and

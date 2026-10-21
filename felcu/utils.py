@@ -11,7 +11,7 @@ from felcu.types import ArrayLike, FourierExtensionResult
 
 
 def canonical_problem_name(name: str) -> str:
-    """Normalise a problem name to one of 'action', 'inversion', 'exponentiation'.
+    """Normalise a problem name to one of 'action', 'inversion', 'exponentiation', 'square_root'.
 
     Matching ignores case and surrounding whitespace.
 
@@ -51,6 +51,49 @@ def canonical_problem_name(name: str) -> str:
     key = name.strip().lower()
     if key not in aliases:
         raise ValueError("problem must be 'action', 'inversion', 'exponentiation', or 'square_root'.")
+    return aliases[key]
+
+
+def canonical_method_name(name: str) -> str:
+    """Normalise a coefficient-selection method to 'sobolev', 'reflected' or 'arcsine_taylor'.
+
+    Matching ignores case and surrounding whitespace.
+
+    Parameters
+    ----------
+    name:
+        Method name.  Accepted aliases are ``'regularised'``,
+        ``'regularized'`` and ``'reg'`` for ``'sobolev'``; ``'refl'`` and
+        ``'reflected_extension'`` for ``'reflected'``; and ``'asin'``,
+        ``'arcsine'`` and ``'arcsine-taylor'`` for ``'arcsine_taylor'``.
+
+    Returns
+    -------
+    str
+        ``'sobolev'``, ``'reflected'``, or ``'arcsine_taylor'``.
+
+    Raises
+    ------
+    ValueError
+        If *name* is not a recognised method or alias.
+    """
+    aliases = {
+        "sobolev": "sobolev",
+        "regularised": "sobolev",
+        "regularized": "sobolev",
+        "reg": "sobolev",
+        "reflected": "reflected",
+        "refl": "reflected",
+        "reflected_extension": "reflected",
+        "reflected-extension": "reflected",
+        "arcsine_taylor": "arcsine_taylor",
+        "arcsine-taylor": "arcsine_taylor",
+        "arcsine": "arcsine_taylor",
+        "asin": "arcsine_taylor",
+    }
+    key = name.strip().lower()
+    if key not in aliases:
+        raise ValueError("method must be 'sobolev', 'reflected', or 'arcsine_taylor'.")
     return aliases[key]
 
 

@@ -17,6 +17,15 @@ It supports four problems:
 Both shifted (centred) and unshifted constructions are available; the
 square root uses the shifted construction.
 
+The paper's three coefficient-selection strategies are available through
+`method=`:
+
+| Method | Convergence | Subnormalisation |
+|---|---|---|
+| `sobolev` (default) | near-exponential, down to the target | O(‖f(H)‖) |
+| `reflected` | algebraic, O(1/m) | ‖f(H)‖ (optimal) for convex f |
+| `arcsine_taylor` | exponential, O(sin(π/η)^m) | bounded, larger than optimal |
+
 ## Installation
 
 ```bash
@@ -58,7 +67,7 @@ Full documentation is at **https://qaaat.github.io/felcu/**:
 
 - [Notation](https://qaaat.github.io/felcu/guide/notation/): the paper's symbols and their names in the code
 - [Problems and constructions](https://qaaat.github.io/felcu/guide/problems/): shifted vs unshifted, scaling, bases
-- [Method](https://qaaat.github.io/felcu/guide/method/): the Sobolev-regularised Fourier extension
+- [Method](https://qaaat.github.io/felcu/guide/method/): the Sobolev-regularised, reflected and arcsine-Taylor extensions
 - [Tuning the solver](https://qaaat.github.io/felcu/guide/parameters/): every parameter
 - [Examples](https://qaaat.github.io/felcu/examples/): the scripts in [`examples/`](examples/)
 - [API reference](https://qaaat.github.io/felcu/api/)

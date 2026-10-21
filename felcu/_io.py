@@ -15,7 +15,9 @@ if TYPE_CHECKING:
     from felcu.types import FourierExtensionResult
 
 FORMAT = "felcu.FourierExtensionResult"
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
+# Version 1 predates the explicit methods: every saved result was Sobolev-regularised.
+_READABLE_VERSIONS = {1, FORMAT_VERSION}
 
 _FLOAT_ARRAYS = {"ak", "bk"}
 _SKIP_FIELDS = {"complex_coefficients", "all_results"}  # written separately
@@ -100,10 +102,15 @@ def from_dict(cls: type[FourierExtensionResult], data: dict[str, Any]) -> Fourie
     if data.get("format") != FORMAT:
         raise ValueError(f"Not a saved felcu result (expected format '{FORMAT}').")
     version = data.get("format_version")
-    if version != FORMAT_VERSION:
-        raise ValueError(f"Unsupported format_version {version!r}; this felcu reads version {FORMAT_VERSION}.")
-    candidates = tuple(cls(**_fields_from_dict(cls, c)) for c in data.get("all_results", []))
-    return cls(**_fields_from_dict(cls, data), all_results=candidates)
+    if version not in _READABLE_VERSIONS:
+        readable = ", ".join(str(v) for v in sorted(_READABLE_VERSIONS))
+        raise ValueError(f"Unsupported format_version {version!r}; this felcu reads versions {readable}.")
+
+    def upgrade(fields: dict[str, Any]) -> dict[str, Any]:
+        return {"method": "sobolev"} | fields if version == 1 else fields
+
+    candidates = tuple(cls(**_fields_from_dict(cls, upgrade(c))) for c in data.get("all_results", []))
+    return cls(**_fields_from_dict(cls, upgrade(data)), all_results=candidates)
 
 
 def to_json(
