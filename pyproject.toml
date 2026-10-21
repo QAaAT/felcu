@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,8 +7,19 @@ name = "felcu"
 version = "0.1.0"
 description = "Fourier-extension coefficients for LCU block encodings"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Peter Brearley" },
+    { name = "Thomas L. Howarth" },
+    { name = "Ben Adcock" },
+]
 requires-python = ">=3.11"
 classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -17,6 +28,13 @@ classifiers = [
     "Programming Language :: Python :: 3.15",
 ]
 dependencies = ["numpy>=1.24"]
+
+[project.urls]
+Homepage = "https://github.com/QAaAT/felcu"
+Documentation = "https://qaaat.github.io/felcu/"
+Repository = "https://github.com/QAaAT/felcu"
+Issues = "https://github.com/QAaAT/felcu/issues"
+Paper = "https://arxiv.org/abs/2601.18024"
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov", "ruff==0.17.1"]
