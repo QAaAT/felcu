@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Sequence
 from dataclasses import replace
 
@@ -12,7 +13,7 @@ from felcu._explicit import _explicit_candidate
 from felcu._logging import logger
 from felcu._solver import _candidate_for_m, _meets_target
 from felcu.spectral import _make_spec, _spectral_data, default_sobolev_r
-from felcu.types import FourierExtensionResult
+from felcu.types import ConvergenceWarning, FourierExtensionResult
 from felcu.utils import (
     canonical_error_metric,
     canonical_method_name,
@@ -372,6 +373,13 @@ def solve_fe_coefficients(
 
     best, converged = _select(candidates, metric, target, selection)
     logger.info("selected: m=%d  error=%.3e  converged=%s", best["m"], best["solve"][metric], converged)
+    if not converged:
+        warnings.warn(
+            f"No candidate met target_error={target:.3g} in the {metric} metric; returning m={best['m']} "
+            f"with error {best['solve'][metric]:.3g}.  Try larger m_values or a looser target_error.",
+            ConvergenceWarning,
+            stacklevel=2,
+        )
 
     all_results = tuple(_make_result(spec, target, metric, c) for c in sorted(candidates, key=lambda c: c["m"]))
     selected = _make_result(spec, target, metric, best)

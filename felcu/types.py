@@ -11,6 +11,15 @@ import numpy as np
 ArrayLike = np.ndarray | Sequence[float] | float
 
 
+class ConvergenceWarning(UserWarning):
+    """No candidate order met the requested *target_error*.
+
+    Issued by :func:`~felcu.solve_fe_coefficients`, which still returns the
+    best candidate, with ``converged=False``.  Silence it with
+    ``warnings.simplefilter("ignore", felcu.ConvergenceWarning)``.
+    """
+
+
 @dataclass(frozen=True)
 class FourierExtensionResult:
     """Result of a Fourier-extension coefficient computation.
@@ -145,6 +154,76 @@ class FourierExtensionResult:
         from felcu._coefficients import _pack_coefficients
 
         return _pack_coefficients(self.a0, self.ak, self.bk, self.basis_used)
+
+    @property
+    def mu(self) -> float:
+        """Shift ``mu``: the centre of ``[sigma_min, sigma_max]`` for shifted fits, else ``0``."""
+        if self.shifted and self.sigma_min is not None and self.sigma_max is not None:
+            return 0.5 * (self.sigma_min + self.sigma_max)
+        return 0.0
+
+    def evaluate(self, x: ArrayLike) -> np.ndarray:
+        """Evaluate the approximation to f at points *x* of the original variable.
+
+        Applies the scaling for you: this is ``g(tau x)`` (unshifted) or
+        ``g(tau (x - mu))`` (shifted), which approximates ``f(x)`` for *x* in
+        the spectral interval.  To evaluate ``g`` itself in the scaled
+        variable, use :func:`~felcu.evaluate_fourier_series`.
+
+        Parameters
+        ----------
+        x:
+            Points, of any shape, at which to approximate ``f``.
+
+        Returns
+        -------
+        numpy.ndarray
+            The approximation, with the same shape as *x*.
+        """
+        from felcu.utils import evaluate_fourier_series
+
+        x = np.asarray(x, dtype=float)
+        if not np.isfinite(self.tau):
+            # A zero-width interval: the series is the constant a0.
+            return np.full(x.shape, self.a0)
+        return evaluate_fourier_series(self.tau * (x - self.mu), self.a0, self.ak, self.bk)
+
+    def apply(self, matrix: np.ndarray | Sequence[Sequence[complex]], hermitian_tol: float = 1e-12) -> np.ndarray:
+        """Apply the approximation to a Hermitian matrix: ``g(tau (H - mu I)) ~ f(H)``.
+
+        Computed classically by eigendecomposition, to check a fit against
+        an exact ``f(H)``.  The approximation is only accurate when the
+        eigenvalues of *matrix* lie in the spectral interval the result was
+        fitted for.
+
+        Parameters
+        ----------
+        matrix:
+            Square Hermitian matrix ``H``.
+        hermitian_tol:
+            Relative tolerance for the Hermitian test.
+
+        Returns
+        -------
+        numpy.ndarray
+            The matrix ``g(tau (H - mu I))``, the same shape as *matrix*.
+
+        Raises
+        ------
+        ValueError
+            If *matrix* is not square or not Hermitian.  A non-Hermitian
+            matrix is block encoded through its Hermitian dilation, so
+            apply the result to that instead.
+        """
+        from felcu.spectral import _is_hermitian
+
+        H = np.asarray(matrix)
+        if H.ndim != 2 or H.shape[0] != H.shape[1]:
+            raise ValueError("matrix must be square.")
+        if not _is_hermitian(H, hermitian_tol):
+            raise ValueError("matrix must be Hermitian; apply the result to its Hermitian dilation instead.")
+        w, V = np.linalg.eigh(H)
+        return (V * self.evaluate(w)) @ V.conj().T
 
     @property
     def achieved_inf_error(self) -> float:

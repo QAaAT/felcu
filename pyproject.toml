@@ -47,3 +47,6 @@ known-first-party = ["felcu", "_style"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# A fit that unexpectedly misses its target fails the test; tests that expect
+# it say so with pytest.warns or a filterwarnings mark.
+filterwarnings = ["error::felcu.ConvergenceWarning"]

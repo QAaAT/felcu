@@ -42,6 +42,12 @@ meet the target, returns the one with the smallest subnormalisation
 \(\alpha_m\).  Pass `selection="smallest_m"` for the shortest series instead.
 Every candidate it tried is kept in `result.all_results`.
 
+If no candidate meets the target, the solver still returns the best one,
+with `converged=False`, and issues a `felcu.ConvergenceWarning`.  Widen
+`m_values` or loosen `target_error`, or silence the warning with
+`warnings.simplefilter("ignore", felcu.ConvergenceWarning)` when missing the
+target is expected.
+
 !!! tip "Choosing the range of m"
     By default the solver sweeps \(m\) up to 256.  Because \(\alpha\) usually
     keeps falling as \(m\) grows, the default `smallest_alpha` selection
@@ -59,20 +65,24 @@ is the series \(g_m\) evaluated at the scaled matrix \(\mathcal G\):
 | unshifted | \(f(\mathcal H) \approx g_m(\mathcal G)\), \(\mathcal G = \tau\mathcal H\) |
 | shifted | \(f(\mathcal H) \approx g_m(\mathcal G)\), \(\mathcal G = \tau(\mathcal H - \mu I)\), with \(\mu = (\lambda_{\min} + \lambda_{\max})/2\) |
 
-`result.tau` holds \(\tau\).  For a Hermitian matrix you can check the
-approximation classically through an eigendecomposition:
+`result.tau` holds \(\tau\) and `result.mu` holds \(\mu\) (zero for
+unshifted fits).  The result applies the scaling for you, so you can check
+the approximation classically:
 
 ```python
-import numpy as np
-from felcu import evaluate_fourier_series, solve_fe_coefficients
+from felcu import solve_fe_coefficients
 
 H = ...  # Hermitian matrix
 result = solve_fe_coefficients("exponentiation", matrix=H, target_error=1e-8)
 
-w, V = np.linalg.eigh(H)
-g = evaluate_fourier_series(result.tau * w, result.a0, result.ak, result.bk)
-approx = V @ np.diag(g) @ V.conj().T     # ~= expm(H)
+result.evaluate(x)   # ~= exp(x) for x in the spectral interval
+result.apply(H)      # ~= expm(H), by eigendecomposition
 ```
+
+`apply` needs a Hermitian matrix; a non-Hermitian one is block encoded
+through its Hermitian dilation, so apply the result to that.  To evaluate
+\(g_m\) itself in the scaled variable, use
+[`evaluate_fourier_series`](api.md#felcu.evaluate_fourier_series).
 
 Passing `matrix=` instead of `sigma_min`/`sigma_max` lets `felcu` read the
 spectral interval from the matrix itself.

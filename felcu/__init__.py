@@ -26,7 +26,7 @@ Typical usage
 
 from felcu.solve import compute_fe_coefficients, solve_fe_coefficients
 from felcu.spectral import default_eta, default_sobolev_r
-from felcu.types import FourierExtensionResult
+from felcu.types import ConvergenceWarning, FourierExtensionResult
 from felcu.utils import (
     ArrayLike,
     canonical_error_metric,
@@ -44,6 +44,7 @@ __all__ = [
     # Types
     "FourierExtensionResult",
     "ArrayLike",
+    "ConvergenceWarning",
     # Main solver
     "solve_fe_coefficients",
     "compute_fe_coefficients",

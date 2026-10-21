@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from felcu import (
+    ConvergenceWarning,
     FourierExtensionResult,
     canonical_method_name,
     default_eta,
@@ -14,6 +15,10 @@ from felcu import (
     to_complex_coefficients,
 )
 from felcu.utils import evaluate_target_function, fitted_domain_segments
+
+# These tests fix m and check rates, bounds and coefficients, mostly well short
+# of the default target_error, so missing it is expected.
+pytestmark = pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
 
 # (problem, kwargs, ||f(H)||) for convex endpoint-maximising f, where reflection is norm-saturating.
 SATURATING = [
@@ -211,9 +216,10 @@ class TestResult:
         assert r.sobolev_w == 1.0
 
     def test_unreachable_target_returns_the_best(self):
-        r = solve_fe_coefficients(
-            "exponentiation", method="reflected", shifted=True, sigma_min=0.1, sigma_max=2.0, m_values=[8, 16, 32]
-        )
+        with pytest.warns(ConvergenceWarning, match="m=32"):
+            r = solve_fe_coefficients(
+                "exponentiation", method="reflected", shifted=True, sigma_min=0.1, sigma_max=2.0, m_values=[8, 16, 32]
+            )
         assert not r.converged
         assert r.m == 32
 

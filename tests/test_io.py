@@ -99,6 +99,7 @@ def test_rejects_future_version(result):
         FourierExtensionResult.from_dict(data)
 
 
+@pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
 @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
 def test_explicit_method_round_trip(method):
     original = solve_fe_coefficients(

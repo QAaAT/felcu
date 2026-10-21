@@ -14,6 +14,8 @@ Everything below is importable from the top-level `felcu` package.
     options:
       show_if_no_docstring: true
 
+::: felcu.ConvergenceWarning
+
 ## Evaluating results
 
 ::: felcu.evaluate_fourier_series
