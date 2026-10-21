@@ -28,9 +28,14 @@ request.  A new push to a branch cancels its still-running checks.
 | Job | What it does |
 |---|---|
 | `lint` | `ruff check` and `ruff format --check` |
-| `test` | The test suite with a coverage report, on Ubuntu with Python 3.11 through 3.15, and on macOS and Windows with Python 3.12 |
+| `test` | The test suite with a coverage report, on Ubuntu, macOS and Windows with Python 3.11 through 3.15 |
 | `test-min-deps` | The test suite on Python 3.11 with NumPy 2.0, the oldest supported versions |
 | `examples` | Every script in `examples/`, including the plots (headless, from a scratch directory) |
+
+The jobs run in stages: `lint` first, then `test` and `test-min-deps` in
+parallel, then `examples`.  A job only starts once the stage before it has
+passed, so a lint failure skips the tests and a test failure skips the
+examples.
 
 When you raise a minimum dependency version in `pyproject.toml`, raise it in
 `test-min-deps` too.
