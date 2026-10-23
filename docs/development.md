@@ -138,6 +138,14 @@ Add each new Python version to the `test` matrix when its first release
 candidate is out; `allow-prereleases` lets CI install it before the final
 release.
 
+`.github/workflows/spec0.yml` checks this on the first of every month (or
+when run by hand from the Actions tab), with `.github/scripts/spec0_check.py`.
+When a floor is due to rise, or a released Python version is missing from the
+`test` matrix or the classifiers, it opens an issue titled
+"SPEC 0: raise the supported versions", or updates the one already open.
+Run the check locally with `python .github/scripts/spec0_check.py`; pass
+`--today YYYY-MM-DD` to see what a later date will ask for.
+
 ## Linting and formatting
 
 Code is linted and formatted with [ruff](https://docs.astral.sh/ruff/),

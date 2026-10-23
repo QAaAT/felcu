@@ -1,0 +1,42 @@
+name: SPEC 0
+
+# Monthly check of the supported Python and dependency versions against
+# SPEC 0 (see "Supported versions" in docs/development.md).  When a floor is
+# due to rise, or a new Python release is missing from CI, it opens an issue,
+# or updates the one already open.
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Compare with SPEC 0
+        id: check
+        run: python .github/scripts/spec0_check.py --report "$RUNNER_TEMP/spec0.md"
+
+      - name: Open or update the issue
+        if: steps.check.outputs.due == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: "SPEC 0: raise the supported versions"
+        run: |
+          number=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body-file "$RUNNER_TEMP/spec0.md"
+          else
+            gh issue create --title "$TITLE" --body-file "$RUNNER_TEMP/spec0.md"
+          fi
