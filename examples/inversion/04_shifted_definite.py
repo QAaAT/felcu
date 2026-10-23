@@ -2,8 +2,9 @@
 Shifted inversion of a definite Hermitian matrix
 ================================================
 
-When H is definite (all eigenvalues the same sign), the shifted
-construction fits 1/x on a single interval centred at mu:
+When H is definite (all eigenvalues the same sign), passing
+spectral_kind='eigenvalues' selects the shifted construction, which fits
+1/x on a single interval centred at mu:
 
     f(H) = g(tau (H - mu I))
 
@@ -22,7 +23,9 @@ Q, _ = np.linalg.qr(rng.standard_normal((6, 6)))
 
 for label, eigs in [("positive definite", np.linspace(0.5, 2.0, 6)), ("negative definite", np.linspace(-2.0, -0.5, 6))]:
     H = Q @ np.diag(eigs) @ Q.T
-    r = solve_fe_coefficients("inversion", shifted=True, matrix=H, target_error=1e-6, m_values=range(4, 65, 4))
+    r = solve_fe_coefficients(
+        "inversion", spectral_kind="eigenvalues", matrix=H, target_error=1e-6, m_values=range(4, 65, 4)
+    )
 
     mu = 0.5 * (r.sigma_min + r.sigma_max)
     w, V = np.linalg.eigh(H)

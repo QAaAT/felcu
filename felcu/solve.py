@@ -158,10 +158,10 @@ def _select(candidates: list[dict], metric: str, target: float, selection: str) 
 def solve_fe_coefficients(
     problem: str,
     *,
-    shifted: bool | None = None,
     matrix: np.ndarray | Sequence[Sequence[complex]] | None = None,
     sigma_min: float | None = None,
     sigma_max: float | None = None,
+    spectral_kind: str = "auto",
     eta: float | None = None,
     target_error: float = 1e-12,
     error_metric: str = "linf",
@@ -183,19 +183,21 @@ def solve_fe_coefficients(
     problem:
         One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``
         (several aliases accepted; see :func:`~felcu.utils.canonical_problem_name`).
-    shifted:
-        ``True`` for the shifted (centred) construction, which reads an
-        eigenvalue interval; ``False`` for the unshifted one, which reads a
-        singular-value interval (action and inversion only).  ``None``
-        (default) uses singular values for inversion and for action on a
-        non-Hermitian matrix, and eigenvalues otherwise.
     matrix:
         Square matrix whose spectral information drives the fitting.
         Mutually exclusive with *sigma_min* / *sigma_max*; one of the two
         is required.
     sigma_min, sigma_max:
-        Spectral interval: eigenvalue bounds for a shifted fit,
-        singular-value bounds for an unshifted one.
+        Spectral interval: eigenvalue or singular-value bounds, per
+        *spectral_kind*.
+    spectral_kind:
+        Which spectral data the bounds (or *matrix*) describe, and so which
+        construction is used.  ``'eigenvalues'`` fits the shifted (centred)
+        construction and needs a Hermitian matrix.  ``'singular_values'``
+        fits the unshifted odd construction, available for action and
+        inversion only.  ``'auto'`` (default) uses singular values for
+        inversion and for action on a non-Hermitian matrix, and eigenvalues
+        otherwise.  ``result.shifted`` reports the construction used.
     eta:
         Fourier-extension parameter (must exceed 1).  Computed automatically
         when omitted.
@@ -251,15 +253,15 @@ def solve_fe_coefficients(
     if selection not in {"smallest_m", "smallest_alpha"}:
         raise ValueError("selection must be 'smallest_m' or 'smallest_alpha'.")
 
-    spectral = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, hermitian_tol)
+    spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol)
     spec = _make_spec(problem, spectral, eta, hermitian_tol)
 
     if sobolev_r is None:
         sobolev_r = default_sobolev_r(
             problem,
-            shifted=spectral["shifted"],
             sigma_min=spectral["sigma_min"],
             sigma_max=spectral["sigma_max"],
+            spectral_kind=spectral["kind"],
             hermitian_tol=hermitian_tol,
             eta=spec["eta"],
             sobolev_w=sobolev_w,

@@ -56,8 +56,8 @@ is the series \(g_m\) evaluated at the scaled matrix \(\mathcal G\):
 
 | Construction | Operator |
 |---|---|
-| shifted (eigenvalues) | \(f(\mathcal H) \approx g_m(\mathcal G)\), \(\mathcal G = \tau(\mathcal H - \mu I)\), with \(\mu = (\lambda_{\min} + \lambda_{\max})/2\) |
-| unshifted (singular values) | \(f(A) \approx g_m(\mathcal G)\) applied to the singular values, \(\mathcal G = \tau A\) |
+| eigenvalues (shifted) | \(f(\mathcal H) \approx g_m(\mathcal G)\), \(\mathcal G = \tau(\mathcal H - \mu I)\), with \(\mu = (\lambda_{\min} + \lambda_{\max})/2\) |
+| singular values (unshifted) | \(f(A) \approx g_m(\mathcal G)\) applied to the singular values, \(\mathcal G = \tau A\) |
 
 `result.tau` holds \(\tau\), and `result.shifted` says which construction
 was used.  For a Hermitian matrix you can check the

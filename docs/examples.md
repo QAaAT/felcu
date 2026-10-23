@@ -34,10 +34,10 @@ For eigenvalues in [2, 5], felcu centres the fit at mu = 3.5:
 
 so the constant term carries mu and only the half-width needs fitting.
 
-H is positive definite here, so its singular values are its eigenvalues
-and the unshifted singular-value construction (shifted=False) also
-applies.  That one fits the odd g(x) = x / tau on the whole of [-5, 5],
-which costs a larger alpha.
+H is positive definite here, so its singular values are its eigenvalues,
+and passing spectral_kind='singular_values' gives the unshifted
+construction instead.  Singular values cannot be shifted, so it fits the
+odd g(x) = x / tau on the whole of [-5, 5], which costs a larger alpha.
 
 ```python title="examples/action/02_shifted.py"
 --8<-- "examples/action/02_shifted.py"
@@ -100,8 +100,9 @@ The fitted g(x) = tau / x is applied to the singular values:
 
 ### Shifted inversion of a definite Hermitian matrix
 
-When H is definite (all eigenvalues the same sign), the shifted
-construction fits 1/x on a single interval centred at mu:
+When H is definite (all eigenvalues the same sign), passing
+spectral_kind='eigenvalues' selects the shifted construction, which fits
+1/x on a single interval centred at mu:
 
     f(H) = g(tau (H - mu I))
 

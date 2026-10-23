@@ -15,8 +15,9 @@ It supports four problems:
 | `square_root` | f(H) = √H (H positive definite) |
 
 A matrix or spectral bounds are required.  Eigenvalue intervals use the
-shifted (centred) construction; action and inversion also have an unshifted
-construction on singular values, for non-Hermitian matrices.
+shifted (centred) construction.  Singular values cannot be shifted, so action
+and inversion also have an unshifted construction on them, for non-Hermitian
+matrices.
 
 ## Installation
 

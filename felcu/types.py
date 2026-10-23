@@ -26,8 +26,8 @@ class FourierExtensionResult:
     problem : str
         ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``.
     shifted : bool
-        Whether the shifted (centred) construction was used: ``True`` for
-        an eigenvalue interval, ``False`` for a singular-value one.
+        Whether the shifted (centred) construction was used.  ``True`` for
+        an eigenvalue interval; singular values can only be fitted unshifted.
     basis_used : str
         ``'odd_sine'`` (sine terms only), ``'const_plus_sine'`` (constant
         plus sine terms), or ``'full'``.

@@ -31,9 +31,9 @@ Four problems are supported:
 | `square_root` | \(f(\mathcal H) = \sqrt{\mathcal H}\) | positive-definite eigenvalue interval (shifted only) |
 
 A matrix or spectral bounds are required.  Eigenvalue intervals use the
-*shifted* (centred) construction; the *unshifted* construction is kept for
-singular values, so that action and inversion work for non-Hermitian
-matrices.  See [Problems and constructions](guide/problems.md).
+*shifted* (centred) construction.  Singular values cannot be shifted, so
+action and inversion also have an *unshifted* odd construction on them,
+which covers non-Hermitian matrices.  See [Problems and constructions](guide/problems.md).
 
 ## At a glance
 

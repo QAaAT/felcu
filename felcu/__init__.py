@@ -5,13 +5,15 @@ The coefficients are returned in the real Fourier basis
     g(x) = a0 + sum_{k=1}^m ak[k-1] sin(k x) + bk[k-1] cos(k x).
 
 A matrix or spectral bounds are required.  The scalar function is fitted in a
-scaled variable x:
+scaled variable x.  An eigenvalue interval is fitted shifted (centred at its
+midpoint mu); singular values cannot be shifted, so they are fitted unshifted
+by an odd series:
 
-    shifted (eigenvalues):        g(x) = f(x/tau + mu),   f(H) = g(tau (H - mu I))
-    unshifted (singular values):  g(x) = f(x/tau),        f(A) = g(tau A)
+    eigenvalues, shifted:        g(x) = f(x/tau + mu),   f(H) = g(tau (H - mu I))
+    singular values, unshifted:  g(x) = f(x/tau),        f(A) = g(tau A)
 
-The unshifted construction is used for inversion and for action on a
-non-Hermitian matrix; everything else is shifted.
+Singular values are used for inversion and for action on a non-Hermitian
+matrix; everything else uses eigenvalues.
 
 Typical usage
 -------------

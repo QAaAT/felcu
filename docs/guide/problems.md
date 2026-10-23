@@ -1,8 +1,8 @@
 # Problems and constructions
 
-Every fit is described by three choices: the **problem** (which \(f\)),
-whether the construction is **shifted**, and where the **spectral interval**
-comes from.
+Every fit is described by the **problem** (which \(f\)) and the
+**spectral interval**: eigenvalues or singular values, and where they come
+from.  Those decide whether the construction is **shifted**.
 
 ## Spectral information
 
@@ -16,20 +16,23 @@ solve_fe_coefficients("inversion", matrix=A)
 Passing neither, or both, raises an error.  With `matrix=`, `felcu`
 computes eigenvalues or singular values itself.
 
-The construction fixes which interval is read: the **shifted**
-construction fits an eigenvalue interval, and the **unshifted** one a
-singular-value interval.  `shifted` chooses between them:
+`spectral_kind` says which data the bounds (or the matrix) give:
 
-| Problem | `shifted=None` (default) | Also available |
+| Problem | `spectral_kind='auto'` (default) | Also available |
 |---|---|---|
-| `action` | `True` (eigenvalues); `False` (singular values) for a non-Hermitian matrix | the other one |
-| `inversion` | `False` (singular values) | `True` (eigenvalues, must be definite) |
-| `exponentiation` | `True` (eigenvalues) | none |
-| `square_root` | `True` (eigenvalues, must be positive definite) | none |
+| `action` | eigenvalues; singular values for a non-Hermitian matrix | the other one |
+| `inversion` | singular values | eigenvalues (must be definite) |
+| `exponentiation` | eigenvalues | none |
+| `square_root` | eigenvalues (must be positive definite) | none |
 
-`sigma_min`/`sigma_max` are read as eigenvalue or singular-value bounds to
-match.  The shifted construction requires a Hermitian matrix (tested to
-`hermitian_tol`).
+Eigenvalues need a Hermitian matrix (tested to `hermitian_tol`).
+
+The kind decides the construction.  An eigenvalue interval is fitted
+**shifted**, centred at its midpoint (see
+[Shifted and unshifted](#shifted-and-unshifted)).  Singular values cannot
+be shifted, because subtracting \(\mu I\) does not move them by \(\mu\), so
+they are fitted **unshifted** by an odd series; only action and inversion
+have one.  `result.shifted` reports which was used.
 
 ## The scaled variable
 
@@ -92,7 +95,7 @@ and leaves the gap around the pole unconstrained.  `result.domain` is
 for a general \(A\) through its Hermitian dilation, whose spectrum is
 \(\pm\operatorname{sv}(A)\).
 
-## Shifted versus unshifted
+## Shifted and unshifted
 
 The shifted construction centres the spectrum before fitting.  For an
 interval far from zero, such as \([2, 5]\), it only covers the half-width
@@ -100,10 +103,12 @@ interval far from zero, such as \([2, 5]\), it only covers the half-width
 the shift only adds the known phase \(e^{-ik\tau\mu}\) to each Hamiltonian
 simulation.  Every eigenvalue interval is fitted this way.
 
-The unshifted construction is kept for singular values, where the target
-must be odd and so cannot be centred.  It covers a non-Hermitian matrix,
-for which there is no real eigenvalue interval, and indefinite inversion
-through the two-interval fit above.  For the same interval it has to cover
+The unshifted construction is used for singular values.  An odd series
+acts on singular values directly, as in QSVT, and needs no centring; for
+a Hermitian matrix the singular values are \(|\lambda|\), so the same fit
+applies to its eigenvalues.  This covers a non-Hermitian matrix, which
+has no real eigenvalue interval, and indefinite inversion through the
+two-interval fit above.  For the same interval it has to cover
 \([-\Sigma_{\max}, \Sigma_{\max}]\), so it usually costs more \(m\) and
 \(\alpha_m\) than a shifted fit would.
 
@@ -118,8 +123,9 @@ treatment of the matrix square root (Sec. VI D): \(\mathcal H\) must be
 positive definite, \(0 < \lambda_{\min} \le \lambda_{\max}\), and the fit
 uses the shifted construction with \(\eta_{\rm def}\), which places the
 branch point on the periodic boundary rather than near the fitted
-endpoint.  `shifted=False` raises an error, since an unshifted interval
-\([-\|\mathcal H\|, \|\mathcal H\|]\) would contain the branch point.
+endpoint.  `spectral_kind='singular_values'` raises an error, since the
+unshifted interval \([-\|\mathcal H\|, \|\mathcal H\|]\) would contain the
+branch point.
 
 \(\sqrt x\) is concave, so it does not satisfy the convex
 endpoint-reflection condition and the subnormalisation is bounded but not

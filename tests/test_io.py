@@ -30,10 +30,10 @@ def result():
     "problem, kwargs",
     [
         ("action", dict(sigma_min=-1.0, sigma_max=2.0)),
-        ("action", dict(shifted=False, sigma_min=0.0, sigma_max=2.0)),
+        ("action", dict(spectral_kind="singular_values", sigma_min=0.0, sigma_max=2.0)),
         ("inversion", dict(sigma_min=0.5, sigma_max=2.0)),
-        ("exponentiation", dict(shifted=True, sigma_min=1.0, sigma_max=3.0)),
-        ("square_root", dict(shifted=True, sigma_min=0.2, sigma_max=1.0)),
+        ("exponentiation", dict(sigma_min=1.0, sigma_max=3.0)),
+        ("square_root", dict(sigma_min=0.2, sigma_max=1.0)),
     ],
 )
 def test_round_trip_is_exact(tmp_path, problem, kwargs):
@@ -52,7 +52,7 @@ def test_matrix_metadata_round_trip():
 
 
 def test_infinite_tau_is_standard_json():
-    original = solve_fe_coefficients("exponentiation", shifted=True, sigma_min=1.0, sigma_max=1.0)
+    original = solve_fe_coefficients("exponentiation", sigma_min=1.0, sigma_max=1.0)
     assert original.tau == np.inf
     text = original.to_json()
 
