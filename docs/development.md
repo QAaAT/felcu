@@ -20,6 +20,24 @@ python -m pytest tests/ -v
 
 To see which lines the tests miss, add `--cov=felcu --cov-report=term-missing`.
 
+### Regression tests
+
+`tests/test_regression.py` solves a fixed set of cases, defined in
+`tests/regression_cases.py`, and compares the results with references saved
+as JSON in `tests/data/regression/`.  Coefficients must agree to within
+`1e-9 * alpha` and other floats to a relative `1e-6`, which allows for
+differences between BLAS/LAPACK builds; everything else must match exactly.
+
+When a change is meant to alter the coefficients, regenerate the references
+and commit them with the change:
+
+```bash
+python tests/regression_cases.py
+```
+
+The script refuses to run unless `felcu` is imported from the checkout (an
+editable install).  To add a case, add it to `CASES` and regenerate.
+
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on every push to `main` and every pull
