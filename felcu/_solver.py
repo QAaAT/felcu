@@ -19,6 +19,7 @@ from felcu._linalg import (
     _gauss_interval,
     _lstsq,
     _penalty,
+    _ridge_qr,
     _validation_errors,
 )
 from felcu._logging import logger
@@ -104,6 +105,10 @@ def _make_linear_solver(
     into ridge regression on ``A D^{-1}``.  One SVD of that matrix then
     solves every ``lam > 0`` cheaply.  ``lam = 0`` keeps the plain
     least-squares solve on ``A``.
+
+    LAPACK's SVD can fail to converge on these near-singular systems, depending
+    on the BLAS build and the CPU it runs on.  If it does, every ``lam > 0`` is
+    solved by QR instead, which is slower but always succeeds.
     """
     basis = spec["basis"]
     ncols = _basis_size(basis, m)
@@ -121,11 +126,20 @@ def _make_linear_solver(
             return _finish_solve(_lstsq(A, b), data, spec, m)
         if not svd:
             # Factorise lazily: an m that is infeasible at lam = 0 never needs it.
-            U, s, Vt = np.linalg.svd(A / d, full_matrices=False)
-            keep = s > np.finfo(float).eps * max(A.shape) * s[0]
-            svd.update(s=s[keep], Ut_b=U[:, keep].T @ b, V=Vt[keep].T)
-        s = svd["s"]
-        y = svd["V"] @ (s / (s**2 + lam**2) * svd["Ut_b"])
+            Ad = A / d
+            try:
+                U, s, Vt = np.linalg.svd(Ad, full_matrices=False)
+            except np.linalg.LinAlgError:
+                logger.debug("    SVD did not converge for m=%d; solving each lam by QR", m)
+                svd["Ad"] = Ad
+            else:
+                keep = s > np.finfo(float).eps * max(A.shape) * s[0]
+                svd.update(s=s[keep], Ut_b=U[:, keep].T @ b, V=Vt[keep].T)
+        if "Ad" in svd:
+            y = _ridge_qr(svd["Ad"], b, lam)
+        else:
+            s = svd["s"]
+            y = svd["V"] @ (s / (s**2 + lam**2) * svd["Ut_b"])
         return _finish_solve(y / d, data, spec, m)
 
     return solve

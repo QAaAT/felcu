@@ -274,11 +274,20 @@ class TestSelection:
 
 
 class TestLinearSolver:
+    @pytest.mark.parametrize("svd_fails", [False, True])
     @pytest.mark.parametrize("lam", [1e-6, 1e-3, 1e-1])
-    def test_matches_augmented_lstsq(self, lam):
+    def test_matches_augmented_lstsq(self, lam, svd_fails, monkeypatch):
         from felcu._linalg import _penalty
         from felcu._solver import _fit_system, _make_fit_data, _make_linear_solver
         from felcu.spectral import _make_spec, _spectral_data
+
+        if svd_fails:
+            # Whether LAPACK's SVD converges depends on the BLAS build and CPU,
+            # so force the failure to test the QR fallback everywhere.
+            def svd(*args, **kwargs):
+                raise np.linalg.LinAlgError("SVD did not converge")
+
+            monkeypatch.setattr(np.linalg, "svd", svd)
 
         spectral = _spectral_data("exponentiation", False, None, 0.1, 2.0, "auto", 1e-12, True)
         spec = _make_spec("exponentiation", False, spectral, None, 1e-12)

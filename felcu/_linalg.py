@@ -59,3 +59,15 @@ def _lstsq(A: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Least-squares solve via LAPACK (numpy.linalg.lstsq)."""
     x, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
     return x
+
+
+def _ridge_qr(A: np.ndarray, b: np.ndarray, lam: float) -> np.ndarray:
+    """Solve ``min ||A y - b||^2 + lam^2 ||y||^2`` for ``lam > 0`` by QR.
+
+    Householder QR of the stacked matrix ``[A; lam I]`` is not iterative, so
+    unlike an SVD it cannot fail to converge, and every singular value of the
+    stacked matrix is at least ``lam``, so its ``R`` factor is invertible.
+    """
+    n = A.shape[1]
+    Q, R = np.linalg.qr(np.vstack([A, lam * np.eye(n)]))
+    return np.linalg.solve(R, Q[: A.shape[0]].T @ b)
