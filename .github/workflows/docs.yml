@@ -1,9 +1,21 @@
 name: Docs
 
+# Only build (and, on main, deploy) when something the site is built from
+# changes: the pages, the docstrings behind the API reference, and the example
+# scripts the Examples page includes.  Run it by hand from the Actions tab
+# otherwise.
 on:
   push:
     branches: ["main"]
+    paths: &site-sources
+      - "docs/**"
+      - "mkdocs.yml"
+      - "felcu/**"
+      - "examples/**"
+      - "pyproject.toml"
+      - ".github/workflows/docs.yml"
   pull_request:
+    paths: *site-sources
   workflow_dispatch:
 
 permissions:
@@ -19,9 +31,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -31,7 +43,7 @@ jobs:
       - name: Build site
         run: mkdocs build --strict
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         if: github.event_name != 'pull_request'
         with:
           path: site
@@ -45,4 +57,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

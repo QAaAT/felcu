@@ -18,8 +18,32 @@ package into `site-packages`, and scripts run from elsewhere (such as
 python -m pytest tests/ -v
 ```
 
-CI runs the same command on Python 3.11 through 3.15 for every push to `main`
-and every pull request (`.github/workflows/ci.yml`).
+To see which lines the tests miss, add `--cov=felcu --cov-report=term-missing`.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull
+request.  A new push to a branch cancels its still-running checks.
+
+| Job | What it does |
+|---|---|
+| `lint` | `ruff check` and `ruff format --check` |
+| `test` | The test suite with a coverage report, on Ubuntu, macOS and Windows with Python 3.11 through 3.15 |
+| `test-min-deps` | The test suite on Python 3.11 with NumPy 2.0, the oldest supported versions |
+| `examples` | Every script in `examples/`, including the plots (headless, from a scratch directory) |
+
+The jobs run in stages: `lint` first, then `test` and `test-min-deps` in
+parallel, then `examples`.  A job only starts once the stage before it has
+passed, so a lint failure skips the tests and a test failure skips the
+examples.
+
+When you raise a minimum dependency version in `pyproject.toml`, raise it in
+`test-min-deps` too.
+
+[Dependabot](https://docs.github.com/en/code-security/dependabot)
+(`.github/dependabot.yml`) opens monthly pull requests to update the GitHub
+Actions versions and the ruff pin.  It leaves the library's minimum
+dependency versions alone; raise those by hand.
 
 ## Linting and formatting
 
@@ -34,8 +58,8 @@ ruff format .
 ```
 
 CI runs `ruff check .` and `ruff format --check .` and fails if either
-reports anything.  The ruff version is pinned in the `dev` extra and in CI,
-so local and CI formatting agree.  Markdown files are not formatted, so code
+reports anything.  The ruff version is pinned once, in the `dev` extra, and
+CI installs it from there, so local and CI formatting agree.  Markdown files are not formatted, so code
 blocks in `docs/` are left as written.
 
 ## Documentation
@@ -60,8 +84,12 @@ pip install -e ".[plots]"
 for f in examples/plots/0*.py; do MPLBACKEND=Agg python "$f" docs/images/plots; done
 ```
 
-Pushes to `main` publish the site to GitHub Pages
-(`.github/workflows/docs.yml`).  In the repository settings, under
+Pushes to `main` that change the site's sources (`docs/`, `mkdocs.yml`,
+`felcu/` for the API reference, `examples/` for the Examples page,
+`pyproject.toml` or the workflow itself) publish the site to GitHub Pages
+(`.github/workflows/docs.yml`); pull requests that change them build it
+without publishing.  To publish anyway, run the workflow by hand from the
+Actions tab.  In the repository settings, under
 **Pages → Build and deployment**, the source must be set to
 **GitHub Actions**.
 

@@ -9,12 +9,6 @@ import numpy as np
 from felcu._coefficients import _assemble
 
 
-def _trapz(y: np.ndarray, x: np.ndarray) -> float:
-    if hasattr(np, "trapezoid"):
-        return float(np.trapezoid(y, x))
-    return float(np.trapz(y, x))  # noqa: NPY201  (NumPy < 2 fallback)
-
-
 def _gauss_interval(a: float, b: float, n: int) -> tuple[np.ndarray, np.ndarray]:
     """Gauss-Legendre nodes and weights on [a, b], split into panels for large n."""
     n = max(int(n), 2)
@@ -55,7 +49,7 @@ def _validation_errors(
     linf = 0.0
     for x, A, y in val:
         r = np.abs(A @ c - y)
-        integral += _trapz(r**2, x)
+        integral += float(np.trapezoid(r**2, x))
         if r.size:
             linf = max(linf, float(np.max(r)))
     return math.sqrt(max(integral, 0.0)), linf
@@ -65,3 +59,15 @@ def _lstsq(A: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Least-squares solve via LAPACK (numpy.linalg.lstsq)."""
     x, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
     return x
+
+
+def _ridge_qr(A: np.ndarray, b: np.ndarray, lam: float) -> np.ndarray:
+    """Solve ``min ||A y - b||^2 + lam^2 ||y||^2`` for ``lam > 0`` by QR.
+
+    Householder QR of the stacked matrix ``[A; lam I]`` is not iterative, so
+    unlike an SVD it cannot fail to converge, and every singular value of the
+    stacked matrix is at least ``lam``, so its ``R`` factor is invertible.
+    """
+    n = A.shape[1]
+    Q, R = np.linalg.qr(np.vstack([A, lam * np.eye(n)]))
+    return np.linalg.solve(R, Q[: A.shape[0]].T @ b)

@@ -73,3 +73,29 @@ result.alpha        # subnormalisation alpha_m
 - [Examples](examples.md): short scripts, one idea each, plus
   plots.
 - [API reference](api.md).
+
+## Citation
+
+If you use `felcu` in your work, please cite the paper:
+
+```bibtex
+@misc{brearley2026fourier,
+  title         = {Fourier extensions for matrix-function block encodings
+                   with error-independent subnormalization bounds},
+  author        = {Brearley, Peter and Howarth, Thomas L. and Adcock, Ben},
+  year          = {2026},
+  eprint        = {2601.18024},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/2601.18024},
+}
+```
+
+The repository's
+[`CITATION.cff`](https://github.com/QAaAT/felcu/blob/main/CITATION.cff)
+holds the same reference, and GitHub's "Cite this repository" button
+exports it in other formats.
+
+## License
+
+`felcu` is released under the
+[MIT License](https://github.com/QAaAT/felcu/blob/main/LICENSE).
