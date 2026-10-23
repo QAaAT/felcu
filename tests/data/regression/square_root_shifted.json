@@ -3,6 +3,7 @@
   "format_version": 1,
   "felcu_version": "0.1.0",
   "problem": "square_root",
+  "method": "sobolev",
   "shifted": true,
   "basis_used": "full",
   "m": 32,

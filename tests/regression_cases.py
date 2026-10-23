@@ -16,7 +16,9 @@ from felcu import solve_fe_coefficients
 DATA_DIR = Path(__file__).parent / "data" / "regression"
 
 # Small m grids keep each case fast while still exercising the lambda search
-# and the choice between candidates.
+# and the choice between candidates.  The explicit methods converge more
+# slowly, so their cases set their own grid, each spanning orders that miss
+# and meet the target.
 M_VALUES = [16, 24, 32]
 
 CASES = {
@@ -29,11 +31,53 @@ CASES = {
     ),
     "exponentiation_matrix": dict(problem="exponentiation", matrix=[[1.0, 0.2], [0.2, 0.5]], target_error=1e-8),
     "square_root_shifted": dict(problem="square_root", shifted=True, sigma_min=0.2, sigma_max=1.0, target_error=1e-4),
+    "reflected_action": dict(
+        problem="action", method="reflected", sigma_min=-1.0, sigma_max=1.0, target_error=1e-2, m_values=[32, 64, 128]
+    ),
+    "reflected_exponentiation_shifted": dict(
+        problem="exponentiation",
+        method="reflected",
+        shifted=True,
+        sigma_min=0.1,
+        sigma_max=2.0,
+        target_error=5e-2,
+        m_values=[32, 64, 128],
+    ),
+    "reflected_inversion_shifted": dict(
+        problem="inversion", method="reflected", shifted=True, sigma_min=1.0, sigma_max=2.0, target_error=1e-2
+    ),
+    "arcsine_taylor_exponentiation_shifted": dict(
+        problem="exponentiation",
+        method="arcsine_taylor",
+        shifted=True,
+        sigma_min=0.1,
+        sigma_max=2.0,
+        target_error=1e-4,
+        m_values=[32, 48, 64],
+    ),
+    "arcsine_taylor_inversion_shifted": dict(
+        problem="inversion",
+        method="arcsine_taylor",
+        shifted=True,
+        sigma_min=1.0,
+        sigma_max=2.0,
+        target_error=1e-6,
+        m_values=[32, 48, 64],
+    ),
+    "arcsine_taylor_square_root_shifted": dict(
+        problem="square_root",
+        method="arcsine_taylor",
+        shifted=True,
+        sigma_min=0.5,
+        sigma_max=1.0,
+        target_error=1e-6,
+        m_values=[32, 48, 64],
+    ),
 }
 
 
 def solve(name):
-    return solve_fe_coefficients(m_values=M_VALUES, **CASES[name])
+    return solve_fe_coefficients(**({"m_values": M_VALUES} | CASES[name]))
 
 
 def reference_path(name):

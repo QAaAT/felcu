@@ -26,7 +26,8 @@ _SERIES_ATOL = 1e-3  # relative to target_error
 _COEFFICIENTS = {"a0", "ak", "bk", "complex_coefficients"}
 
 # lambda is found by bisection on a flat error curve, and the achieved errors
-# follow it, so they move more than alpha does.
+# follow it, so they move more than alpha does.  The explicit methods have no
+# lambda (it is None) and are only compared this loosely for simplicity.
 _SOLVER_RTOL = {
     "alpha": 1e-6,
     "lambda_used": 1e-4,
@@ -48,7 +49,9 @@ def test_matches_reference(name):
         x, y = getattr(actual, field.name), getattr(expected, field.name)
         if field.name == "all_results" or field.name in _COEFFICIENTS:
             continue
-        if field.name in _CLOSED_FORM and y is not None:
+        if y is None:
+            assert x is None, field.name
+        elif field.name in _CLOSED_FORM:
             np.testing.assert_allclose(x, y, rtol=_CLOSED_FORM_RTOL, err_msg=field.name)
         elif field.name in _SOLVER_RTOL:
             np.testing.assert_allclose(x, y, rtol=_SOLVER_RTOL[field.name], err_msg=field.name)
