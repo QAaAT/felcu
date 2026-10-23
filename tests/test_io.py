@@ -8,6 +8,8 @@ import pytest
 
 from felcu import FourierExtensionResult, solve_fe_coefficients
 
+pytestmark = pytest.mark.interface
+
 
 def _assert_same(a, b):
     for field in dataclasses.fields(FourierExtensionResult):
@@ -115,3 +117,12 @@ def test_rejects_missing_field(result):
     del data["tau"]
     with pytest.raises(ValueError, match="tau"):
         FourierExtensionResult.from_dict(data)
+
+
+@pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
+def test_json_round_trip(method):
+    r = solve_fe_coefficients("inversion", method=method, shifted=True, sigma_min=0.5, sigma_max=1.0, m=12)
+    loaded = FourierExtensionResult.from_json(r.to_json())
+    assert loaded.method == method
+    assert loaded.lambda_used is None and loaded.sobolev_r is None
+    np.testing.assert_array_equal(loaded.ak, r.ak)

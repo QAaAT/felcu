@@ -20,6 +20,34 @@ python -m pytest tests/ -v
 
 To see which lines the tests miss, add `--cov=felcu --cov-report=term-missing`.
 
+Every test belongs to exactly one category, one file each, from the lowest
+layer up:
+
+| Category | File | What it checks |
+|---|---|---|
+| `unit` | `test_unit.py` | One helper or internal component in isolation: name aliases, grids, series evaluation, the default `eta` and `r` formulas, the linear solver |
+| `interface` | `test_interface.py`, `test_io.py` | The public contract: input validation, defaults and options, result fields, candidate selection, saving and loading |
+| `convergence` | `test_convergence.py` | Mathematical correctness: targets met, the paper's closed-form coefficients, convergence rates and subnormalisation bounds |
+| `regression` | `test_regression.py` | Output unchanged from the saved references (below) |
+
+The category is the file's `pytestmark`, and `tests/conftest.py` stops
+collection if any test has no category or more than one.  A failure low down
+usually explains the ones above it: a broken helper also breaks convergence
+and regression, so start with the lowest failing category.  Run one category
+with `-m`:
+
+```bash
+python -m pytest tests/ -m unit
+```
+
+Convergence and regression tests can look alike, but answer different
+questions.  Convergence tests check that the output is *right*; regression
+tests check that it has not *changed*.  Regenerating the references after a
+change that breaks a method would pass the regression tests, so the
+convergence tests are what catch it.
+
+Helpers shared between test files live in `tests/helpers.py`.
+
 ### Regression tests
 
 `tests/test_regression.py` solves a fixed set of cases, defined in
@@ -50,16 +78,6 @@ editable install).  To add a case, add it to `CASES` and regenerate.  Pass
 a directory (`python tests/regression_cases.py OUT_DIR`) to write the
 results there instead of over the references.
 
-The regression tests are marked `regression`.  Every other test is marked
-`functional` (by `tests/conftest.py`): these check stated behaviour and the
-paper's properties, such as convergence and error bounds, rather than
-comparing with saved output.  Run either group alone with:
-
-```bash
-python -m pytest tests/ -m functional
-python -m pytest tests/ -m regression
-```
-
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on every push to `main` and every pull
@@ -68,19 +86,21 @@ request.  A new push to a branch cancels its still-running checks.
 | Job | What it does |
 |---|---|
 | `lint` | `ruff check` and `ruff format --check` |
-| `test` | The functional tests, then the regression tests, with a combined coverage report, on Ubuntu, macOS and Windows with Python 3.11 through 3.15 |
-| `test-min-deps` | The functional tests, then the regression tests, on Python 3.11 with NumPy 2.0, the oldest supported versions |
+| `test` | Each test category as its own step, with a combined coverage report, on Ubuntu, macOS and Windows with Python 3.11 through 3.15 |
+| `test-min-deps` | Each test category as its own step, on Python 3.11 with NumPy 2.0, the oldest supported versions |
+| `install` | The whole suite against a regular (not editable) install, run from outside the checkout, so a package that builds incomplete fails |
 | `examples` | Every script in `examples/`, including the plots (headless, from a scratch directory) |
 
-The jobs run in stages: `lint` first, then `test` and `test-min-deps` in
-parallel, then `examples`.  A job only starts once the stage before it has
+The jobs run in stages: `lint` first, then `test`, `test-min-deps` and
+`install` in parallel, then `examples`.  A job only starts once the stage before it has
 passed, so a lint failure skips the tests and a test failure skips the
 examples.
 
-Within `test` and `test-min-deps`, the regression step runs even when the
-functional tests fail, so the failing step's name says which kind of test broke.
-The regression tests run on every platform because their purpose is to
-catch drift between BLAS/LAPACK builds and NumPy versions.  When they fail,
+Within `test` and `test-min-deps`, the categories run lowest first, and each
+step runs even when an earlier one failed, so one failure cannot hide
+another and the failing step's name says which layer broke.  Every category
+runs on every platform: convergence and regression in particular depend on
+rounding, which differs between BLAS/LAPACK builds and NumPy versions.  When they fail,
 the job uploads that platform's results as an artifact,
 `regression-results-<os>-py<version>` (or `regression-results-min-deps`),
 laid out like `tests/data/regression/`, so you can diff them against the

@@ -1,9 +1,8 @@
 """Regression tests: compare solver output with reference results saved as JSON.
 
 The cases are defined in ``regression_cases.py``, which also regenerates the
-references (``python tests/regression_cases.py``).  Every test here is marked
-``regression``, so ``pytest -m regression`` runs just these; every other test
-is marked ``functional`` (see ``conftest.py``).
+references (``python tests/regression_cases.py``).  Run just these with
+``pytest -m regression``; the categories are described in ``conftest.py``.
 """
 
 import dataclasses

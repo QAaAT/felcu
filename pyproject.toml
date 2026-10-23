@@ -66,6 +66,8 @@ known-first-party = ["felcu", "_style"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-    "functional: checks stated behaviour and properties; every test not marked regression (see tests/conftest.py)",
+    "unit: one helper or internal component in isolation",
+    "interface: the public contract: validation, defaults, result fields, selection, saving and loading",
+    "convergence: mathematical correctness: targets met, convergence rates and subnormalisation bounds",
     "regression: compares solver output with the saved references in tests/data/regression",
 ]
