@@ -133,11 +133,11 @@ the script updates:
   job that pins one, in the workflows;
 - the requirements in `docs/getting-started.md`.
 
-The workflow commits that to the `spec0-update` branch and opens a pull
-request, "Raise the supported versions to SPEC 0", or updates the one already
-open, then runs CI on it.  A higher ruff target or a new Python can need code
-or dependency changes too, so review CI before merging; push any fixes to the
-same branch.  Two repository settings are needed: Issues and pull requests
+The workflow commits that to the `spec0-update` branch, opens a pull request,
+"Raise the supported versions to SPEC 0", and runs CI on it.  A higher ruff
+target or a new Python can need code or dependency changes too, so review CI
+before merging, and push any fixes to the same branch: while the pull request
+is open, later updates are committed on top of it, so the fixes are kept.  Two repository settings are needed: Issues and pull requests
 enabled, and **Settings → Actions → General → Allow GitHub Actions to create
 and approve pull requests** turned on.
 

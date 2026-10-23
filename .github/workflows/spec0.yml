@@ -3,8 +3,9 @@ name: SPEC 0
 # Monthly check of the supported Python and dependency versions against
 # SPEC 0 (see "Supported versions" in docs/development.md).  When a floor is
 # due to rise, or a new Python release is missing from CI, it updates the
-# files on the spec0-update branch and opens a pull request, or updates the
-# one already open.
+# files on the spec0-update branch and opens a pull request.  While that pull
+# request is open, later updates are added on top of it, so fixes pushed to
+# the branch are kept.
 on:
   schedule:
     - cron: "0 6 1 * *"
@@ -20,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BRANCH: spec0-update
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
 
@@ -28,6 +30,19 @@ jobs:
         with:
           python-version: "3.13"
 
+      # Start from the open pull request if there is one, otherwise from main.
+      - name: Check out the update branch
+        id: branch
+        run: |
+          number=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          echo "pr=$number" >> "$GITHUB_OUTPUT"
+          if [ -n "$number" ]; then
+            git fetch --quiet origin "$BRANCH:$BRANCH"
+            git switch "$BRANCH"
+          else
+            git switch --create "$BRANCH"
+          fi
+
       - name: Bring the versions up to SPEC 0
         id: update
         run: python .github/scripts/spec0_check.py --apply --report "$RUNNER_TEMP/spec0.md"
@@ -35,29 +50,23 @@ jobs:
       - name: Open or update the pull request
         if: steps.update.outputs.due == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          PR: ${{ steps.branch.outputs.pr }}
           TITLE: "Raise the supported versions to SPEC 0"
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch --create "$BRANCH"
           git commit --all --quiet --file - <<EOF
           $TITLE
 
           $(cat "$RUNNER_TEMP/spec0.md")
           EOF
 
-          # Leave an open pull request alone if this run changes nothing in it.
-          if git fetch --quiet origin "$BRANCH" 2>/dev/null && git diff --quiet FETCH_HEAD HEAD; then
-            echo "$BRANCH already has these changes."
-            exit 0
-          fi
-          git push --force origin "$BRANCH"
-
-          number=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
-          if [ -n "$number" ]; then
-            gh pr edit "$number" --body-file "$RUNNER_TEMP/spec0.md"
+          if [ -n "$PR" ]; then
+            git push origin "$BRANCH"
+            gh pr edit "$PR" --body-file "$RUNNER_TEMP/spec0.md"
           else
+            # Any spec0-update left by a merged or closed pull request is replaced.
+            git push --force origin "$BRANCH"
             gh pr create --head "$BRANCH" --title "$TITLE" --body-file "$RUNNER_TEMP/spec0.md"
           fi
 
