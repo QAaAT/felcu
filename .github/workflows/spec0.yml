@@ -2,20 +2,24 @@ name: SPEC 0
 
 # Monthly check of the supported Python and dependency versions against
 # SPEC 0 (see "Supported versions" in docs/development.md).  When a floor is
-# due to rise, or a new Python release is missing from CI, it opens an issue,
-# or updates the one already open.
+# due to rise, or a new Python release is missing from CI, it updates the
+# files on the spec0-update branch and opens a pull request, or updates the
+# one already open.
 on:
   schedule:
     - cron: "0 6 1 * *"
   workflow_dispatch:
 
 permissions:
-  contents: read
-  issues: write
+  contents: write
+  pull-requests: write
+  actions: write
 
 jobs:
-  check:
+  update:
     runs-on: ubuntu-latest
+    env:
+      BRANCH: spec0-update
     steps:
       - uses: actions/checkout@v7
 
@@ -24,19 +28,39 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Compare with SPEC 0
-        id: check
-        run: python .github/scripts/spec0_check.py --report "$RUNNER_TEMP/spec0.md"
+      - name: Bring the versions up to SPEC 0
+        id: update
+        run: python .github/scripts/spec0_check.py --apply --report "$RUNNER_TEMP/spec0.md"
 
-      - name: Open or update the issue
-        if: steps.check.outputs.due == 'true'
+      - name: Open or update the pull request
+        if: steps.update.outputs.due == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          TITLE: "SPEC 0: raise the supported versions"
+          TITLE: "Raise the supported versions to SPEC 0"
         run: |
-          number=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number')
-          if [ -n "$number" ]; then
-            gh issue edit "$number" --body-file "$RUNNER_TEMP/spec0.md"
-          else
-            gh issue create --title "$TITLE" --body-file "$RUNNER_TEMP/spec0.md"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --create "$BRANCH"
+          git commit --all --quiet --file - <<EOF
+          $TITLE
+
+          $(cat "$RUNNER_TEMP/spec0.md")
+          EOF
+
+          # Leave an open pull request alone if this run changes nothing in it.
+          if git fetch --quiet origin "$BRANCH" 2>/dev/null && git diff --quiet FETCH_HEAD HEAD; then
+            echo "$BRANCH already has these changes."
+            exit 0
           fi
+          git push --force origin "$BRANCH"
+
+          number=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh pr edit "$number" --body-file "$RUNNER_TEMP/spec0.md"
+          else
+            gh pr create --head "$BRANCH" --title "$TITLE" --body-file "$RUNNER_TEMP/spec0.md"
+          fi
+
+          # Pushes made with GITHUB_TOKEN do not trigger other workflows, but a
+          # manual run does, and its checks show on the pull request.
+          gh workflow run ci.yml --ref "$BRANCH"

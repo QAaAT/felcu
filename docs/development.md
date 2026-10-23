@@ -86,8 +86,8 @@ request.  A new push to a branch cancels its still-running checks.
 | Job | What it does |
 |---|---|
 | `lint` | `ruff check` and `ruff format --check` |
-| `test` | Each test category as its own step, with a combined coverage report, on Ubuntu, macOS and Windows with every supported Python (3.13 through 3.15) |
-| `test-min-deps` | Each test category as its own step, on Python 3.13 with NumPy 2.2, the oldest supported versions |
+| `test` | Each test category as its own step, with a combined coverage report, on Ubuntu, macOS and Windows with every supported Python |
+| `test-min-deps` | Each test category as its own step, on the oldest supported Python with the oldest supported NumPy |
 | `install` | The whole suite against a regular (not editable) install, run from outside the checkout, so a package that builds incomplete fails |
 | `examples` | Every script in `examples/`, including the plots (headless, from a scratch directory) |
 
@@ -109,42 +109,45 @@ references directly.
 [Dependabot](https://docs.github.com/en/code-security/dependabot)
 (`.github/dependabot.yml`) opens monthly pull requests to update the GitHub
 Actions versions and the ruff pin.  It leaves the supported Python and
-dependency versions alone; those follow SPEC 0 (below) and are raised by
-hand.
+dependency versions alone; those follow SPEC 0 (below).
 
 ## Supported versions
 
 `felcu` follows [SPEC 0](https://scientific-python.org/specs/spec-0000/):
 each Python version is supported for 3 years after its release, and each
 version of NumPy and matplotlib (the `plots` extra) for 2 years.  The
-minimum of each is the oldest release still inside its window.
-
-| Dependency | Minimum | Next raise |
-|---|---|---|
-| Python | 3.13 | to 3.14 on 2027-10-07 |
-| NumPy | 2.2 | to 2.3 on 2026-12-08, then 2.4 on 2027-06-07 |
-| matplotlib | 3.10 | to 3.11 on 2026-12-14 |
-
+minimum of each is the oldest release still inside its window; the current
+minimums are in `pyproject.toml`, and
 [SPEC 0's table](https://scientific-python.org/specs/spec-0000/#support-window)
-lists the drop dates.  When one passes, raise the minimum in all of:
+lists when each drops out.
 
-- `requires-python`, the classifiers, `dependencies` and the `plots` extra in
-  `pyproject.toml`, and ruff's `target-version`;
-- the `test` matrix and the `test-min-deps` job in `.github/workflows/ci.yml`,
-  and the Python used by the other jobs there and in `docs.yml`;
-- the requirements in `docs/getting-started.md` and the table above.
+`.github/workflows/spec0.yml` keeps this up to date.  On the first of every
+month (or when run by hand from the Actions tab) it runs
+`.github/scripts/spec0_check.py --apply`.  When a floor is due to rise, or a
+released Python version is missing from the `test` matrix or the classifiers,
+the script updates:
 
-Add each new Python version to the `test` matrix when its first release
-candidate is out; `allow-prereleases` lets CI install it before the final
-release.
+- `requires-python`, the classifiers, `dependencies`, the `plots` extra and
+  ruff's `target-version` in `pyproject.toml`;
+- the `test` matrix, the NumPy pin of `test-min-deps`, and the Python of every
+  job that pins one, in the workflows;
+- the requirements in `docs/getting-started.md`.
 
-`.github/workflows/spec0.yml` checks this on the first of every month (or
-when run by hand from the Actions tab), with `.github/scripts/spec0_check.py`.
-When a floor is due to rise, or a released Python version is missing from the
-`test` matrix or the classifiers, it opens an issue titled
-"SPEC 0: raise the supported versions", or updates the one already open.
+The workflow commits that to the `spec0-update` branch and opens a pull
+request, "Raise the supported versions to SPEC 0", or updates the one already
+open, then runs CI on it.  A higher ruff target or a new Python can need code
+or dependency changes too, so review CI before merging; push any fixes to the
+same branch.  Two repository settings are needed: Issues and pull requests
+enabled, and **Settings → Actions → General → Allow GitHub Actions to create
+and approve pull requests** turned on.
+
 Run the check locally with `python .github/scripts/spec0_check.py`; pass
-`--today YYYY-MM-DD` to see what a later date will ask for.
+`--today YYYY-MM-DD` to see what a later date will ask for, and `--apply` to
+make the changes.
+
+Add each new Python version to the `test` matrix by hand when its first
+release candidate is out; `allow-prereleases` lets CI install it before the
+final release, and the update keeps it there.
 
 ## Linting and formatting
 

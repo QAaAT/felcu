@@ -4,6 +4,8 @@ on:
   push:
     branches: ["main"]
   pull_request:
+  # Lets the SPEC 0 workflow run CI on the pull requests it opens.
+  workflow_dispatch:
 
 permissions:
   contents: read
