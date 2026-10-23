@@ -1,6 +1,7 @@
 # Notation
 
-`felcu` implements the Sobolev-regularised Fourier extensions of
+`felcu` implements the Sobolev-regularised, reflected and arcsine-Taylor
+Fourier extensions of
 
 > P. Brearley, T. L. Howarth and B. Adcock, [*Fourier extensions for matrix-function block encodings with error-independent subnormalization bounds*](https://arxiv.org/abs/2601.18024), arXiv:2601.18024.
 
@@ -51,8 +52,21 @@ and \(g(x) = f(x/\tau)\).
 | \(\alpha_m = \sum_k \lvert c_k\rvert\) | subnormalisation | `result.alpha` |
 | \(\epsilon_m = \|g - g_m\|_{L^\infty(\Omega)}\) | approximation (and spectral) error | `result.achieved_linf_error` |
 | \(\epsilon_{\rm t}\) | target tolerance | `target_error` |
+| refl, asin, reg | reflected, arcsine-Taylor and Sobolev-regularised strategies | `method="reflected"`, `"arcsine_taylor"`, `"sobolev"`; `result.method` |
+
+## Explicit methods
+
+| Symbol | Meaning | In `felcu` |
+|---|---|---|
+| \(F(x) = g(\arcsin(\sin x))\) | reflected extension of \(g\) about \(\pm\pi/2\) | `method="reflected"` |
+| \(d_k\) | Taylor coefficients, \(g(\arcsin z) = \sum_k d_k z^k\) | `method="arcsine_taylor"` |
+| \(\rho_\eta = \sin(\pi/\eta)\) | arcsine-Taylor convergence factor | |
+| \(\Omega^{\rm asin}_\eta = [\mu - \eta\delta/2, \mu + \eta\delta/2]\) | interval on which both explicit methods evaluate \(f\) | |
 
 ## Regularisation
+
+These apply to `method="sobolev"` only; the explicit methods report them as
+`None`.
 
 | Symbol | Meaning | In `felcu` |
 |---|---|---|

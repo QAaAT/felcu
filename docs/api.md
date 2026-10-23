@@ -38,4 +38,6 @@ Everything below is importable from the top-level `felcu` package.
 
 ::: felcu.canonical_problem_name
 
+::: felcu.canonical_method_name
+
 ::: felcu.canonical_error_metric

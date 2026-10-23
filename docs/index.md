@@ -1,6 +1,6 @@
 # felcu
 
-**Sobolev-regularised Fourier-extension coefficients for LCU block encodings.**
+**Fourier-extension coefficients for LCU block encodings of matrix functions.**
 
 `felcu` computes the coefficients needed to block encode a matrix function
 \(f(\mathcal H)\) as a Linear Combination of Unitaries (LCU).  It rescales
@@ -13,12 +13,21 @@ g_m(x) = \sum_{k=-m}^{m} c_k e^{ikx} = a_0 + \sum_{k=1}^{m} \bigl[ a_k \sin(kx) 
 \]
 
 so that \(f(\mathcal H) \approx g_m(\mathcal G) = \sum_k c_k e^{ik\mathcal G}\),
-a linear combination of Hamiltonian simulations.  The coefficients come from
-a Sobolev-regularised fit, which converges near-exponentially down to the
-target tolerance while keeping the subnormalisation
-\(\alpha_m = \sum_k |c_k|\) at the optimal scale \(O(\|f(\mathcal H)\|)\).
+a linear combination of Hamiltonian simulations.  Three strategies for
+choosing the coefficients are available through `method=`, each trading
+convergence against the subnormalisation \(\alpha_m = \sum_k \lvert c_k\rvert\):
 
-The method is that of P. Brearley, T. L. Howarth and B. Adcock, [*Fourier extensions for matrix-function block encodings with error-independent subnormalization bounds*](https://arxiv.org/abs/2601.18024), arXiv:2601.18024; these docs follow its
+- `"sobolev"` (the default): a Sobolev-regularised fit, which converges
+  near-exponentially down to the target tolerance while keeping
+  \(\alpha_m\) at the optimal scale \(O(\|f(\mathcal H)\|)\);
+- `"reflected"`: reflected extensions, with optimal \(\alpha\) but
+  algebraic convergence;
+- `"arcsine_taylor"`: arcsine-Taylor expansions, with exponential
+  convergence at a larger \(\alpha\).
+
+See [Method](guide/method.md) for how they compare.
+
+The methods are those of P. Brearley, T. L. Howarth and B. Adcock, [*Fourier extensions for matrix-function block encodings with error-independent subnormalization bounds*](https://arxiv.org/abs/2601.18024), arXiv:2601.18024; these docs follow its
 [notation](guide/notation.md).
 
 Four problems are supported:

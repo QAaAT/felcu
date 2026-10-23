@@ -104,6 +104,7 @@ felcu/
 ├── spectral.py        # Spectral data extraction & problem-spec builder
 ├── solve.py           # Public solver (solve_fe_coefficients, compute_fe_coefficients)
 ├── _solver.py         # Internal: Fourier-extension fitting & regularisation search
+├── _explicit.py       # Internal: reflected-extension and arcsine-Taylor coefficients
 ├── _coefficients.py   # Internal: basis matrices, coefficient packing
 ├── _linalg.py         # Internal: least squares, quadrature, penalties
 └── _logging.py        # Internal: package logger

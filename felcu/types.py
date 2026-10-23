@@ -25,6 +25,9 @@ class FourierExtensionResult:
     ----------
     problem : str
         ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``.
+    method : str
+        Coefficient-selection strategy: ``'sobolev'``, ``'reflected'``, or
+        ``'arcsine_taylor'``.
     shifted : bool
         Whether the shifted (centred) construction was used.
     basis_used : str
@@ -53,12 +56,15 @@ class FourierExtensionResult:
         Achieved maximum pointwise error on the fitted domain.
     converged : bool
         Whether *achieved_error* meets *target_error*.
-    lambda_used : float
-        Sobolev regularisation strength chosen for this ``m``.
-    sobolev_r : float
-        Scale *r* of the H_r^w regulariser that was used.
-    sobolev_w : float
-        Order *w* of the H_r^w regulariser that was used.
+    lambda_used : float or None
+        Sobolev regularisation strength chosen for this ``m``; ``None``
+        for the explicit (``'reflected'``, ``'arcsine_taylor'``) methods.
+    sobolev_r : float or None
+        Scale *r* of the H_r^w regulariser that was used; ``None`` for the
+        explicit methods.
+    sobolev_w : float or None
+        Order *w* of the H_r^w regulariser that was used; ``None`` for the
+        explicit methods.
     a0 : float
         Constant term.
     ak : numpy.ndarray
@@ -97,6 +103,7 @@ class FourierExtensionResult:
     """
 
     problem: str
+    method: str
     shifted: bool
     basis_used: str
     m: int
@@ -109,9 +116,9 @@ class FourierExtensionResult:
     achieved_l2_error: float
     achieved_linf_error: float
     converged: bool
-    lambda_used: float
-    sobolev_r: float
-    sobolev_w: float
+    lambda_used: float | None
+    sobolev_r: float | None
+    sobolev_w: float | None
     a0: float
     ak: np.ndarray
     bk: np.ndarray

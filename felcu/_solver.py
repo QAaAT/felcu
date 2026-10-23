@@ -35,6 +35,20 @@ def _meets_target(solve: dict, metric: str, target: float) -> bool:
     return solve[metric] <= target + _tolerance(target)
 
 
+def _validation_data(spec: dict, m: int, val_n: int) -> list[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """Uniform validation grids on the fitted set: ``(x, basis matrix, target)`` per interval."""
+    basis = spec["basis"]
+    if spec["domain"] == "single":
+        segments = [np.linspace(-spec["x_max"], spec["x_max"], max(val_n, 201))]
+    else:
+        nv = max(val_n // 2, 201)
+        segments = [
+            np.linspace(-spec["x_max"], -spec["x_min"], nv),
+            np.linspace(spec["x_min"], spec["x_max"], nv),
+        ]
+    return [(xv, _basis_matrix(xv, m, basis), _spec_target(xv, spec)) for xv in segments]
+
+
 def _make_fit_data(spec: dict, m: int, fit_oversample: int, val_n: int) -> dict:
     basis = spec["basis"]
     ncols = _basis_size(basis, m)
@@ -43,8 +57,6 @@ def _make_fit_data(spec: dict, m: int, fit_oversample: int, val_n: int) -> dict:
         nq = max(fit_oversample * max(ncols, 1), 48)
         logger.debug("  fit_data: domain=single  basis=%s  m=%d  ncols=%d  nq=%d  val_n=%d", basis, m, ncols, nq, val_n)
         x, weights = _gauss_interval(-spec["x_max"], spec["x_max"], nq)
-        xv = np.linspace(-spec["x_max"], spec["x_max"], max(val_n, 201))
-        val = [(xv, _basis_matrix(xv, m, basis), _spec_target(xv, spec))]
     else:
         xmin = spec["x_min"]
         xmax = spec["x_max"]
@@ -54,15 +66,8 @@ def _make_fit_data(spec: dict, m: int, fit_oversample: int, val_n: int) -> dict:
         xr, wr = _gauss_interval(xmin, xmax, nq)
         x = np.concatenate([xl, xr])
         weights = np.concatenate([wl, wr])
-        nv = max(val_n // 2, 201)
-        xl_v = np.linspace(-xmax, -xmin, nv)
-        xr_v = np.linspace(xmin, xmax, nv)
-        val = [
-            (xl_v, _basis_matrix(xl_v, m, basis), _spec_target(xl_v, spec)),
-            (xr_v, _basis_matrix(xr_v, m, basis), _spec_target(xr_v, spec)),
-        ]
 
-    return {"x": x, "sw": np.sqrt(weights), "val": val}
+    return {"x": x, "sw": np.sqrt(weights), "val": _validation_data(spec, m, val_n)}
 
 
 def _fit_system(data: dict, spec: dict, m: int, order_fit: int) -> tuple[np.ndarray, np.ndarray]:
@@ -81,10 +86,14 @@ def _fit_system(data: dict, spec: dict, m: int, order_fit: int) -> tuple[np.ndar
 
 
 def _finish_solve(residual_coeffs: np.ndarray, data: dict, spec: dict, m: int) -> dict:
-    basis = spec["basis"]
-    coeffs = _add_baseline(residual_coeffs, basis, spec["baseline"])
+    coeffs = _add_baseline(residual_coeffs, spec["basis"], spec["baseline"])
+    return _summarise(coeffs, data["val"], spec["basis"], m)
+
+
+def _summarise(coeffs: np.ndarray, val: list, basis: str, m: int) -> dict:
+    """The solve record for packed coefficients: the series, its errors on *val*, and alpha."""
     a0, ak, bk = _unpack_coefficients(coeffs, basis, m)
-    l2, linf = _validation_errors(coeffs, data["val"])
+    l2, linf = _validation_errors(coeffs, val)
     alpha = _alpha(a0, ak, bk)
     logger.debug("    solve done: l2=%.3e  linf=%.3e  alpha=%.3e", l2, linf, alpha)
     return {"a0": a0, "ak": ak, "bk": bk, "l2": l2, "linf": linf, "alpha": alpha}

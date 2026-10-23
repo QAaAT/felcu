@@ -1,5 +1,5 @@
 site_name: felcu
-site_description: Sobolev-regularised Fourier-extension coefficients for LCU block encodings
+site_description: Fourier-extension coefficients for LCU block encodings of matrix functions
 site_url: https://qaaat.github.io/felcu/
 repo_url: https://github.com/QAaAT/felcu
 repo_name: QAaAT/felcu

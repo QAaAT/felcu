@@ -211,6 +211,21 @@ g(tau (H - mu I)) squares back to H.
 --8<-- "examples/square_root/02_matrix_square_root.py"
 ```
 
+## Methods
+
+### Comparing the three coefficient-selection methods
+
+Fit exp(H) for eigenvalues in [0.1, 2] with each `method=` at the same
+orders.  The reflected extension has the optimal subnormalisation
+alpha_m = ||f(H)|| - error but converges only as O(1/m); arcsine-Taylor
+converges exponentially at a larger alpha; the Sobolev-regularised default
+reaches the target with alpha close to optimal.  See
+[Method](guide/method.md).
+
+```python title="examples/methods/01_compare_methods.py"
+--8<-- "examples/methods/01_compare_methods.py"
+```
+
 ## Plots
 
 These scripts sweep a parameter and plot how the error \(\epsilon_m\) and
@@ -338,4 +353,38 @@ range the growth stays below that rate.
 
     ```python
     --8<-- "examples/plots/06_sqrt_vs_kappa.py"
+    ```
+
+### Comparing the three coefficient-selection methods
+
+The paper's numerical comparison: the identity, exponential, square root
+and inverse, each fitted by the reflected extension (refl), arcsine-Taylor
+(asin) and the Sobolev-regularised extension (reg); see
+[Method](guide/method.md).  Arcsine-Taylor uses \(\eta = 3\) for the entire
+functions, and \(\eta = 2.7\) and \(2.5\) for the square root and inverse,
+just below their analyticity bounds \(2\mu/\delta\).
+
+- Top: each series \(g_m\) for \(m = 128\) over one whole period, mapped back
+  to the eigenvalue \(\lambda = \mu + x/\tau\) so that all three share the
+  target \(f\) on the spectral interval (unshaded).  Each method's period
+  is set by its own \(\eta\), and outside the spectrum they extend \(f\)
+  differently: the reflected extension mirrors it, while arcsine-Taylor
+  follows \(f\) out to \(\mu \pm \eta\delta/2\) before turning back.
+- Middle: the error \(\epsilon_m\).  The reflected extension converges as
+  \(O(m^{-1})\), arcsine-Taylor exponentially with factor
+  \(\sin(\pi/\eta)\), and the regularised fit drops straight to the target.
+- Bottom: \(\alpha_m\), against the lower bound \(\alpha^\ast\) (dotted).
+  The reflected extension sits on it for the convex functions,
+  \(\alpha_m = \|f(\mathcal H)\| - \epsilon_m\).  For those functions
+  arcsine-Taylor approaches the larger limit
+  \(|f(\mu \pm \eta\delta/2)|\) (dashed).  The regularised \(\alpha_m\) is
+  shown for the orders that meet the target, and falls towards
+  \(\alpha^\ast\).
+
+![Comparing the three coefficient-selection methods](images/plots/07_method_comparison.png)
+
+??? example "Code: examples/plots/07_method_comparison.py"
+
+    ```python
+    --8<-- "examples/plots/07_method_comparison.py"
     ```

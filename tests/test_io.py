@@ -66,6 +66,7 @@ def test_layout(result):
     data = json.loads(result.to_json())
     assert data["format"] == "felcu.FourierExtensionResult"
     assert data["format_version"] == 1
+    assert data["method"] == "sobolev"
     assert data["problem"] == "exponentiation"
     assert len(data["ak"]) == len(data["bk"]) == result.m
     c = data["complex_coefficients"]
@@ -96,6 +97,17 @@ def test_rejects_future_version(result):
     data["format_version"] = 99
     with pytest.raises(ValueError, match="format_version"):
         FourierExtensionResult.from_dict(data)
+
+
+@pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
+def test_explicit_method_round_trip(method):
+    original = solve_fe_coefficients(
+        "exponentiation", method=method, shifted=True, sigma_min=0.1, sigma_max=2.0, m_values=[8, 16]
+    )
+    loaded = FourierExtensionResult.from_json(original.to_json(include_candidates=True))
+    _assert_same(original, loaded)
+    for a, b in zip(loaded.all_results, original.all_results):
+        _assert_same(a, b)
 
 
 def test_rejects_missing_field(result):

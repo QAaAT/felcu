@@ -1,10 +1,10 @@
 # felcu
 
-**Sobolev-regularised Fourier-extension coefficients for LCU block encodings.**
+**Fourier-extension coefficients for LCU block encodings of matrix functions.**
 
 `felcu` computes coefficients for representing matrix functions via Linear
-Combination of Unitaries (LCU), using the Sobolev-regularised Fourier
-extensions of P. Brearley, T. L. Howarth and B. Adcock, [*Fourier extensions for matrix-function block encodings with error-independent subnormalization bounds*](https://arxiv.org/abs/2601.18024), arXiv:2601.18024.
+Combination of Unitaries (LCU), using the Fourier extensions of
+P. Brearley, T. L. Howarth and B. Adcock, [*Fourier extensions for matrix-function block encodings with error-independent subnormalization bounds*](https://arxiv.org/abs/2601.18024), arXiv:2601.18024.
 It supports four problems:
 
 | Problem | Function |
@@ -16,6 +16,15 @@ It supports four problems:
 
 Both shifted (centred) and unshifted constructions are available; the
 square root uses the shifted construction.
+
+The coefficients come from one of the paper's three strategies, chosen with
+`method=`:
+
+| Method | Convergence | Subnormalisation |
+|---|---|---|
+| `sobolev` (default) | near-exponential, down to the target | O(‖f(H)‖) |
+| `reflected` | algebraic, O(1/m) | ‖f(H)‖ (optimal) for convex f |
+| `arcsine_taylor` | exponential, O(sin(π/η)^m) | bounded, larger than optimal |
 
 ## Installation
 
@@ -58,7 +67,7 @@ Full documentation is at **https://qaaat.github.io/felcu/**:
 
 - [Notation](https://qaaat.github.io/felcu/guide/notation/): the paper's symbols and their names in the code
 - [Problems and constructions](https://qaaat.github.io/felcu/guide/problems/): shifted vs unshifted, scaling, bases
-- [Method](https://qaaat.github.io/felcu/guide/method/): the Sobolev-regularised Fourier extension
+- [Method](https://qaaat.github.io/felcu/guide/method/): the Sobolev-regularised, reflected and arcsine-Taylor extensions
 - [Tuning the solver](https://qaaat.github.io/felcu/guide/parameters/): every parameter
 - [Examples](https://qaaat.github.io/felcu/examples/): the scripts in [`examples/`](examples/)
 - [API reference](https://qaaat.github.io/felcu/api/)
