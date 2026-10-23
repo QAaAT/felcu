@@ -14,20 +14,18 @@ authors = [
     { name = "Thomas L. Howarth" },
     { name = "Ben Adcock" },
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Scientific/Engineering :: Physics",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3.15",
 ]
-dependencies = ["numpy>=2.0"]
+dependencies = ["numpy>=2.2"]
 
 [project.urls]
 Homepage = "https://github.com/QAaAT/felcu"
@@ -38,7 +36,7 @@ Paper = "https://arxiv.org/abs/2601.18024"
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov", "ruff==0.17.1"]
-plots = ["matplotlib>=3.7"]
+plots = ["matplotlib>=3.10"]
 docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.5", "mkdocstrings[python]>=0.26"]
 
 [tool.setuptools.packages.find]
@@ -47,7 +45,7 @@ include = ["felcu*"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py311"
+target-version = "py313"
 extend-exclude = ["build"]
 
 [tool.ruff.format]

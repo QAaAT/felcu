@@ -86,8 +86,8 @@ request.  A new push to a branch cancels its still-running checks.
 | Job | What it does |
 |---|---|
 | `lint` | `ruff check` and `ruff format --check` |
-| `test` | Each test category as its own step, with a combined coverage report, on Ubuntu, macOS and Windows with Python 3.11 through 3.15 |
-| `test-min-deps` | Each test category as its own step, on Python 3.11 with NumPy 2.0, the oldest supported versions |
+| `test` | Each test category as its own step, with a combined coverage report, on Ubuntu, macOS and Windows with every supported Python |
+| `test-min-deps` | Each test category as its own step, on the oldest supported Python with the oldest supported NumPy |
 | `install` | The whole suite against a regular (not editable) install, run from outside the checkout, so a package that builds incomplete fails |
 | `examples` | Every script in `examples/`, including the plots (headless, from a scratch directory) |
 
@@ -106,13 +106,48 @@ the job uploads that platform's results as an artifact,
 laid out like `tests/data/regression/`, so you can diff them against the
 references directly.
 
-When you raise a minimum dependency version in `pyproject.toml`, raise it in
-`test-min-deps` too.
-
 [Dependabot](https://docs.github.com/en/code-security/dependabot)
 (`.github/dependabot.yml`) opens monthly pull requests to update the GitHub
-Actions versions and the ruff pin.  It leaves the library's minimum
-dependency versions alone; raise those by hand.
+Actions versions and the ruff pin.  It leaves the supported Python and
+dependency versions alone; those follow SPEC 0 (below).
+
+## Supported versions
+
+`felcu` follows [SPEC 0](https://scientific-python.org/specs/spec-0000/):
+each Python version is supported for 3 years after its release, and each
+version of NumPy and matplotlib (the `plots` extra) for 2 years.  The
+minimum of each is the oldest release still inside its window; the current
+minimums are in `pyproject.toml`, and
+[SPEC 0's table](https://scientific-python.org/specs/spec-0000/#support-window)
+lists when each drops out.
+
+`.github/workflows/spec0.yml` keeps this up to date.  On the first of every
+month (or when run by hand from the Actions tab) it runs
+`.github/scripts/spec0_check.py --apply`.  When a floor is due to rise, or a
+released Python version is missing from the `test` matrix or the classifiers,
+the script updates:
+
+- `requires-python`, the classifiers, `dependencies`, the `plots` extra and
+  ruff's `target-version` in `pyproject.toml`;
+- the `test` matrix, the NumPy pin of `test-min-deps`, and the Python of every
+  job that pins one, in the workflows;
+- the requirements in `docs/getting-started.md`.
+
+The workflow commits that to the `spec0-update` branch, opens a pull request,
+"Raise the supported versions to SPEC 0", and runs CI on it.  A higher ruff
+target or a new Python can need code or dependency changes too, so review CI
+before merging, and push any fixes to the same branch: while the pull request
+is open, later updates are committed on top of it, so the fixes are kept.  Two repository settings are needed: Issues and pull requests
+enabled, and **Settings → Actions → General → Allow GitHub Actions to create
+and approve pull requests** turned on.
+
+Run the check locally with `python .github/scripts/spec0_check.py`; pass
+`--today YYYY-MM-DD` to see what a later date will ask for, and `--apply` to
+make the changes.
+
+Add each new Python version to the `test` matrix by hand when its first
+release candidate is out; `allow-prereleases` lets CI install it before the
+final release, and the update keeps it there.
 
 ## Linting and formatting
 
