@@ -5,9 +5,11 @@ After a change that is meant to alter the coefficients, regenerate them with
 
     python tests/regression_cases.py
 
-and commit the new files alongside the change.
+and commit the new files alongside the change.  Pass a directory to write
+there instead, e.g. to compare another platform's results with the references.
 """
 
+import sys
 from pathlib import Path
 
 import felcu
@@ -84,19 +86,21 @@ def reference_path(name):
     return DATA_DIR / f"{name}.json"
 
 
-def regenerate():
+def regenerate(out_dir=DATA_DIR):
     # Running this file puts tests/ (not the repository) on sys.path, so a
     # non-editable install would silently write references from the wrong code.
     repo = Path(__file__).resolve().parents[1]
     if Path(felcu.__file__).resolve().parent != repo / "felcu":
         raise SystemExit(f"felcu is imported from {felcu.__file__}, not this checkout; run pip install -e .")
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    for old in DATA_DIR.glob("*.json"):
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for old in out_dir.glob("*.json"):
         old.unlink()
     for name in CASES:
-        solve(name).to_json(reference_path(name))
-        print(f"wrote {reference_path(name)}")
+        path = out_dir / reference_path(name).name
+        solve(name).to_json(path)
+        print(f"wrote {path}")
 
 
 if __name__ == "__main__":
-    regenerate()
+    regenerate(*sys.argv[1:2])

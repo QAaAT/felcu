@@ -1,7 +1,9 @@
 """Regression tests: compare solver output with reference results saved as JSON.
 
 The cases are defined in ``regression_cases.py``, which also regenerates the
-references (``python tests/regression_cases.py``).
+references (``python tests/regression_cases.py``).  Every test here is marked
+``regression``, so ``pytest -m regression`` runs just these; every other test
+is marked ``functional`` (see ``conftest.py``).
 """
 
 import dataclasses
@@ -11,6 +13,8 @@ import pytest
 from regression_cases import CASES, DATA_DIR, reference_path, solve
 
 from felcu import FourierExtensionResult, evaluate_fourier_series, fitted_domain_segments
+
+pytestmark = pytest.mark.regression
 
 # Different BLAS/LAPACK builds and NumPy versions (CI covers several of each)
 # change the rounding, so the comparison is in three tiers.

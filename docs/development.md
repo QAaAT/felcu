@@ -46,7 +46,19 @@ python tests/regression_cases.py
 ```
 
 The script refuses to run unless `felcu` is imported from the checkout (an
-editable install).  To add a case, add it to `CASES` and regenerate.
+editable install).  To add a case, add it to `CASES` and regenerate.  Pass
+a directory (`python tests/regression_cases.py OUT_DIR`) to write the
+results there instead of over the references.
+
+The regression tests are marked `regression`.  Every other test is marked
+`functional` (by `tests/conftest.py`): these check stated behaviour and the
+paper's properties, such as convergence and error bounds, rather than
+comparing with saved output.  Run either group alone with:
+
+```bash
+python -m pytest tests/ -m functional
+python -m pytest tests/ -m regression
+```
 
 ## Continuous integration
 
@@ -56,14 +68,23 @@ request.  A new push to a branch cancels its still-running checks.
 | Job | What it does |
 |---|---|
 | `lint` | `ruff check` and `ruff format --check` |
-| `test` | The test suite with a coverage report, on Ubuntu, macOS and Windows with Python 3.11 through 3.15 |
-| `test-min-deps` | The test suite on Python 3.11 with NumPy 2.0, the oldest supported versions |
+| `test` | The functional tests, then the regression tests, with a combined coverage report, on Ubuntu, macOS and Windows with Python 3.11 through 3.15 |
+| `test-min-deps` | The functional tests, then the regression tests, on Python 3.11 with NumPy 2.0, the oldest supported versions |
 | `examples` | Every script in `examples/`, including the plots (headless, from a scratch directory) |
 
 The jobs run in stages: `lint` first, then `test` and `test-min-deps` in
 parallel, then `examples`.  A job only starts once the stage before it has
 passed, so a lint failure skips the tests and a test failure skips the
 examples.
+
+Within `test` and `test-min-deps`, the regression step runs even when the
+functional tests fail, so the failing step's name says which kind of test broke.
+The regression tests run on every platform because their purpose is to
+catch drift between BLAS/LAPACK builds and NumPy versions.  When they fail,
+the job uploads that platform's results as an artifact,
+`regression-results-<os>-py<version>` (or `regression-results-min-deps`),
+laid out like `tests/data/regression/`, so you can diff them against the
+references directly.
 
 When you raise a minimum dependency version in `pyproject.toml`, raise it in
 `test-min-deps` too.
