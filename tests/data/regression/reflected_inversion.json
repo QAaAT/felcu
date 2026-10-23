@@ -107,7 +107,6 @@
   "spectral_kind_used": "eigenvalues",
   "matrix_shape": null,
   "matrix_is_hermitian": null,
-  "matrix_scale_provided": true,
   "complex_coefficients": {
     "k": [
       -24,

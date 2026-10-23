@@ -66,7 +66,6 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         spectral_kind_used=spectral["kind"],
         matrix_shape=spectral["matrix_shape"],
         matrix_is_hermitian=spectral["matrix_is_hermitian"],
-        matrix_scale_provided=True,
     )
 
 

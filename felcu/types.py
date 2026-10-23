@@ -100,9 +100,6 @@ class FourierExtensionResult:
     matrix_is_hermitian : bool or None
         Whether the input matrix passed the Hermitian test, if one was
         given.
-    matrix_scale_provided : bool
-        Whether a matrix or spectral bounds were given; always ``True``,
-        since one of them is required.
     all_results : tuple of FourierExtensionResult
         Every candidate tried, sorted by ``m``.  Empty on the candidates
         themselves.
@@ -139,7 +136,6 @@ class FourierExtensionResult:
     spectral_kind_used: str
     matrix_shape: tuple[int, int] | None
     matrix_is_hermitian: bool | None
-    matrix_scale_provided: bool
     all_results: tuple[FourierExtensionResult, ...] = ()
 
     @property

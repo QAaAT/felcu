@@ -134,7 +134,6 @@
     2
   ],
   "matrix_is_hermitian": false,
-  "matrix_scale_provided": true,
   "complex_coefficients": {
     "k": [
       -32,

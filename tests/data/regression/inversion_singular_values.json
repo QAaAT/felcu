@@ -134,7 +134,6 @@
   "spectral_kind_used": "singular_values",
   "matrix_shape": null,
   "matrix_is_hermitian": null,
-  "matrix_scale_provided": true,
   "complex_coefficients": {
     "k": [
       -32,
