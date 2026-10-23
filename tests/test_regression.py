@@ -19,7 +19,19 @@ pytestmark = pytest.mark.regression
 # change the rounding, so the comparison is in three tiers.
 #
 # Fields computed in closed form from the inputs must agree to rounding.
-_CLOSED_FORM = {"eta", "tau", "x_max", "x_min", "sigma_min", "sigma_max", "sobolev_r", "sobolev_w", "target_error"}
+_CLOSED_FORM = {
+    "eta",
+    "tau",
+    "x_max",
+    "x_gap",
+    "mu",
+    "gap",
+    "sigma_min",
+    "sigma_max",
+    "sobolev_r",
+    "sobolev_w",
+    "target_error",
+}
 _CLOSED_FORM_RTOL = 1e-12
 
 # The fit itself is ill-conditioned: individual coefficients can move by more

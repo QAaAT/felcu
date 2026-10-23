@@ -339,24 +339,22 @@ def fitted_domain_segments(
     -------
     list of numpy.ndarray
         One array spanning ``[-x_max, x_max]`` for a single-interval
-        domain, or two arrays spanning ``[-x_max, -x_min]`` and
-        ``[x_min, x_max]`` for a double-interval one.
+        domain, or two arrays spanning ``[-x_max, x_gap[0]]`` and
+        ``[x_gap[1], x_max]`` for a double-interval one.
 
     Raises
     ------
     ValueError
-        If ``num < 2``, or a double-interval result has no ``x_min``.
+        If ``num < 2``.
     """
     if num < 2:
         raise ValueError("num must be at least 2.")
-    if result.domain == "single":
+    if result.x_gap is None:
         return [np.linspace(-result.x_max, result.x_max, num)]
-    if result.x_min is None:
-        raise ValueError("A double-interval result requires x_min.")
     n = max(num // 2, 2)
     return [
-        np.linspace(-result.x_max, -result.x_min, n),
-        np.linspace(result.x_min, result.x_max, n),
+        np.linspace(-result.x_max, result.x_gap[0], n),
+        np.linspace(result.x_gap[1], result.x_max, n),
     ]
 
 
@@ -368,12 +366,9 @@ def evaluate_target_function(
 
     This is the function the series was fitted to, in the scaled variable,
     so it can be compared directly with :func:`evaluate_fourier_series`.
-    With matrix-scale information it is ``g(x) = f(mu + x / tau)``, not the
-    unscaled ``f``: for example ``x / tau``, ``tau / x`` or ``exp(x / tau)``
-    unshifted, and ``mu + x / tau``, ``1 / (mu + x / tau)``,
-    ``exp(mu + x / tau)`` or ``sqrt(mu + x / tau)`` shifted.  Without
-    it, it is ``x``, ``1 / x`` or ``exp(x)``.  If ``tau`` is infinite
-    (a zero-width interval), the target is constant.
+    It is ``g(x) = f(mu + x / tau)``, not ``f`` itself: ``mu + x / tau``,
+    ``1 / (mu + x / tau)``, ``exp(mu + x / tau)`` or ``sqrt(mu + x / tau)``.
+    If ``tau`` is infinite (a zero-width interval), the target is constant.
 
     Parameters
     ----------
@@ -390,12 +385,6 @@ def evaluate_target_function(
     Raises
     ------
     ValueError
-        If the problem is unknown, or a shifted result has no spectral
-        bounds.
+        If the problem is unknown.
     """
-    mu = 0.0
-    if result.shifted:
-        if result.sigma_min is None or result.sigma_max is None:
-            raise ValueError("Shifted results require sigma_min and sigma_max.")
-        mu = 0.5 * (result.sigma_min + result.sigma_max)
-    return _target(x, result.problem, result.tau, mu)
+    return _target(x, result.problem, result.tau, result.mu)

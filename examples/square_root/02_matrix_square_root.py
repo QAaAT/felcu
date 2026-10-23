@@ -17,7 +17,7 @@ rng = np.random.default_rng(6)
 X = rng.standard_normal((8, 8))
 H = X @ X.T / 8 + 0.2 * np.eye(8)  # random symmetric positive definite
 
-result = solve_fe_coefficients("sqrt", shifted=True, matrix=H, target_error=1e-8, m_values=range(8, 129, 8))
+result = solve_fe_coefficients("sqrt", matrix=H, target_error=1e-8, m_values=range(8, 129, 8))
 print(f"eigenvalues in = [{result.sigma_min:.4f}, {result.sigma_max:.4f}]")
 print(f"m              = {result.m}")
 

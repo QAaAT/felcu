@@ -9,7 +9,7 @@ and see how lambda_used (= sqrt(2 pi gamma)) and the subnormalisation
 alpha change.
 
 Run with:
-    python examples/exponentiation/06_sobolev_regularisation.py
+    python examples/exponentiation/04_sobolev_regularisation.py
 """
 
 from felcu import solve_fe_coefficients

@@ -24,52 +24,54 @@ DATA_DIR = Path(__file__).parent / "data" / "regression"
 M_VALUES = [16, 24, 32]
 
 CASES = {
-    "action": dict(problem="action", target_error=1e-6),
+    "action": dict(problem="action", sigma_min=-1.0, sigma_max=2.0, target_error=1e-6),
+    "action_singular_values": dict(problem="action", matrix=[[1.0, 0.5], [-0.2, 0.8]], target_error=1e-6),
     "inversion": dict(problem="inversion", sigma_min=0.5, sigma_max=2.0, target_error=1e-4),
-    "inversion_shifted": dict(problem="inversion", shifted=True, sigma_min=0.5, sigma_max=2.0, target_error=1e-4),
+    "inversion_indefinite": dict(
+        problem="inversion", sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4), target_error=1e-4, m_values=[32, 48, 64]
+    ),
+    "inversion_singular_values": dict(
+        problem="inversion", sigma_min=0.5, sigma_max=2.0, spectral_kind="singular_values", target_error=1e-4
+    ),
     "exponentiation": dict(problem="exponentiation", sigma_min=0.1, sigma_max=2.0, target_error=1e-8),
-    "exponentiation_shifted_l2": dict(
-        problem="exponentiation", shifted=True, sigma_min=1.0, sigma_max=3.0, target_error=1e-8, error_metric="l2"
+    "exponentiation_l2": dict(
+        problem="exponentiation", sigma_min=1.0, sigma_max=3.0, target_error=1e-8, error_metric="l2"
     ),
     "exponentiation_matrix": dict(problem="exponentiation", matrix=[[1.0, 0.2], [0.2, 0.5]], target_error=1e-8),
-    "square_root_shifted": dict(problem="square_root", shifted=True, sigma_min=0.2, sigma_max=1.0, target_error=1e-4),
+    "square_root": dict(problem="square_root", sigma_min=0.2, sigma_max=1.0, target_error=1e-4),
     "reflected_action": dict(
         problem="action", method="reflected", sigma_min=-1.0, sigma_max=1.0, target_error=1e-2, m_values=[32, 64, 128]
     ),
-    "reflected_exponentiation_shifted": dict(
+    "reflected_exponentiation": dict(
         problem="exponentiation",
         method="reflected",
-        shifted=True,
         sigma_min=0.1,
         sigma_max=2.0,
         target_error=5e-2,
         m_values=[32, 64, 128],
     ),
-    "reflected_inversion_shifted": dict(
-        problem="inversion", method="reflected", shifted=True, sigma_min=1.0, sigma_max=2.0, target_error=1e-2
+    "reflected_inversion": dict(
+        problem="inversion", method="reflected", sigma_min=1.0, sigma_max=2.0, target_error=1e-2
     ),
-    "arcsine_taylor_exponentiation_shifted": dict(
+    "arcsine_taylor_exponentiation": dict(
         problem="exponentiation",
         method="arcsine_taylor",
-        shifted=True,
         sigma_min=0.1,
         sigma_max=2.0,
         target_error=1e-4,
         m_values=[32, 48, 64],
     ),
-    "arcsine_taylor_inversion_shifted": dict(
+    "arcsine_taylor_inversion": dict(
         problem="inversion",
         method="arcsine_taylor",
-        shifted=True,
         sigma_min=1.0,
         sigma_max=2.0,
         target_error=1e-6,
         m_values=[32, 48, 64],
     ),
-    "arcsine_taylor_square_root_shifted": dict(
+    "arcsine_taylor_square_root": dict(
         problem="square_root",
         method="arcsine_taylor",
-        shifted=True,
         sigma_min=0.5,
         sigma_max=1.0,
         target_error=1e-6,

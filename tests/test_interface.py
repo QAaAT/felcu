@@ -38,13 +38,10 @@ class TestInputValidation:
                 selection="biggest_m",
             )
 
-    def test_no_scale_inversion_raises(self):
-        with pytest.raises(ValueError):
-            solve_fe_coefficients("inversion")  # inversion always needs a scale
-
-    def test_shifted_no_scale_raises(self):
-        with pytest.raises(ValueError):
-            solve_fe_coefficients("action", shifted=True)
+    @pytest.mark.parametrize("problem", ["action", "inversion", "exponentiation", "square_root"])
+    def test_requires_spectral_information(self, problem):
+        with pytest.raises(ValueError, match="Provide a matrix"):
+            solve_fe_coefficients(problem)
 
     def test_negative_sobolev_w_raises(self):
         with pytest.raises(ValueError, match="sobolev_w"):
@@ -61,38 +58,75 @@ class TestInputValidation:
         assert result.matrix_shape == (3, 3)
 
     @pytest.mark.parametrize("problem", ["square_root"])
-    def test_requires_shifted(self, problem):
-        with pytest.raises(ValueError, match="shifted=True"):
-            solve_fe_coefficients(problem, sigma_min=0.5, sigma_max=1.0)
-
-    @pytest.mark.parametrize("problem", ["square_root"])
     @pytest.mark.parametrize("lo", [0.0, -0.5])
     def test_requires_positive_definite(self, problem, lo):
         with pytest.raises(ValueError, match="positive-definite"):
-            solve_fe_coefficients(problem, shifted=True, sigma_min=lo, sigma_max=1.0)
+            solve_fe_coefficients(problem, sigma_min=lo, sigma_max=1.0)
 
-    @pytest.mark.parametrize("problem", ["square_root"])
-    def test_requires_spectral_information(self, problem):
+    @pytest.mark.parametrize("problem", ["exponentiation", "square_root"])
+    def test_singular_values_only_for_odd_problems(self, problem):
+        with pytest.raises(ValueError, match="singular values only support"):
+            solve_fe_coefficients(problem, sigma_min=0.5, sigma_max=1.0, spectral_kind="singular_values")
+
+    def test_eigenvalues_require_hermitian(self):
+        with pytest.raises(ValueError, match="Hermitian"):
+            solve_fe_coefficients("exponentiation", matrix=[[1.0, 1.0], [0.0, 1.0]])
+
+    def test_indefinite_inversion_requires_gap(self):
+        with pytest.raises(ValueError, match="gap"):
+            solve_fe_coefficients("inversion", sigma_min=-1.0, sigma_max=2.0)
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            dict(sigma_min=-1.0, sigma_max=2.0, gap=(-1.5, 0.5)),  # a < sigma_min
+            dict(sigma_min=-1.0, sigma_max=2.0, gap=(0.1, 0.5)),  # a > 0
+            dict(sigma_min=-1.0, sigma_max=2.0, gap=(-0.5, 2.5)),  # b > sigma_max
+            dict(sigma_min=0.5, sigma_max=2.0, gap=(-0.5, 0.5)),  # definite
+            dict(sigma_min=0.0, sigma_max=2.0, gap=(-0.5, 0.5)),  # endpoint at the pole
+            dict(sigma_min=0.5, sigma_max=2.0, gap=(-0.5, 0.5), spectral_kind="singular_values"),
+        ],
+    )
+    def test_invalid_gap_raises(self, kwargs):
         with pytest.raises(ValueError):
-            solve_fe_coefficients(problem, shifted=True)
+            solve_fe_coefficients("inversion", **kwargs)
+
+    def test_gap_only_for_inversion(self):
+        with pytest.raises(ValueError, match="gap only applies"):
+            solve_fe_coefficients("action", sigma_min=-1.0, sigma_max=2.0, gap=(-0.5, 0.5))
+
+    def test_gap_and_matrix_raises(self):
+        with pytest.raises(ValueError, match="not both"):
+            solve_fe_coefficients("inversion", matrix=np.diag([-1.0, 1.0]), gap=(-1.0, 1.0))
+
+    def test_singular_matrix_inversion_raises(self):
+        with pytest.raises(ValueError, match="clear of 0"):
+            solve_fe_coefficients("inversion", matrix=np.diag([0.0, 1.0]))
 
     @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
-    def test_unshifted_inversion_rejected(self, method):
-        with pytest.raises(ValueError, match="unshifted inversion"):
-            solve_fe_coefficients("inversion", method=method, sigma_min=0.5, sigma_max=2.0)
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            dict(sigma_min=0.5, sigma_max=2.0, spectral_kind="singular_values"),
+            dict(sigma_min=-2.0, sigma_max=2.0, gap=(-0.5, 0.5)),
+        ],
+    )
+    def test_two_interval_inversion_rejected(self, method, kwargs):
+        with pytest.raises(ValueError, match="two-interval"):
+            solve_fe_coefficients("inversion", method=method, **kwargs)
 
     def test_eta_ranges(self):
         with pytest.raises(ValueError, match="eta >= 2"):
-            solve_fe_coefficients("action", method="reflected", eta=1.5)
+            solve_fe_coefficients("action", method="reflected", sigma_min=-1.0, sigma_max=1.0, eta=1.5)
         with pytest.raises(ValueError, match="eta > 2"):
-            solve_fe_coefficients("action", method="arcsine_taylor", eta=2.0)
+            solve_fe_coefficients("action", method="arcsine_taylor", sigma_min=-1.0, sigma_max=1.0, eta=2.0)
 
     @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
     def test_extension_must_avoid_the_singularity(self, method):
         # 2 mu / delta = 2.1 for [0.025, 1].
         with pytest.raises(ValueError, match=r"2\|mu\|/delta = 2\.1"):
-            solve_fe_coefficients("square_root", method=method, shifted=True, sigma_min=0.025, sigma_max=1.0, eta=2.7)
-        r = solve_fe_coefficients("square_root", method=method, shifted=True, sigma_min=0.025, sigma_max=1.0, eta=2.05)
+            solve_fe_coefficients("square_root", method=method, sigma_min=0.025, sigma_max=1.0, eta=2.7)
+        r = solve_fe_coefficients("square_root", method=method, sigma_min=0.025, sigma_max=1.0, eta=2.05)
         assert np.isfinite(r.alpha) and r.alpha < 5.0
 
 
@@ -181,9 +215,7 @@ class TestResultFields:
 class TestExplicitMethodResults:
     @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
     def test_fields(self, method):
-        r = solve_fe_coefficients(
-            "exponentiation", method=method, shifted=True, sigma_min=0.1, sigma_max=2.0, target_error=1e-2
-        )
+        r = solve_fe_coefficients("exponentiation", method=method, sigma_min=0.1, sigma_max=2.0, target_error=1e-2)
         assert r.method == method
         assert r.lambda_used is None and r.sobolev_r is None and r.sobolev_w is None
         assert all(c.method == method for c in r.all_results)
@@ -217,7 +249,7 @@ class TestSelection:
 
     def test_unreachable_target_returns_the_best(self):
         r = solve_fe_coefficients(
-            "exponentiation", method="reflected", shifted=True, sigma_min=0.1, sigma_max=2.0, m_values=[8, 16, 32]
+            "exponentiation", method="reflected", sigma_min=0.1, sigma_max=2.0, m_values=[8, 16, 32]
         )
         assert not r.converged
         assert r.m == 32
@@ -226,7 +258,6 @@ class TestSelection:
         r = solve_fe_coefficients(
             "action",
             method="arcsine_taylor",
-            shifted=True,
             sigma_min=-1.0,
             sigma_max=1.0,
             target_error=1e-8,
@@ -244,12 +275,12 @@ class TestSelection:
 class TestExactConstant:
     @pytest.mark.parametrize("problem, f", [("square_root", np.sqrt)])
     def test_zero_width_is_exact_constant(self, problem, f):
-        result = solve_fe_coefficients(problem, shifted=True, sigma_min=2.0, sigma_max=2.0)
+        result = solve_fe_coefficients(problem, sigma_min=2.0, sigma_max=2.0)
         assert result.m == 0
         assert result.a0 == pytest.approx(f(2.0))
 
     def test_exact_constant(self):
-        r = solve_fe_coefficients("square_root", method="arcsine_taylor", shifted=True, sigma_min=4.0, sigma_max=4.0)
+        r = solve_fe_coefficients("square_root", method="arcsine_taylor", sigma_min=4.0, sigma_max=4.0)
         assert r.m == 0 and r.a0 == 2.0
         assert r.method == "arcsine_taylor" and r.lambda_used is None
 

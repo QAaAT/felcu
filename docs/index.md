@@ -35,12 +35,14 @@ Four problems are supported:
 | Problem | Function | Spectral data |
 |---|---|---|
 | `action` | \(f(\mathcal H) = \mathcal H\) | eigenvalues (Hermitian) or singular values |
-| `inversion` | \(f(\mathcal H) = \mathcal H^{-1}\) | singular values (unshifted) or a definite eigenvalue interval (shifted) |
+| `inversion` | \(f(\mathcal H) = \mathcal H^{-1}\) | eigenvalues (definite or indefinite) or singular values |
 | `exponentiation` | \(f(\mathcal H) = e^{\mathcal H}\) | eigenvalues |
-| `square_root` | \(f(\mathcal H) = \sqrt{\mathcal H}\) | positive-definite eigenvalue interval (shifted only) |
+| `square_root` | \(f(\mathcal H) = \sqrt{\mathcal H}\) | positive-definite eigenvalue interval |
 
-Each comes in an *unshifted* form and a *shifted* (centred) form, except the
-square root, which is shifted only; see
+A matrix or spectral bounds are required.  Every fit is centred on the
+spectrum, \(f(\mathcal H) = g(\tau(\mathcal H - \mu I))\).  Singular values,
+for non-Hermitian matrices, are fitted through the Hermitian dilation, whose
+spectrum is centred at \(\mu = 0\), by an odd series.  See
 [Problems and constructions](guide/problems.md).
 
 ## At a glance
@@ -66,8 +68,8 @@ result.alpha        # subnormalisation alpha_m
 - [Getting started](getting-started.md): install, a first fit, and how to
   apply the result to a matrix.
 - [Notation](guide/notation.md): the paper's symbols and their names in the code.
-- [Problems and constructions](guide/problems.md): shifted vs unshifted,
-  scaling and bases.
+- [Problems and constructions](guide/problems.md): spectra, scaling,
+  bases and the two-interval fit of inversion.
 - [Method](guide/method.md): what the solver actually computes.
 - [Tuning the solver](guide/parameters.md): every parameter and when to change it.
 - [Examples](examples.md): short scripts, one idea each, plus

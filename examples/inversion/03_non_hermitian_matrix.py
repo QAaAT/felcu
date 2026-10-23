@@ -2,8 +2,11 @@
 Inverting a non-Hermitian matrix
 ================================
 
-Unshifted inversion works on singular values, so A need not be Hermitian.
-The fitted g(x) = tau / x is applied to the singular values:
+A has no real eigenvalue interval, so felcu fits its singular values,
+through the Hermitian dilation [[0, A], [A^dagger, 0]].  The dilation's
+spectrum is symmetric about 0, so mu = 0, and the fit is the odd
+g(x) = tau / x on two intervals either side of the pole.  With
+A = U diag(s) V^dagger,
 
     V diag(g(tau s)) U^dagger  ~=  A^{-1}
 
@@ -21,6 +24,7 @@ V0, _ = np.linalg.qr(rng.standard_normal((5, 5)))
 A = U0 @ np.diag([0.4, 0.7, 1.0, 1.5, 2.0]) @ V0.T  # kappa = 5
 
 result = solve_fe_coefficients("inversion", matrix=A, target_error=1e-6, m_values=range(4, 65, 4))
+print(f"spectral kind       = {result.spectral_kind_used}  (mu = {result.mu})")
 print(f"singular values in  = [{result.sigma_min:.4f}, {result.sigma_max:.4f}]")
 print(f"m                   = {result.m}")
 

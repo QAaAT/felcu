@@ -14,8 +14,10 @@ It supports four problems:
 | `exponentiation` | f(H) = exp(H) |
 | `square_root` | f(H) = √H (H positive definite) |
 
-Both shifted (centred) and unshifted constructions are available; the
-square root uses the shifted construction.
+A matrix or spectral bounds are required.  Every fit is centred on the
+spectrum, f(H) = g(τ(H − μI)).  Action and inversion also work on singular
+values, for non-Hermitian matrices, through the Hermitian dilation (μ = 0, odd
+series).  Inversion handles definite and indefinite spectra.
 
 The coefficients come from one of the paper's three strategies, chosen with
 `method=`:
@@ -66,7 +68,7 @@ for xs in fitted_domain_segments(result):
 Full documentation is at **https://qaaat.github.io/felcu/**:
 
 - [Notation](https://qaaat.github.io/felcu/guide/notation/): the paper's symbols and their names in the code
-- [Problems and constructions](https://qaaat.github.io/felcu/guide/problems/): shifted vs unshifted, scaling, bases
+- [Problems and constructions](https://qaaat.github.io/felcu/guide/problems/): spectra, scaling, bases, indefinite inversion
 - [Method](https://qaaat.github.io/felcu/guide/method/): the Sobolev-regularised, reflected and arcsine-Taylor extensions
 - [Tuning the solver](https://qaaat.github.io/felcu/guide/parameters/): every parameter
 - [Examples](https://qaaat.github.io/felcu/examples/): the scripts in [`examples/`](examples/)

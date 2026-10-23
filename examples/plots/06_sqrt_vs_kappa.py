@@ -2,7 +2,7 @@
 Cost of the square root versus condition number
 ===============================================
 
-For eigenvalues in [1/kappa, 1], fit sqrt(H) (shifted, with the default
+For eigenvalues in [1/kappa, 1], fit sqrt(H) (with the default
 eta_def and r_sqrt = kappa^(-1/2)) and plot the shortest series that meets
 the target and the smallest subnormalisation alpha_m over the sweep as
 kappa grows.  ||sqrt(H)|| = 1 throughout, so the
@@ -30,7 +30,6 @@ rows = []
 for kappa in KAPPAS:
     r = solve_fe_coefficients(
         "square_root",
-        shifted=True,
         sigma_min=1.0 / kappa,
         sigma_max=1.0,
         target_error=TARGET,

@@ -18,6 +18,7 @@ FORMAT = "felcu.FourierExtensionResult"
 FORMAT_VERSION = 1
 
 _FLOAT_ARRAYS = {"ak", "bk"}
+_FLOAT_PAIRS = {"x_gap", "gap"}
 _SKIP_FIELDS = {"complex_coefficients", "all_results"}  # written separately
 
 
@@ -86,6 +87,8 @@ def _fields_from_dict(cls: type[FourierExtensionResult], data: dict[str, Any]) -
             value = np.asarray([_decode_float(v) for v in value], dtype=float)
         elif name == "matrix_shape" and value is not None:
             value = tuple(int(v) for v in value)
+        elif name in _FLOAT_PAIRS and value is not None:
+            value = tuple(float(v) for v in value)
         elif isinstance(value, str) and field.type in ("float", "float | None"):
             value = _decode_float(value)
         kwargs[name] = value

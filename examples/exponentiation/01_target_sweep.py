@@ -6,7 +6,7 @@ Tighten target_error and watch how the selected order m grows.  For a
 smooth target like exp, m grows roughly logarithmically in 1/error.
 
 Run with:
-    python examples/exponentiation/02_target_sweep.py
+    python examples/exponentiation/01_target_sweep.py
 """
 
 from felcu import solve_fe_coefficients
