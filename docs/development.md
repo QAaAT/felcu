@@ -24,9 +24,19 @@ To see which lines the tests miss, add `--cov=felcu --cov-report=term-missing`.
 
 `tests/test_regression.py` solves a fixed set of cases, defined in
 `tests/regression_cases.py`, and compares the results with references saved
-as JSON in `tests/data/regression/`.  Coefficients must agree to within
-`1e-9 * alpha` and other floats to a relative `1e-6`, which allows for
-differences between BLAS/LAPACK builds; everything else must match exactly.
+as JSON in `tests/data/regression/`.  Rounding differs between BLAS/LAPACK
+builds and NumPy versions, so the comparison has three tiers:
+
+- discrete fields (`m`, `basis_used`, `converged`, ...) must match exactly,
+  and fields computed in closed form from the inputs (`eta`, `tau`,
+  `sobolev_r`, ...) to a relative `1e-12`;
+- the series must match as a function on the fitted domain to
+  `1e-3 * target_error`.  The individual coefficients are not compared:
+  the fit is ill-conditioned, so they can move by more than the target
+  error without changing the series;
+- `alpha` must match to a relative `1e-6`, and `lambda_used` and the
+  achieved errors, which come from a bisection on a flat error curve, to
+  `1e-4`.
 
 When a change is meant to alter the coefficients, regenerate the references
 and commit them with the change:
