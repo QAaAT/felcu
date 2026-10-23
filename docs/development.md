@@ -86,8 +86,8 @@ request.  A new push to a branch cancels its still-running checks.
 | Job | What it does |
 |---|---|
 | `lint` | `ruff check` and `ruff format --check` |
-| `test` | Each test category as its own step, with a combined coverage report, on Ubuntu, macOS and Windows with Python 3.11 through 3.15 |
-| `test-min-deps` | Each test category as its own step, on Python 3.11 with NumPy 2.0, the oldest supported versions |
+| `test` | Each test category as its own step, with a combined coverage report, on Ubuntu, macOS and Windows with every supported Python (3.13 through 3.15) |
+| `test-min-deps` | Each test category as its own step, on Python 3.13 with NumPy 2.2, the oldest supported versions |
 | `install` | The whole suite against a regular (not editable) install, run from outside the checkout, so a package that builds incomplete fails |
 | `examples` | Every script in `examples/`, including the plots (headless, from a scratch directory) |
 
@@ -106,13 +106,37 @@ the job uploads that platform's results as an artifact,
 laid out like `tests/data/regression/`, so you can diff them against the
 references directly.
 
-When you raise a minimum dependency version in `pyproject.toml`, raise it in
-`test-min-deps` too.
-
 [Dependabot](https://docs.github.com/en/code-security/dependabot)
 (`.github/dependabot.yml`) opens monthly pull requests to update the GitHub
-Actions versions and the ruff pin.  It leaves the library's minimum
-dependency versions alone; raise those by hand.
+Actions versions and the ruff pin.  It leaves the supported Python and
+dependency versions alone; those follow SPEC 0 (below) and are raised by
+hand.
+
+## Supported versions
+
+`felcu` follows [SPEC 0](https://scientific-python.org/specs/spec-0000/):
+each Python version is supported for 3 years after its release, and each
+version of NumPy and matplotlib (the `plots` extra) for 2 years.  The
+minimum of each is the oldest release still inside its window.
+
+| Dependency | Minimum | Next raise |
+|---|---|---|
+| Python | 3.13 | to 3.14 on 2027-10-07 |
+| NumPy | 2.2 | to 2.3 on 2026-12-08, then 2.4 on 2027-06-07 |
+| matplotlib | 3.10 | to 3.11 on 2026-12-14 |
+
+[SPEC 0's table](https://scientific-python.org/specs/spec-0000/#support-window)
+lists the drop dates.  When one passes, raise the minimum in all of:
+
+- `requires-python`, the classifiers, `dependencies` and the `plots` extra in
+  `pyproject.toml`, and ruff's `target-version`;
+- the `test` matrix and the `test-min-deps` job in `.github/workflows/ci.yml`,
+  and the Python used by the other jobs there and in `docs.yml`;
+- the requirements in `docs/getting-started.md` and the table above.
+
+Add each new Python version to the `test` matrix when its first release
+candidate is out; `allow-prereleases` lets CI install it before the final
+release.
 
 ## Linting and formatting
 
