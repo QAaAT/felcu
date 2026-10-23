@@ -4,14 +4,14 @@ The coefficients are returned in the real Fourier basis
 
     g(x) = a0 + sum_{k=1}^m ak[k-1] sin(k x) + bk[k-1] cos(k x).
 
-When matrix-scale information is supplied, the scalar function is fitted in a
+A matrix or spectral bounds are required.  The scalar function is fitted in a
 scaled variable x:
 
-    unshifted: g(x) = f(x/tau),        f(H) = g(tau H)
-    shifted:   g(x) = f(x/tau + mu),   f(H) = g(tau (H - mu I))
+    shifted (eigenvalues):        g(x) = f(x/tau + mu),   f(H) = g(tau (H - mu I))
+    unshifted (singular values):  g(x) = f(x/tau),        f(A) = g(tau A)
 
-When no matrix scale is supplied, the fitted function is the unscaled scalar
-function f(x), except for inversion where a nonzero interval is required.
+The unshifted construction is used for inversion and for action on a
+non-Hermitian matrix; everything else is shifted.
 
 Typical usage
 -------------

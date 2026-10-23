@@ -14,8 +14,9 @@ It supports four problems:
 | `exponentiation` | f(H) = exp(H) |
 | `square_root` | f(H) = √H (H positive definite) |
 
-Both shifted (centred) and unshifted constructions are available; the
-square root uses the shifted construction.
+A matrix or spectral bounds are required.  Eigenvalue intervals use the
+shifted (centred) construction; action and inversion also have an unshifted
+construction on singular values, for non-Hermitian matrices.
 
 ## Installation
 

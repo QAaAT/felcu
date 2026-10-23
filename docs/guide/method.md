@@ -93,20 +93,16 @@ The defaults are the scale-adapted choices of Sec. VI:
 | Problem | Default \(r\) |
 |---|---|
 | action | \(r_{\rm id} = 1\) |
-| exponentiation | \(r_{\exp} = (1 + 1/\tau)^{-1}\), i.e. \((1 + \eta\delta/\pi)^{-1}\) when shifted |
+| exponentiation | \(r_{\exp} = (1 + 1/\tau)^{-1}\), i.e. \((1 + \eta\delta/\pi)^{-1}\) |
 | inversion, shifted (definite) | \(r_{\rm def} = \min\{1,\ 2\pi/(\kappa + 1)\}\) |
 | inversion, unshifted (two intervals) | \(r_{\rm indef} = \min\{1,\ \pi/(\kappa + 1)\}\) |
 | square root | \(r_{\rm sqrt} = \kappa^{-(2w-1)/(2w)}\), i.e. \(\kappa^{-1/2}\) for \(w = 1\) |
-
-For unshifted exponentiation \(1/\tau = \eta\|\mathcal H\|/\pi\), so the
-spectral norm takes the place of the half-width \(\delta\).  Without spectral information the default is \(r = 1\).
 
 ### The constant baseline
 
 Before fitting, `felcu` subtracts a constant baseline \(\beta = g(0)\)
 (\(\mu\), \(1/\mu\), \(e^{\mu}\), or \(\sqrt{\mu}\) for the
-shifted problems, \(1\) for unshifted exponentiation, and \(0\) for the
-odd problems), solves for the correction, and adds
+shifted problems, and \(0\) for the odd unshifted problems), solves for the correction, and adds
 \(\beta\) back to \(a_0\).  The penalty therefore acts on \(h - \beta\)
 rather than \(h\), so the exactly-known constant part \(c_0 I\) is not
 shrunk towards zero.  For the odd problems \(\beta = 0\) and this is the

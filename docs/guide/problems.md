@@ -6,25 +6,32 @@ comes from.
 
 ## Spectral information
 
-Give the spectral interval either as bounds or as a matrix:
+A spectral interval is required.  Give it either as bounds or as a matrix:
 
 ```python
 solve_fe_coefficients("inversion", sigma_min=0.5, sigma_max=3.0)
 solve_fe_coefficients("inversion", matrix=A)
 ```
 
-Passing both raises an error.  With `matrix=`, `felcu` computes eigenvalues
-or singular values itself, using `spectral_kind` to decide which:
+Passing neither, or both, raises an error.  With `matrix=`, `felcu`
+computes eigenvalues or singular values itself.
 
-| Problem | Unshifted | Shifted |
+The kind of interval fixes the construction: an eigenvalue interval is
+always fitted by the **shifted** construction, and a singular-value interval
+by the **unshifted** one.
+
+| Problem | Default | Also available |
 |---|---|---|
-| `action` | eigenvalues if Hermitian, otherwise singular values | eigenvalues |
-| `inversion` | singular values | eigenvalues (must be definite) |
-| `exponentiation` | eigenvalues | eigenvalues |
-| `square_root` | not available | eigenvalues (must be positive definite) |
+| `action` | eigenvalues, shifted (singular values, unshifted, for a non-Hermitian matrix) | `shifted=False` / `spectral_kind='singular_values'` |
+| `inversion` | singular values, unshifted | `shifted=True` / `spectral_kind='eigenvalues'` (must be definite) |
+| `exponentiation` | eigenvalues, shifted | none |
+| `square_root` | eigenvalues, shifted (must be positive definite) | none |
 
-`spectral_kind='auto'` (the default) follows this table.  Eigenvalue-based
-constructions require a Hermitian matrix (tested to `hermitian_tol`).
+`shifted` and `spectral_kind` both default to automatic and follow this
+table; set either one to choose the other column, and the other follows.
+Asking for an unshifted fit of an eigenvalue interval, or a shifted fit of
+a singular-value interval, raises an error.  Eigenvalue-based constructions
+require a Hermitian matrix (tested to `hermitian_tol`).
 
 ## The scaled variable
 
@@ -44,17 +51,15 @@ g(x) = f\!\left(\mu + \frac{x}{\tau}\right), \qquad f(\mathcal H) = g(\mathcal G
 
 with spectral midpoint \(\mu\) and half-width \(\delta\) (see
 [Notation](notation.md)).  The shifted constructions are exactly the
-paper's \(\tau = \pi/(\eta\delta)\).  Unshifted constructions take
-\(\mu = 0\) and scale by the spectral norm \(\|\mathcal H\|\) instead
-(\(\max|\lambda|\), or \(\Sigma_{\max}\) for singular values):
+paper's \(\tau = \pi/(\eta\delta)\).  Unshifted (singular-value)
+constructions take \(\mu = 0\) and scale by \(\Sigma_{\max}\) instead:
 
 | Problem | Construction | Fitted \(g(x)\) | \(\tau\) | Basis | Fitted set |
 |---|---|---|---|---|---|
-| action | unshifted | \(x/\tau\) | \(\pi/(\eta\|\mathcal H\|)\) | odd sine | \(\Omega_\eta\) |
 | action | shifted | \(\mu + x/\tau\) | \(\pi/(\eta\delta)\) | constant + sine | \(\Omega_\eta\) |
-| inversion | unshifted | \(\tau/x\) | \(\pi/(\eta\Sigma_{\max})\) | odd sine | \(\Omega^{\rm indef}_{\eta,\kappa}\) |
+| action | unshifted | \(x/\tau\) | \(\pi/(\eta\Sigma_{\max})\) | odd sine | \(\Omega_\eta\) |
 | inversion | shifted | \((\mu + x/\tau)^{-1}\) | \(\pi/(\eta\delta)\) | full | \(\Omega_\eta\) |
-| exponentiation | unshifted | \(e^{x/\tau}\) | \(\pi/(\eta\|\mathcal H\|)\) | full | \(\Omega_\eta\) |
+| inversion | unshifted | \(\tau/x\) | \(\pi/(\eta\Sigma_{\max})\) | odd sine | \(\Omega^{\rm indef}_{\eta,\kappa}\) |
 | exponentiation | shifted | \(e^{\mu + x/\tau}\) | \(\pi/(\eta\delta)\) | full | \(\Omega_\eta\) |
 | square root | shifted | \(\sqrt{\mu + x/\tau}\) | \(\pi/(\eta\delta)\) | full | \(\Omega_\eta\) |
 
@@ -64,8 +69,9 @@ Hamiltonian simulation of \(\mathcal H\) up to a known phase.
 
 ### Bases
 
-- **odd sine**: \(a_0 = 0\) and \(b_k = 0\); only sine terms.  Used when the
-  target is odd.
+- **odd sine**: \(a_0 = 0\) and \(b_k = 0\); only sine terms.  Used by the
+  unshifted constructions, which act on singular values and so need an odd
+  target.
 - **constant + sine**: a constant plus sine terms.
 - **full**: constant, sine and cosine terms.
 
@@ -91,12 +97,17 @@ for a general \(A\) through its Hermitian dilation, whose spectrum is
 ## Shifted versus unshifted
 
 The shifted construction centres the spectrum before fitting.  For an
-interval far from zero, such as \([2, 5]\), the unshifted fit has to cover
-\([-5, 5]\) while the shifted fit only covers the half-width
-\(\delta = 1.5\), and the constant part \(c_0 I\) carries \(\mu\) exactly.
-This usually lowers both \(m\) and \(\alpha_m\); the shift only adds the
-known phase \(e^{-ik\tau\mu}\) to each Hamiltonian simulation.  Shifted constructions always need spectral
-information.
+interval far from zero, such as \([2, 5]\), it only covers the half-width
+\(\delta = 1.5\), and the constant part \(c_0 I\) carries \(\mu\) exactly;
+the shift only adds the known phase \(e^{-ik\tau\mu}\) to each Hamiltonian
+simulation.  Every eigenvalue interval is fitted this way.
+
+The unshifted construction is kept for singular values, where the target
+must be odd and so cannot be centred.  It covers a non-Hermitian matrix,
+for which there is no real eigenvalue interval, and indefinite inversion
+through the two-interval fit above.  For the same interval it has to cover
+\([-\Sigma_{\max}, \Sigma_{\max}]\), so it usually costs more \(m\) and
+\(\alpha_m\) than a shifted fit would.
 
 Shifted inversion requires a *definite* interval (both bounds the same sign,
 neither zero); negative-definite matrices work too.
@@ -109,9 +120,8 @@ treatment of the matrix square root (Sec. VI D): \(\mathcal H\) must be
 positive definite, \(0 < \lambda_{\min} \le \lambda_{\max}\), and the fit
 uses the shifted construction with \(\eta_{\rm def}\), which places the
 branch point on the periodic boundary rather than near the fitted
-endpoint.  Pass `shifted=True`; `shifted=False` raises an error, since an
-unshifted interval \([-\|\mathcal H\|, \|\mathcal H\|]\) would contain the
-branch point.
+endpoint.  `shifted=False` raises an error, since an unshifted interval
+\([-\|\mathcal H\|, \|\mathcal H\|]\) would contain the branch point.
 
 \(\sqrt x\) is concave, so it does not satisfy the convex
 endpoint-reflection condition and the subnormalisation is bounded but not
@@ -137,18 +147,6 @@ Here \(\kappa = \Sigma_{\max}/\Sigma_{\min}\) for unshifted inversion and
 \(\kappa = \max|\lambda|/\min|\lambda|\) for the definite interval of shifted
 inversion and square root (\(\eta = 2\) if \(\kappa = 1\)).  Override with `eta=`, or query
 the default with [`default_eta`](../api.md#felcu.default_eta).
-
-## No spectral information
-
-If neither `matrix` nor bounds are given, `felcu` fits the unscaled function
-on \(\Omega_\eta\) with \(\tau = 1\) and \(\mu = 0\):
-
-- `action` fits \(g(x) = x\);
-- `exponentiation` fits \(g(x) = e^{x}\).
-
-You are then responsible for scaling \(\mathcal H\) so that its spectrum
-lies in \(\Omega_\eta\).  Inversion, square root and all shifted
-constructions need spectral information and raise an error without it.
 
 ## Problem name aliases
 

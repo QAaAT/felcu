@@ -30,7 +30,6 @@ rows = []
 for kappa in KAPPAS:
     r = solve_fe_coefficients(
         "square_root",
-        shifted=True,
         sigma_min=1.0 / kappa,
         sigma_max=1.0,
         target_error=TARGET,

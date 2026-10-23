@@ -26,7 +26,8 @@ class FourierExtensionResult:
     problem : str
         ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``.
     shifted : bool
-        Whether the shifted (centred) construction was used.
+        Whether the shifted (centred) construction was used: ``True`` for
+        an eigenvalue interval, ``False`` for a singular-value one.
     basis_used : str
         ``'odd_sine'`` (sine terms only), ``'const_plus_sine'`` (constant
         plus sine terms), or ``'full'``.
@@ -36,9 +37,8 @@ class FourierExtensionResult:
         Extension parameter; the series was fitted on
         ``[-pi/eta, pi/eta]``.
     tau : float
-        Scale between the matrix spectrum and the fitted variable.  ``1``
-        without matrix-scale information; infinite for a zero-width
-        interval.
+        Scale between the matrix spectrum and the fitted variable; infinite
+        for a zero-width interval.
     alpha : float
         Subnormalisation ``alpha_m = sum_k |c_k| = |a0| + sum_k sqrt(ak**2 + bk**2)``.
     target_error : float
@@ -80,17 +80,20 @@ class FourierExtensionResult:
         Inner edge of a double domain; ``None`` otherwise.
     sigma_min, sigma_max : float or None
         Spectral interval used (eigenvalues or singular values, per
-        *spectral_kind_used*); ``None`` without matrix-scale information.
+        *spectral_kind_used*).  ``None`` only in results saved by earlier
+        versions of felcu, which allowed fits without one.
     spectral_kind_used : str or None
-        ``'eigenvalues'`` or ``'singular_values'``; ``None`` without
-        matrix-scale information.
+        ``'eigenvalues'`` or ``'singular_values'``; ``None`` as for
+        *sigma_min*.
     matrix_shape : tuple of int or None
         Shape of the input matrix, if one was given.
     matrix_is_hermitian : bool or None
         Whether the input matrix passed the Hermitian test, if one was
         given.
     matrix_scale_provided : bool
-        Whether a matrix or spectral bounds were given.
+        Whether a matrix or spectral bounds were given.  Always ``True``
+        now that they are required; ``False`` only in results saved by
+        earlier versions.
     all_results : tuple of FourierExtensionResult
         Every candidate tried, sorted by ``m``.  Empty on the candidates
         themselves.

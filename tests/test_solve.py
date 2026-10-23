@@ -117,6 +117,75 @@ class TestResultFields:
 
 
 # ---------------------------------------------------------------------------
+# Shifted (eigenvalue) and unshifted (singular-value) constructions
+# ---------------------------------------------------------------------------
+
+
+class TestConstruction:
+    common = dict(target_error=1e-4, m=16)
+
+    @pytest.mark.parametrize("problem", ["action", "exponentiation"])
+    def test_eigenvalue_bounds_are_shifted(self, problem):
+        result = solve_fe_coefficients(problem, sigma_min=1.0, sigma_max=3.0, **self.common)
+        assert result.shifted
+        assert result.spectral_kind_used == "eigenvalues"
+        assert result.matrix_scale_provided
+        assert result.tau == pytest.approx(np.pi / (result.eta * 1.0))  # half-width 1, not radius 3
+
+    def test_hermitian_action_is_shifted(self):
+        result = solve_fe_coefficients("action", matrix=np.diag([-1.0, 0.5, 2.0]), **self.common)
+        assert result.shifted
+        assert result.basis_used == "const_plus_sine"
+
+    def test_non_hermitian_action_is_unshifted(self):
+        A = np.array([[1.0, 2.0], [0.0, 1.0]])
+        result = solve_fe_coefficients("action", matrix=A, **self.common)
+        assert not result.shifted
+        assert result.spectral_kind_used == "singular_values"
+        assert result.basis_used == "odd_sine"
+
+    def test_inversion_defaults_to_singular_values(self):
+        result = solve_fe_coefficients("inversion", sigma_min=0.5, sigma_max=2.0, **self.common)
+        assert not result.shifted
+        assert result.spectral_kind_used == "singular_values"
+        assert result.domain == "double"
+
+    def test_shifted_inversion_uses_eigenvalues(self):
+        result = solve_fe_coefficients("inversion", shifted=True, sigma_min=0.5, sigma_max=2.0, **self.common)
+        assert result.shifted
+        assert result.spectral_kind_used == "eigenvalues"
+        assert result.domain == "single"
+
+    def test_spectral_kind_picks_construction(self):
+        kwargs = dict(sigma_min=0.5, sigma_max=2.0, **self.common)
+        assert solve_fe_coefficients("inversion", spectral_kind="eigenvalues", **kwargs).shifted
+        assert not solve_fe_coefficients("action", spectral_kind="singular_values", **kwargs).shifted
+
+    @pytest.mark.parametrize("problem", ["action", "inversion"])
+    def test_unshifted_eigenvalues_raises(self, problem):
+        with pytest.raises(ValueError, match="Unshifted constructions use a singular-value interval"):
+            solve_fe_coefficients(problem, shifted=False, spectral_kind="eigenvalues", sigma_min=0.5, sigma_max=2.0)
+
+    def test_unshifted_exponentiation_raises(self):
+        with pytest.raises(ValueError, match="shifted construction on an eigenvalue interval"):
+            solve_fe_coefficients("exponentiation", shifted=False, sigma_min=0.5, sigma_max=2.0)
+
+    def test_shifted_singular_values_raises(self):
+        with pytest.raises(ValueError, match="Shifted constructions use an eigenvalue interval"):
+            solve_fe_coefficients("action", shifted=True, spectral_kind="singular_values", sigma_min=0.5, sigma_max=2.0)
+
+    def test_non_hermitian_exponentiation_raises(self):
+        with pytest.raises(ValueError, match="Hermitian"):
+            solve_fe_coefficients("exponentiation", matrix=np.array([[1.0, 2.0], [0.0, 1.0]]))
+
+    def test_default_eta_and_r_need_no_shifted(self):
+        assert default_eta("inversion", sigma_min=0.5, sigma_max=1.0) == pytest.approx(1.5)
+        assert default_eta("inversion", shifted=True, sigma_min=0.5, sigma_max=1.0) == pytest.approx(3.0)
+        with pytest.raises(ValueError, match="Provide a matrix"):
+            default_sobolev_r("exponentiation")
+
+
+# ---------------------------------------------------------------------------
 # H_r^w regulariser
 # ---------------------------------------------------------------------------
 
@@ -151,23 +220,20 @@ class TestSobolevRegulariser:
     @pytest.mark.parametrize(
         "problem, kwargs",
         [
-            ("action", {}),
             ("action", dict(sigma_min=-1.0, sigma_max=2.0)),
+            ("action", dict(shifted=False, sigma_min=0.0, sigma_max=2.0)),
             ("inversion", dict(sigma_min=0.5, sigma_max=3.0)),
-            ("exponentiation", dict(shifted=True, sigma_min=1.0, sigma_max=3.0)),
+            ("exponentiation", dict(sigma_min=1.0, sigma_max=3.0)),
         ],
     )
     def test_default_r_in_range(self, problem, kwargs):
         assert 0 < default_sobolev_r(problem, **kwargs) <= 1
 
     def test_default_r_exponentiation(self):
-        # r_exp = 1 / (1 + eta delta / pi) shifted; unshifted uses the radius 3 instead of delta = 1
+        # r_exp = 1 / (1 + eta delta / pi), with half-width delta = 1
         kwargs = dict(sigma_min=1.0, sigma_max=3.0)
-        assert default_sobolev_r("exponentiation", shifted=True, **kwargs) == pytest.approx(1 / (1 + 2.0 / np.pi))
-        assert default_sobolev_r("exponentiation", shifted=True, eta=4.0, **kwargs) == pytest.approx(
-            1 / (1 + 4.0 / np.pi)
-        )
-        assert default_sobolev_r("exponentiation", **kwargs) == pytest.approx(1 / (1 + 6.0 / np.pi))
+        assert default_sobolev_r("exponentiation", **kwargs) == pytest.approx(1 / (1 + 2.0 / np.pi))
+        assert default_sobolev_r("exponentiation", eta=4.0, **kwargs) == pytest.approx(1 / (1 + 4.0 / np.pi))
 
     def test_default_r_inversion(self):
         # r_def = min(1, 2 pi / (kappa + 1)), r_indef = min(1, pi / (kappa + 1))
@@ -218,9 +284,13 @@ class TestSquareRoot:
             np.testing.assert_allclose(_target(x, problem, 1.3, 2.0, d), fd, rtol=1e-6)
 
     @pytest.mark.parametrize("problem", ["square_root"])
-    def test_requires_shifted(self, problem):
-        with pytest.raises(ValueError, match="shifted=True"):
-            solve_fe_coefficients(problem, sigma_min=0.5, sigma_max=1.0)
+    def test_shifted_by_default(self, problem):
+        assert solve_fe_coefficients(problem, sigma_min=0.5, sigma_max=1.0, target_error=1e-4, m=16).shifted
+
+    @pytest.mark.parametrize("problem", ["square_root"])
+    def test_rejects_unshifted(self, problem):
+        with pytest.raises(ValueError, match="shifted construction on an eigenvalue interval"):
+            solve_fe_coefficients(problem, shifted=False, sigma_min=0.5, sigma_max=1.0)
 
     @pytest.mark.parametrize("problem", ["square_root"])
     @pytest.mark.parametrize("lo", [0.0, -0.5])
@@ -289,8 +359,8 @@ class TestLinearSolver:
 
             monkeypatch.setattr(np.linalg, "svd", svd)
 
-        spectral = _spectral_data("exponentiation", False, None, 0.1, 2.0, "auto", 1e-12, True)
-        spec = _make_spec("exponentiation", False, spectral, None, 1e-12)
+        spectral = _spectral_data("exponentiation", None, None, 0.1, 2.0, "auto", 1e-12)
+        spec = _make_spec("exponentiation", spectral, None, 1e-12)
         m, r, w = 16, 0.5, 1.5
         data = _make_fit_data(spec, m, 8, 401)
 
@@ -351,13 +421,15 @@ class TestInputValidation:
                 selection="biggest_m",
             )
 
-    def test_no_scale_inversion_raises(self):
-        with pytest.raises(ValueError):
-            solve_fe_coefficients("inversion")  # inversion always needs a scale
+    @pytest.mark.parametrize("problem", ["action", "inversion", "exponentiation", "square_root"])
+    @pytest.mark.parametrize("shifted", [None, True, False])
+    def test_no_scale_raises(self, problem, shifted):
+        with pytest.raises(ValueError, match="Provide a matrix or both sigma_min and sigma_max"):
+            solve_fe_coefficients(problem, shifted=shifted)
 
-    def test_shifted_no_scale_raises(self):
-        with pytest.raises(ValueError):
-            solve_fe_coefficients("action", shifted=True)
+    def test_one_bound_raises(self):
+        with pytest.raises(ValueError, match="Provide a matrix or both sigma_min and sigma_max"):
+            solve_fe_coefficients("exponentiation", sigma_max=1.0)
 
     def test_negative_sobolev_w_raises(self):
         with pytest.raises(ValueError, match="sobolev_w"):

@@ -57,11 +57,11 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         domain=spec["domain"],
         x_max=float(spec["x_max"]),
         x_min=None if spec["x_min"] is None else float(spec["x_min"]),
-        sigma_min=None if spectral is None else float(spectral["sigma_min"]),
-        sigma_max=None if spectral is None else float(spectral["sigma_max"]),
-        spectral_kind_used=None if spectral is None else spectral["kind"],
-        matrix_shape=None if spectral is None else spectral["matrix_shape"],
-        matrix_is_hermitian=None if spectral is None else spectral["matrix_is_hermitian"],
+        sigma_min=float(spectral["sigma_min"]),
+        sigma_max=float(spectral["sigma_max"]),
+        spectral_kind_used=spectral["kind"],
+        matrix_shape=spectral["matrix_shape"],
+        matrix_is_hermitian=spectral["matrix_is_hermitian"],
         matrix_scale_provided=bool(spec["matrix_scale_provided"]),
     )
 
@@ -91,7 +91,7 @@ def _exact_constant_if_any(
 ) -> FourierExtensionResult | None:
     """The exact constant series when the spectral interval is a single point."""
     s = spec["spectral"]
-    if s is None or s["sigma_min"] != s["sigma_max"]:
+    if s["sigma_min"] != s["sigma_max"]:
         return None
     value = s["sigma_min"]
     if spec["problem"] == "action":
@@ -157,7 +157,7 @@ def _select(candidates: list[dict], metric: str, target: float, selection: str) 
 def solve_fe_coefficients(
     problem: str,
     *,
-    shifted: bool = False,
+    shifted: bool | None = None,
     matrix: np.ndarray | Sequence[Sequence[complex]] | None = None,
     sigma_min: float | None = None,
     sigma_max: float | None = None,
@@ -184,14 +184,21 @@ def solve_fe_coefficients(
         One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``
         (several aliases accepted; see :func:`~felcu.utils.canonical_problem_name`).
     shifted:
-        Use the shifted (centred) construction.
+        ``True`` for the shifted (centred) construction on an eigenvalue
+        interval, ``False`` for the unshifted one on a singular-value
+        interval (action and inversion only).  ``None`` (default) follows
+        *spectral_kind*.
     matrix:
         Square matrix whose spectral information drives the fitting.
-        Mutually exclusive with *sigma_min* / *sigma_max*.
+        Mutually exclusive with *sigma_min* / *sigma_max*; one of the two
+        is required.
     sigma_min, sigma_max:
         Spectral interval (eigenvalue or singular-value bounds).
     spectral_kind:
-        ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.
+        ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.  ``'auto'``
+        uses singular values for unshifted fits, for inversion unless
+        *shifted* is ``True``, and for action on a non-Hermitian matrix;
+        eigenvalues otherwise.
     eta:
         Fourier-extension parameter (must exceed 1).  Computed automatically
         when omitted.
@@ -247,16 +254,16 @@ def solve_fe_coefficients(
     if selection not in {"smallest_m", "smallest_alpha"}:
         raise ValueError("selection must be 'smallest_m' or 'smallest_alpha'.")
 
-    spectral = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol, True)
-    spec = _make_spec(problem, shifted, spectral, eta, hermitian_tol)
+    spectral = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol)
+    spec = _make_spec(problem, spectral, eta, hermitian_tol)
 
     if sobolev_r is None:
         sobolev_r = default_sobolev_r(
             problem,
-            shifted=shifted,
-            sigma_min=None if spectral is None else spectral["sigma_min"],
-            sigma_max=None if spectral is None else spectral["sigma_max"],
-            spectral_kind="auto" if spectral is None else spectral["kind"],
+            shifted=spectral["shifted"],
+            sigma_min=spectral["sigma_min"],
+            sigma_max=spectral["sigma_max"],
+            spectral_kind=spectral["kind"],
             hermitian_tol=hermitian_tol,
             eta=spec["eta"],
             sobolev_w=sobolev_w,
@@ -268,7 +275,7 @@ def solve_fe_coefficients(
     logger.info(
         "solve_fe_coefficients: problem=%s  shifted=%s  metric=%s  target=%.3e  basis=%s  domain=%s  eta=%.4f  tau=%s",
         problem,
-        shifted,
+        spec["shifted"],
         metric,
         target_error,
         spec["basis"],

@@ -2,11 +2,11 @@
 Matrix exponential from a Hermitian matrix
 ==========================================
 
-Fit exp(H) from H directly, then compare g(tau H) with the exact matrix
-exponential computed by eigendecomposition.
+Fit exp(H) from H directly, then compare g(tau (H - mu I)) with the exact
+matrix exponential computed by eigendecomposition.
 
 Run with:
-    python examples/exponentiation/04_matrix_exponential.py
+    python examples/exponentiation/02_matrix_exponential.py
 """
 
 import numpy as np
@@ -22,9 +22,10 @@ result = solve_fe_coefficients("exponentiation", matrix=H, target_error=1e-8, m_
 print(f"eigenvalues in = [{result.sigma_min:.4f}, {result.sigma_max:.4f}]")
 print(f"m              = {result.m}")
 
+mu = 0.5 * (result.sigma_min + result.sigma_max)
 w, V = np.linalg.eigh(H)
 exp_H = V @ np.diag(np.exp(w)) @ V.T
-g = evaluate_fourier_series(result.tau * w, result.a0, result.ak, result.bk)
+g = evaluate_fourier_series(result.tau * (w - mu), result.a0, result.ak, result.bk)
 approx = V @ np.diag(g) @ V.T
 
-print(f"||g(tau H) - exp(H)||_2 = {np.linalg.norm(approx - exp_H, 2):.2e}")
+print(f"||g(tau (H - mu I)) - exp(H)||_2 = {np.linalg.norm(approx - exp_H, 2):.2e}")

@@ -15,6 +15,10 @@ PI = float(np.pi)
 # by the shifted construction only (Sec. VI D of the paper).
 POSITIVE_DEFINITE_PROBLEMS = frozenset({"square_root"})
 
+# Functions fitted on an eigenvalue interval only: they have no unshifted
+# (singular-value) construction.
+EIGENVALUE_ONLY_PROBLEMS = frozenset({"exponentiation"}) | POSITIVE_DEFINITE_PROBLEMS
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -27,7 +31,7 @@ def _is_hermitian(A: np.ndarray, tol: float) -> bool:
 
 def _spectral_kind(
     problem: str,
-    shifted: bool,
+    shifted: bool | None,
     requested: str,
     matrix_is_hermitian: bool | None,
 ) -> str:
@@ -35,9 +39,11 @@ def _spectral_kind(
         raise ValueError("spectral_kind must be 'auto', 'eigenvalues', or 'singular_values'.")
     if requested != "auto":
         return requested
-    if problem == "inversion" and not shifted:
+    if shifted is not None:
+        return "eigenvalues" if shifted else "singular_values"
+    if problem == "inversion":
         return "singular_values"
-    if problem == "action" and not shifted and matrix_is_hermitian is False:
+    if problem == "action" and matrix_is_hermitian is False:
         return "singular_values"
     return "eigenvalues"
 
@@ -48,14 +54,12 @@ def _check_spectral_choice(
     kind: str,
     matrix_is_hermitian: bool | None,
 ) -> None:
+    if problem in EIGENVALUE_ONLY_PROBLEMS and kind != "eigenvalues":
+        raise ValueError(f"{problem} uses the shifted construction on an eigenvalue interval.")
     if shifted and kind != "eigenvalues":
         raise ValueError("Shifted constructions use an eigenvalue interval.")
-    if problem == "exponentiation" and kind != "eigenvalues":
-        raise ValueError("Exponentiation uses an eigenvalue interval.")
-    if problem in POSITIVE_DEFINITE_PROBLEMS and not shifted:
-        raise ValueError(f"{problem} requires shifted=True: it is fitted on the centred positive-definite interval.")
-    if problem == "inversion" and not shifted and kind != "singular_values":
-        raise ValueError("Unshifted inversion uses singular values.")
+    if not shifted and kind != "singular_values":
+        raise ValueError("Unshifted constructions use a singular-value interval; eigenvalue intervals are shifted.")
     if kind == "eigenvalues" and matrix_is_hermitian is False:
         raise ValueError("Eigenvalue-based constructions require a Hermitian matrix.")
 
@@ -70,22 +74,22 @@ def _definite_abs_bounds(lo: float, hi: float) -> tuple[float, float]:
 
 def _spectral_data(
     problem: str,
-    shifted: bool,
+    shifted: bool | None,
     matrix: np.ndarray | Sequence[Sequence[complex]] | None,
     sigma_min: float | None,
     sigma_max: float | None,
     spectral_kind: str,
     hermitian_tol: float,
-    allow_missing: bool,
-) -> dict | None:
+) -> dict:
+    """The spectral interval, its kind, and the construction it implies.
+
+    *shifted* ``None`` picks the construction from the kind: shifted for
+    eigenvalues, unshifted for singular values.
+    """
     if matrix is not None and (sigma_min is not None or sigma_max is not None):
         raise ValueError("Provide either matrix or sigma_min/sigma_max, not both.")
-    if matrix is None and sigma_min is None and sigma_max is None:
-        if allow_missing:
-            return None
-        raise ValueError("Provide a matrix or both sigma_min and sigma_max.")
     if matrix is None and (sigma_min is None or sigma_max is None):
-        raise ValueError("Provide both sigma_min and sigma_max.")
+        raise ValueError("Provide a matrix or both sigma_min and sigma_max.")
 
     if matrix is not None:
         A = np.asarray(matrix)
@@ -94,6 +98,8 @@ def _spectral_data(
         A = A.astype(np.complex128 if np.iscomplexobj(A) else float)
         hermitian = _is_hermitian(A, hermitian_tol)
         kind = _spectral_kind(problem, shifted, spectral_kind, hermitian)
+        if shifted is None:
+            shifted = kind == "eigenvalues"
         _check_spectral_choice(problem, shifted, kind, hermitian)
         values = np.linalg.eigvalsh(A) if kind == "eigenvalues" else np.linalg.svd(A, compute_uv=False)
         lo = float(np.min(values))
@@ -102,6 +108,8 @@ def _spectral_data(
     else:
         hermitian = None
         kind = _spectral_kind(problem, shifted, spectral_kind, None)
+        if shifted is None:
+            shifted = kind == "eigenvalues"
         _check_spectral_choice(problem, shifted, kind, hermitian)
         lo = float(sigma_min)
         hi = float(sigma_max)
@@ -115,7 +123,7 @@ def _spectral_data(
     else:
         if lo > hi:
             raise ValueError("Require sigma_min <= sigma_max.")
-        if problem == "inversion" and shifted:
+        if problem == "inversion":
             _definite_abs_bounds(lo, hi)
         if problem in POSITIVE_DEFINITE_PROBLEMS and lo <= 0:
             raise ValueError(f"{problem} requires a positive-definite interval, 0 < sigma_min <= sigma_max.")
@@ -124,6 +132,7 @@ def _spectral_data(
         "sigma_min": lo,
         "sigma_max": hi,
         "kind": kind,
+        "shifted": shifted,
         "matrix_shape": shape,
         "matrix_is_hermitian": hermitian,
     }
@@ -137,7 +146,7 @@ def _spectral_data(
 def default_eta(
     problem: str,
     *,
-    shifted: bool = False,
+    shifted: bool | None = None,
     matrix: np.ndarray | Sequence[Sequence[complex]] | None = None,
     sigma_min: float | None = None,
     sigma_max: float | None = None,
@@ -150,7 +159,7 @@ def default_eta(
     much of the period is left free.  The defaults are
 
     - action and exponentiation: ``2``;
-    - unshifted inversion: ``1 + 1/kappa``, with
+    - unshifted (singular-value) inversion: ``1 + 1/kappa``, with
       ``kappa = sigma_max / sigma_min``;
     - shifted inversion and square root:
       ``(kappa + 1) / (kappa - 1)``, with *kappa* the ratio of the largest
@@ -162,7 +171,9 @@ def default_eta(
         One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
         an alias; see :func:`~felcu.canonical_problem_name`).
     shifted:
-        Use the shifted (centred) construction.
+        Use the shifted (centred) construction, which fits an eigenvalue
+        interval, or the unshifted one, which fits a singular-value
+        interval.  ``None`` follows *spectral_kind*.
     matrix:
         Square matrix to read the spectral interval from.  Mutually
         exclusive with *sigma_min* / *sigma_max*.
@@ -181,7 +192,7 @@ def default_eta(
     Raises
     ------
     ValueError
-        For inversion, if no spectral information is given or the interval
+        For inversion and square root, if no spectral information is given or the interval
         is invalid (see :func:`~felcu.solve_fe_coefficients`).
 
     Notes
@@ -195,13 +206,12 @@ def default_eta(
     if problem in {"action", "exponentiation"}:
         return 2.0
 
-    s = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol, False)
-    assert s is not None
+    s = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol)
     lo, hi = s["sigma_min"], s["sigma_max"]
-    if shifted:
+    if s["shifted"]:
         lo, hi = _definite_abs_bounds(lo, hi)
     kappa = hi / lo
-    if shifted:
+    if s["shifted"]:
         return 2.0 if abs(kappa - 1.0) < 1e-15 else (kappa + 1.0) / (kappa - 1.0)
     return 1.0 + 1.0 / kappa
 
@@ -214,7 +224,7 @@ def default_eta(
 def default_sobolev_r(
     problem: str,
     *,
-    shifted: bool = False,
+    shifted: bool | None = None,
     matrix: np.ndarray | Sequence[Sequence[complex]] | None = None,
     sigma_min: float | None = None,
     sigma_max: float | None = None,
@@ -232,12 +242,11 @@ def default_sobolev_r(
 
     - action: ``r_id = 1``, since g is linear;
     - exponentiation: ``r_exp = 1 / (1 + 1/tau)``, since ``g' = g / tau``.
-      For the shifted fit ``tau = pi / (eta delta)``, giving
-      ``1 / (1 + eta delta / pi)``; unshifted fits scale by the spectral
-      radius instead of the half-width ``delta``;
+      With ``tau = pi / (eta delta)`` for the half-width ``delta``, this
+      is ``1 / (1 + eta delta / pi)``;
     - inversion: the gap to the pole, ``r_def = min(1, 2 pi / (kappa + 1))``
       for the shifted (definite) fit and ``r_indef = min(1, pi / (kappa + 1))``
-      for the unshifted two-interval fit;
+      for the unshifted (singular-value) two-interval fit;
     - square root: ``r_sqrt = kappa^(-(2w - 1) / (2w))``, which balances the
       two contributions to the extension's H_r^w norm (``kappa^(-1/2)`` for
       ``w = 1``).
@@ -248,13 +257,14 @@ def default_sobolev_r(
         One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
         an alias; see :func:`~felcu.canonical_problem_name`).
     shifted:
-        Use the shifted (centred) construction.
+        Use the shifted (centred) construction, which fits an eigenvalue
+        interval, or the unshifted one, which fits a singular-value
+        interval.  ``None`` follows *spectral_kind*.
     matrix:
         Square matrix to read the spectral interval from.  Mutually
         exclusive with *sigma_min* / *sigma_max*.
     sigma_min, sigma_max:
-        Spectral interval bounds.  May be omitted, in which case no
-        spectral information is available.
+        Spectral interval bounds.
     spectral_kind:
         ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.
     hermitian_tol:
@@ -270,20 +280,19 @@ def default_sobolev_r(
     float
         The default *r*, which lies in ``(0, 1]``.
 
-    Notes
-    -----
-    Without spectral information (an unscaled fit) the default is ``1``.
+    Raises
+    ------
+    ValueError
+        If no spectral information is given, or it is invalid (see
+        :func:`~felcu.solve_fe_coefficients`).
     """
     problem = canonical_problem_name(problem)
-    s = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol, True)
-    if s is None:
-        # No spectral information: fitting the unscaled function.
-        return 1.0
+    s = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol)
 
     if problem == "action":
         return 1.0
     if problem == "exponentiation":
-        tau = _make_spec(problem, shifted, s, eta, hermitian_tol)["tau"]
+        tau = _make_spec(problem, s, eta, hermitian_tol)["tau"]
         return 1.0 / (1.0 + 1.0 / tau)
 
     # The remaining problems have a pole or branch point at 0, and the
@@ -292,7 +301,7 @@ def default_sobolev_r(
     kappa = max(lo, hi) / min(lo, hi)
     if problem == "square_root":
         return kappa ** (-(2.0 * sobolev_w - 1.0) / (2.0 * sobolev_w))
-    return min(1.0, (2.0 if shifted else 1.0) * PI / (kappa + 1.0))
+    return min(1.0, (2.0 if s["shifted"] else 1.0) * PI / (kappa + 1.0))
 
 
 # ---------------------------------------------------------------------------
@@ -302,30 +311,20 @@ def default_sobolev_r(
 
 def _make_spec(
     problem: str,
-    shifted: bool,
-    spectral: dict | None,
+    spectral: dict,
     eta: float | None,
     hermitian_tol: float,
 ) -> dict:
-    if shifted and spectral is None:
-        raise ValueError("Shifted constructions require matrix-scale information.")
-    if problem == "inversion" and spectral is None:
-        raise ValueError("Inversion requires matrix-scale information so that the fitted interval avoids the pole.")
-    if problem in POSITIVE_DEFINITE_PROBLEMS and spectral is None:
-        raise ValueError(f"{problem} requires matrix-scale information so that the fitted interval avoids 0.")
-
+    shifted = spectral["shifted"]
     if eta is None:
-        if spectral is None:
-            eta = default_eta(problem)
-        else:
-            eta = default_eta(
-                problem,
-                shifted=shifted,
-                sigma_min=spectral["sigma_min"],
-                sigma_max=spectral["sigma_max"],
-                spectral_kind=spectral["kind"],
-                hermitian_tol=hermitian_tol,
-            )
+        eta = default_eta(
+            problem,
+            shifted=shifted,
+            sigma_min=spectral["sigma_min"],
+            sigma_max=spectral["sigma_max"],
+            spectral_kind=spectral["kind"],
+            hermitian_tol=hermitian_tol,
+        )
     eta = float(eta)
     if eta <= 1.0:
         raise ValueError("eta must exceed 1.")
@@ -337,38 +336,26 @@ def _make_spec(
         "x_max": PI / eta,
         "x_min": None,
         "spectral": spectral,
-        "matrix_scale_provided": spectral is not None,
+        "matrix_scale_provided": True,
         "domain": "single",
         "tau": 1.0,
         "mu": 0.0,
     }
     # The fitted target is g(x) = F(x / tau + mu) (see _coefficients._target)
     # and the baseline is the constant g would be without the scaled variable.
-    if spectral is None:
-        if problem == "action":
-            return base | {"basis": "odd_sine", "baseline": 0.0}
-        return base | {"basis": "full", "baseline": 1.0}
-
     lo = spectral["sigma_min"]
     hi = spectral["sigma_max"]
+
+    # Unshifted fits act on singular values, so g must be odd.
+    if not shifted:
+        tau = math.inf if hi == 0 else PI / (eta * hi)
+        if problem == "inversion":
+            return base | {"basis": "odd_sine", "domain": "double", "tau": tau, "x_min": tau * lo, "baseline": 0.0}
+        return base | {"basis": "odd_sine", "tau": tau, "baseline": 0.0}
+
     mu = 0.5 * (lo + hi)
     halfwidth = 0.5 * (hi - lo)
-    radius = hi if spectral["kind"] == "singular_values" else max(abs(lo), abs(hi))
-
-    def scale(width: float) -> float:
-        return math.inf if width == 0 else PI / (eta * width)
-
-    if problem == "inversion" and not shifted:
-        tau = PI / (eta * hi)
-        return base | {"basis": "odd_sine", "domain": "double", "tau": tau, "x_min": tau * lo, "baseline": 0.0}
-
-    if not shifted:
-        tau = scale(radius)
-        if problem == "action":
-            return base | {"basis": "odd_sine", "tau": tau, "baseline": 0.0}
-        return base | {"basis": "full", "tau": tau, "baseline": 1.0}
-
-    tau = scale(halfwidth)
+    tau = math.inf if halfwidth == 0 else PI / (eta * halfwidth)
     if problem == "action":
         return base | {"basis": "const_plus_sine", "tau": tau, "mu": mu, "baseline": mu}
     if problem == "inversion":

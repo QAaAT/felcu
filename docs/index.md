@@ -30,9 +30,10 @@ Four problems are supported:
 | `exponentiation` | \(f(\mathcal H) = e^{\mathcal H}\) | eigenvalues |
 | `square_root` | \(f(\mathcal H) = \sqrt{\mathcal H}\) | positive-definite eigenvalue interval (shifted only) |
 
-Each comes in an *unshifted* form and a *shifted* (centred) form, except the
-square root, which is shifted only; see
-[Problems and constructions](guide/problems.md).
+A matrix or spectral bounds are required.  Eigenvalue intervals use the
+*shifted* (centred) construction; the *unshifted* construction is kept for
+singular values, so that action and inversion work for non-Hermitian
+matrices.  See [Problems and constructions](guide/problems.md).
 
 ## At a glance
 

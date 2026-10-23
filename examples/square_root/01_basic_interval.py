@@ -16,7 +16,6 @@ from felcu import solve_fe_coefficients
 
 result = solve_fe_coefficients(
     "square_root",
-    shifted=True,
     sigma_min=0.15,
     sigma_max=1.0,
     target_error=1e-8,

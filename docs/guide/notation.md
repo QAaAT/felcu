@@ -37,8 +37,8 @@ corresponding argument or result field.
 | \(f\) | the matrix function: \(x\), \(x^{-1}\), \(e^x\) or \(\sqrt x\) | `problem=` |
 | \(g(x) = f(\mu + x/\tau)\) | fitted (scaled) target, \(f(\mathcal H) = g(\mathcal G)\) | `evaluate_target_function(x, result)` |
 
-Unshifted constructions take \(\mu = 0\), so \(\mathcal G = \tau\mathcal H\)
-and \(g(x) = f(x/\tau)\).
+Unshifted (singular-value) constructions take \(\mu = 0\), so
+\(\mathcal G = \tau A\) and \(g(x) = f(x/\tau)\).
 
 ## The series
 

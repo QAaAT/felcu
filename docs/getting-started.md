@@ -56,10 +56,11 @@ is the series \(g_m\) evaluated at the scaled matrix \(\mathcal G\):
 
 | Construction | Operator |
 |---|---|
-| unshifted | \(f(\mathcal H) \approx g_m(\mathcal G)\), \(\mathcal G = \tau\mathcal H\) |
-| shifted | \(f(\mathcal H) \approx g_m(\mathcal G)\), \(\mathcal G = \tau(\mathcal H - \mu I)\), with \(\mu = (\lambda_{\min} + \lambda_{\max})/2\) |
+| shifted (eigenvalues) | \(f(\mathcal H) \approx g_m(\mathcal G)\), \(\mathcal G = \tau(\mathcal H - \mu I)\), with \(\mu = (\lambda_{\min} + \lambda_{\max})/2\) |
+| unshifted (singular values) | \(f(A) \approx g_m(\mathcal G)\) applied to the singular values, \(\mathcal G = \tau A\) |
 
-`result.tau` holds \(\tau\).  For a Hermitian matrix you can check the
+`result.tau` holds \(\tau\), and `result.shifted` says which construction
+was used.  For a Hermitian matrix you can check the
 approximation classically through an eigendecomposition:
 
 ```python
@@ -69,13 +70,14 @@ from felcu import evaluate_fourier_series, solve_fe_coefficients
 H = ...  # Hermitian matrix
 result = solve_fe_coefficients("exponentiation", matrix=H, target_error=1e-8)
 
+mu = 0.5 * (result.sigma_min + result.sigma_max)
 w, V = np.linalg.eigh(H)
-g = evaluate_fourier_series(result.tau * w, result.a0, result.ak, result.bk)
+g = evaluate_fourier_series(result.tau * (w - mu), result.a0, result.ak, result.bk)
 approx = V @ np.diag(g) @ V.conj().T     # ~= expm(H)
 ```
 
 Passing `matrix=` instead of `sigma_min`/`sigma_max` lets `felcu` read the
-spectral interval from the matrix itself.
+spectral interval from the matrix itself.  One or the other is required.
 
 ## Coefficients for an LCU circuit
 

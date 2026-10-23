@@ -324,12 +324,10 @@ def evaluate_target_function(
 
     This is the function the series was fitted to, in the scaled variable,
     so it can be compared directly with :func:`evaluate_fourier_series`.
-    With matrix-scale information it is ``g(x) = f(mu + x / tau)``, not the
-    unscaled ``f``: for example ``x / tau``, ``tau / x`` or ``exp(x / tau)``
-    unshifted, and ``mu + x / tau``, ``1 / (mu + x / tau)``,
-    ``exp(mu + x / tau)`` or ``sqrt(mu + x / tau)`` shifted.  Without
-    it, it is ``x``, ``1 / x`` or ``exp(x)``.  If ``tau`` is infinite
-    (a zero-width interval), the target is constant.
+    It is ``g(x) = f(mu + x / tau)``, not ``f`` itself: ``mu + x / tau``,
+    ``1 / (mu + x / tau)``, ``exp(mu + x / tau)`` or ``sqrt(mu + x / tau)``
+    shifted, and ``x / tau`` or ``tau / x`` unshifted (``mu = 0``).  If
+    ``tau`` is infinite (a zero-width interval), the target is constant.
 
     Parameters
     ----------

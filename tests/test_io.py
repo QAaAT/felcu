@@ -29,7 +29,8 @@ def result():
 @pytest.mark.parametrize(
     "problem, kwargs",
     [
-        ("action", {}),
+        ("action", dict(sigma_min=-1.0, sigma_max=2.0)),
+        ("action", dict(shifted=False, sigma_min=0.0, sigma_max=2.0)),
         ("inversion", dict(sigma_min=0.5, sigma_max=2.0)),
         ("exponentiation", dict(shifted=True, sigma_min=1.0, sigma_max=3.0)),
         ("square_root", dict(shifted=True, sigma_min=0.2, sigma_max=1.0)),
