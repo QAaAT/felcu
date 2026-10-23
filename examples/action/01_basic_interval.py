@@ -4,8 +4,9 @@ Action on a symmetric interval
 
 Fit f(H) = H for a Hermitian H with eigenvalues in [-1, 1].
 
-Because f is odd, felcu uses a pure sine basis: every cosine coefficient
-(bk) and the constant term (a0) are zero.
+felcu centres the fit at mu = 0, the middle of the interval, and fits
+g(x) = x / tau.  Because that is odd, every cosine coefficient (bk) and
+the constant term (a0) vanish.
 
 Run with:
     python examples/action/01_basic_interval.py
@@ -29,6 +30,6 @@ print(f"m              = {result.m}")
 print(f"tau            = {result.tau:.4f}   (fit g(x) = x / tau, then f(H) = g(tau H))")
 print(f"Linf error     = {result.achieved_linf_error:.2e}")
 print(f"alpha (LCU)    = {result.alpha:.4f}")
-print(f"a0             = {result.a0}")
+print(f"|a0|           = {abs(result.a0):.1e}")
 print(f"max |bk|       = {np.max(np.abs(result.bk)):.1e}")
 print(f"first 5 ak     = {np.array2string(result.ak[:5], precision=4)}")

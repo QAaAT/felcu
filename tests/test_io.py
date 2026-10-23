@@ -31,10 +31,13 @@ def result():
 @pytest.mark.parametrize(
     "problem, kwargs",
     [
-        ("action", {}),
+        ("action", dict(sigma_min=-1.0, sigma_max=2.0)),
+        ("action", dict(matrix=[[1.0, 2.0], [0.0, 1.0]])),
         ("inversion", dict(sigma_min=0.5, sigma_max=2.0)),
-        ("exponentiation", dict(shifted=True, sigma_min=1.0, sigma_max=3.0)),
-        ("square_root", dict(shifted=True, sigma_min=0.2, sigma_max=1.0)),
+        ("inversion", dict(sigma_min=0.5, sigma_max=2.0, spectral_kind="singular_values")),
+        ("inversion", dict(sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4))),
+        ("exponentiation", dict(sigma_min=1.0, sigma_max=3.0)),
+        ("square_root", dict(sigma_min=0.2, sigma_max=1.0)),
     ],
 )
 def test_round_trip_is_exact(tmp_path, problem, kwargs):
@@ -53,7 +56,7 @@ def test_matrix_metadata_round_trip():
 
 
 def test_infinite_tau_is_standard_json():
-    original = solve_fe_coefficients("exponentiation", shifted=True, sigma_min=1.0, sigma_max=1.0)
+    original = solve_fe_coefficients("exponentiation", sigma_min=1.0, sigma_max=1.0)
     assert original.tau == np.inf
     text = original.to_json()
 
@@ -103,9 +106,7 @@ def test_rejects_future_version(result):
 
 @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
 def test_explicit_method_round_trip(method):
-    original = solve_fe_coefficients(
-        "exponentiation", method=method, shifted=True, sigma_min=0.1, sigma_max=2.0, m_values=[8, 16]
-    )
+    original = solve_fe_coefficients("exponentiation", method=method, sigma_min=0.1, sigma_max=2.0, m_values=[8, 16])
     loaded = FourierExtensionResult.from_json(original.to_json(include_candidates=True))
     _assert_same(original, loaded)
     for a, b in zip(loaded.all_results, original.all_results):
@@ -121,7 +122,7 @@ def test_rejects_missing_field(result):
 
 @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
 def test_json_round_trip(method):
-    r = solve_fe_coefficients("inversion", method=method, shifted=True, sigma_min=0.5, sigma_max=1.0, m=12)
+    r = solve_fe_coefficients("inversion", method=method, sigma_min=0.5, sigma_max=1.0, m=12)
     loaded = FourierExtensionResult.from_json(r.to_json())
     assert loaded.method == method
     assert loaded.lambda_used is None and loaded.sobolev_r is None

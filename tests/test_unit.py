@@ -209,26 +209,35 @@ class TestTargetFunction:
 class TestDefaultEta:
     def test_reflected(self):
         assert default_eta("exponentiation", method="reflected") == 2.0
-        assert default_eta("inversion", method="refl", shifted=True, sigma_min=0.1, sigma_max=1.0) == 2.0
+        assert default_eta("inversion", method="refl", sigma_min=0.1, sigma_max=1.0) == 2.0
 
     def test_arcsine_taylor(self):
         assert default_eta("action", method="arcsine_taylor") == 3.0
         # Midpoint of 2 < eta < 2 mu / delta, capped at 3.
-        assert default_eta("inversion", method="asin", shifted=True, sigma_min=0.1, sigma_max=1.0) == pytest.approx(
-            1 + 1.1 / 0.9
-        )
-        assert default_eta("square_root", method="asin", shifted=True, sigma_min=0.5, sigma_max=1.0) == 3.0
-        assert default_eta("inversion", method="asin", shifted=True, sigma_min=2.0, sigma_max=2.0) == 3.0
+        assert default_eta("inversion", method="asin", sigma_min=0.1, sigma_max=1.0) == pytest.approx(1 + 1.1 / 0.9)
+        assert default_eta("square_root", method="asin", sigma_min=0.5, sigma_max=1.0) == 3.0
+        assert default_eta("inversion", method="asin", sigma_min=2.0, sigma_max=2.0) == 3.0
 
     def test_sobolev_unchanged(self):
-        assert default_eta("inversion", shifted=True, sigma_min=0.1, sigma_max=1.0) == pytest.approx(1.1 / 0.9)
+        assert default_eta("inversion", sigma_min=0.1, sigma_max=1.0) == pytest.approx(1.1 / 0.9)
+
+    def test_two_interval_inversion(self):
+        # The gap and the free part of the period are equally wide: 1 + (b - a) / (2 delta).
+        sv = dict(sigma_min=0.1, sigma_max=1.0, spectral_kind="singular_values")
+        assert default_eta("inversion", **sv) == pytest.approx(1 + 1 / 10)
+        assert default_eta("inversion", sigma_min=-1.0, sigma_max=1.0, gap=(-0.1, 0.1)) == pytest.approx(1.1)
+        assert default_eta("inversion", sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4)) == pytest.approx(1 + 0.9 / 5)
+
+    def test_gap_read_from_matrix(self):
+        H = np.diag([-2.0, -0.5, 0.4, 3.0])
+        assert default_eta("inversion", matrix=H) == default_eta(
+            "inversion", sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4)
+        )
 
     @pytest.mark.parametrize("problem", ["square_root"])
     def test_default_eta_puts_branch_point_on_boundary(self, problem):
         kappa = 1.0 / 0.15
-        assert default_eta(problem, shifted=True, sigma_min=0.15, sigma_max=1.0) == pytest.approx(
-            (kappa + 1) / (kappa - 1)
-        )
+        assert default_eta(problem, sigma_min=0.15, sigma_max=1.0) == pytest.approx((kappa + 1) / (kappa - 1))
 
 
 # ---------------------------------------------------------------------------
@@ -243,31 +252,40 @@ class TestDefaultSobolevR:
             ("action", {}),
             ("action", dict(sigma_min=-1.0, sigma_max=2.0)),
             ("inversion", dict(sigma_min=0.5, sigma_max=3.0)),
-            ("exponentiation", dict(shifted=True, sigma_min=1.0, sigma_max=3.0)),
+            ("inversion", dict(sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4))),
+            ("exponentiation", dict(sigma_min=1.0, sigma_max=3.0)),
         ],
     )
     def test_default_r_in_range(self, problem, kwargs):
         assert 0 < default_sobolev_r(problem, **kwargs) <= 1
 
     def test_default_r_exponentiation(self):
-        # r_exp = 1 / (1 + eta delta / pi) shifted; unshifted uses the radius 3 instead of delta = 1
+        # r_exp = 1 / (1 + eta delta / pi), with delta = 1
         kwargs = dict(sigma_min=1.0, sigma_max=3.0)
-        assert default_sobolev_r("exponentiation", shifted=True, **kwargs) == pytest.approx(1 / (1 + 2.0 / np.pi))
-        assert default_sobolev_r("exponentiation", shifted=True, eta=4.0, **kwargs) == pytest.approx(
-            1 / (1 + 4.0 / np.pi)
-        )
-        assert default_sobolev_r("exponentiation", **kwargs) == pytest.approx(1 / (1 + 6.0 / np.pi))
+        assert default_sobolev_r("exponentiation", **kwargs) == pytest.approx(1 / (1 + 2.0 / np.pi))
+        assert default_sobolev_r("exponentiation", eta=4.0, **kwargs) == pytest.approx(1 / (1 + 4.0 / np.pi))
 
     def test_default_r_inversion(self):
-        # r_def = min(1, 2 pi / (kappa + 1)), r_indef = min(1, pi / (kappa + 1))
-        assert default_sobolev_r("inversion", shifted=True, sigma_min=1.0, sigma_max=20.0) == pytest.approx(
-            2 * np.pi / 21
+        # At the default eta, r_def = min(1, 2 pi / (kappa + 1)) and r_indef = min(1, pi / (kappa + 1)).
+        sv = dict(spectral_kind="singular_values")
+        assert default_sobolev_r("inversion", sigma_min=1.0, sigma_max=20.0) == pytest.approx(2 * np.pi / 21)
+        assert default_sobolev_r("inversion", sigma_min=0.05, sigma_max=1.0, **sv) == pytest.approx(np.pi / 21)
+        assert default_sobolev_r("inversion", sigma_min=0.5, sigma_max=1.0, **sv) == 1.0
+        assert default_sobolev_r("inversion", sigma_min=-1.0, sigma_max=1.0, gap=(-0.05, 0.05)) == pytest.approx(
+            np.pi / 21
         )
-        assert default_sobolev_r("inversion", sigma_min=0.05, sigma_max=1.0) == pytest.approx(np.pi / 21)
-        assert default_sobolev_r("inversion", sigma_min=0.5, sigma_max=1.0) == 1.0
+
+    def test_default_r_inversion_is_the_distance_to_the_pole(self):
+        # min(1, tau * (distance from the spectrum to 0)), for any eta.
+        kwargs = dict(sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4), eta=1.5)
+        tau = np.pi / (1.5 * 2.5)
+        assert default_sobolev_r("inversion", **kwargs) == pytest.approx(0.4 * tau)
+        assert default_sobolev_r("inversion", sigma_min=1.0, sigma_max=20.0, eta=4.0) == pytest.approx(
+            np.pi / (4.0 * 9.5)
+        )
 
     def test_default_r(self):
-        kwargs = dict(shifted=True, sigma_min=0.04, sigma_max=1.0)  # kappa = 25
+        kwargs = dict(sigma_min=0.04, sigma_max=1.0)  # kappa = 25
         assert default_sobolev_r("square_root", **kwargs) == pytest.approx(25**-0.5)
         assert default_sobolev_r("square_root", sobolev_w=0.75, **kwargs) == pytest.approx(25 ** (-1 / 3))
 
@@ -293,8 +311,8 @@ class TestLinearSolver:
 
             monkeypatch.setattr(np.linalg, "svd", svd)
 
-        spectral = _spectral_data("exponentiation", False, None, 0.1, 2.0, "auto", 1e-12, True)
-        spec = _make_spec("exponentiation", False, spectral, None, 1e-12)
+        spectral = _spectral_data("exponentiation", None, 0.1, 2.0, None, "auto", 1e-12)
+        spec = _make_spec("exponentiation", spectral, None)
         m, r, w = 16, 0.5, 1.5
         data = _make_fit_data(spec, m, 8, 401)
 

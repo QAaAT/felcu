@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from collections.abc import Sequence
 from dataclasses import replace
 
@@ -11,7 +10,7 @@ import numpy as np
 from felcu._explicit import _explicit_candidate
 from felcu._logging import logger
 from felcu._solver import _candidate_for_m, _meets_target
-from felcu.spectral import _make_spec, _spectral_data, default_sobolev_r
+from felcu.spectral import _CENTRE_VALUE, _make_spec, _spectral_data, default_sobolev_r
 from felcu.types import FourierExtensionResult
 from felcu.utils import (
     canonical_error_metric,
@@ -38,11 +37,11 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
     return FourierExtensionResult(
         problem=spec["problem"],
         method=spec["method"],
-        shifted=spec["shifted"],
         basis_used=spec["basis"],
         m=int(cand["m"]),
         eta=float(spec["eta"]),
         tau=float(spec["tau"]),
+        mu=float(spec["mu"]),
         alpha=float(s["alpha"]),
         target_error=float(target),
         error_metric=metric,
@@ -60,13 +59,14 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         k=np.arange(1, ak.size + 1, dtype=int),
         domain=spec["domain"],
         x_max=float(spec["x_max"]),
-        x_min=None if spec["x_min"] is None else float(spec["x_min"]),
-        sigma_min=None if spectral is None else float(spectral["sigma_min"]),
-        sigma_max=None if spectral is None else float(spectral["sigma_max"]),
-        spectral_kind_used=None if spectral is None else spectral["kind"],
-        matrix_shape=None if spectral is None else spectral["matrix_shape"],
-        matrix_is_hermitian=None if spectral is None else spectral["matrix_is_hermitian"],
-        matrix_scale_provided=bool(spec["matrix_scale_provided"]),
+        x_gap=spec["x_gap"],
+        sigma_min=float(spectral["sigma_min"]),
+        sigma_max=float(spectral["sigma_max"]),
+        gap=spectral["gap"],
+        spectral_kind_used=spectral["kind"],
+        matrix_shape=spectral["matrix_shape"],
+        matrix_is_hermitian=spectral["matrix_is_hermitian"],
+        matrix_scale_provided=True,
     )
 
 
@@ -83,7 +83,6 @@ def _constant_result(spec: dict, target: float, metric: str, value: float) -> Fo
             "alpha": abs(value),
         },
     }
-    spec = spec | {"basis": "full" if spec["basis"] == "odd_sine" else spec["basis"]}
     out = _make_result(spec, target, metric, c)
     return replace(out, all_results=(out,))
 
@@ -93,21 +92,16 @@ def _exact_constant_if_any(
     target: float,
     metric: str,
 ) -> FourierExtensionResult | None:
-    """The exact constant series when the spectral interval is a single point."""
+    """The exact constant series when the eigenvalue interval is a single point.
+
+    A point eigenvalue interval means H = lambda I.  Equal singular values do
+    not make A a multiple of the identity (A may be any scaled unitary), so
+    singular-value fits are fitted as usual.
+    """
     s = spec["spectral"]
-    if s is None or s["sigma_min"] != s["sigma_max"]:
+    if s["kind"] != "eigenvalues" or s["sigma_min"] != s["sigma_max"]:
         return None
-    value = s["sigma_min"]
-    if spec["problem"] == "action":
-        return _constant_result(spec, target, metric, value)
-    if spec["problem"] == "inversion" and spec["shifted"]:
-        return _constant_result(spec, target, metric, 1.0 / value)
-    if spec["problem"] == "exponentiation":
-        return _constant_result(spec, target, metric, math.exp(value))
-    if spec["problem"] == "square_root":
-        return _constant_result(spec, target, metric, math.sqrt(value))
-    # Unshifted inversion of a single singular value is fitted as usual.
-    return None
+    return _constant_result(spec, target, metric, _CENTRE_VALUE[spec["problem"]](s["sigma_min"]))
 
 
 def _lambda_grid(lambdas: Sequence[float] | None) -> np.ndarray:
@@ -162,10 +156,10 @@ def solve_fe_coefficients(
     problem: str,
     *,
     method: str = "sobolev",
-    shifted: bool = False,
     matrix: np.ndarray | Sequence[Sequence[complex]] | None = None,
     sigma_min: float | None = None,
     sigma_max: float | None = None,
+    gap: tuple[float, float] | None = None,
     spectral_kind: str = "auto",
     eta: float | None = None,
     target_error: float = 1e-12,
@@ -183,6 +177,12 @@ def solve_fe_coefficients(
 ) -> FourierExtensionResult:
     """Compute Fourier-extension LCU block-encoding coefficients.
 
+    The fit is centred on the spectrum: with ``mu`` and ``delta`` the
+    centre and half-width of the fitted set, ``tau = pi / (eta delta)`` and
+    ``f(H) = g(tau (H - mu I))`` (``result.mu``, ``result.tau``).  Singular
+    values are fitted through the Hermitian dilation of the matrix, whose
+    spectrum is symmetric, so ``mu = 0`` and the series is odd.
+
     Parameters
     ----------
     problem:
@@ -198,7 +198,7 @@ def solve_fe_coefficients(
         - ``'reflected'``: the Fourier series of g reflected about
           ``x = +-pi/2``.  Optimal subnormalisation
           ``alpha_m = ||f(H)|| - epsilon_m`` for convex endpoint-maximising f
-          (action, exponentiation, shifted inversion) at the default
+          (action, exponentiation, definite inversion) at the default
           ``eta = 2``, but only ``O(1/m)`` convergence, so the default
           *target_error* is out of reach.
         - ``'arcsine_taylor'``: the Taylor series of ``g(arcsin z)`` with
@@ -206,20 +206,34 @@ def solve_fe_coefficients(
           ``sin(pi/eta)`` (requires ``eta > 2``) and subnormalisation
           bounded independently of the error.
 
-        The explicit methods do not support unshifted inversion, and for
-        shifted inversion and square root need ``eta < 2 mu / delta``.
+        The explicit methods do not support the two-interval fit of
+        inversion on an indefinite interval or on singular values, and for
+        definite inversion and square root need ``eta < 2 |mu| / delta``.
         They have no regularisation, so the Sobolev-only options
         (*lambdas*, *sobolev_w*, *sobolev_r*, *order_fit*,
         *fit_oversample*) must be left unset.
-    shifted:
-        Use the shifted (centred) construction.
     matrix:
         Square matrix whose spectral information drives the fitting.
-        Mutually exclusive with *sigma_min* / *sigma_max*.
+        Mutually exclusive with *sigma_min* / *sigma_max* / *gap*; one of
+        the two is required.
     sigma_min, sigma_max:
-        Spectral interval (eigenvalue or singular-value bounds).
+        Spectral interval: eigenvalue or singular-value bounds, per
+        *spectral_kind*.
+    gap:
+        For inversion on an indefinite eigenvalue interval
+        (``sigma_min < 0 < sigma_max``), the eigenvalues ``(a, b)`` closest
+        to 0 on either side: the spectrum lies in
+        ``[sigma_min, a] U [b, sigma_max]``, and the series is fitted on both
+        parts, leaving the gap around the pole free.  Required in that case
+        and not allowed otherwise; with *matrix*, it is read from the
+        eigenvalues.
     spectral_kind:
-        ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.
+        Which spectral data the bounds (or *matrix*) describe.
+        ``'eigenvalues'`` needs a Hermitian matrix.  ``'singular_values'``
+        acts on a general matrix through its Hermitian dilation, with an odd
+        series, so it is available for action and inversion only.
+        ``'auto'`` (default) uses singular values for action and inversion
+        of a non-Hermitian matrix, and eigenvalues otherwise.
     eta:
         Fourier-extension parameter (must exceed 1).  Computed automatically
         when omitted; see :func:`~felcu.default_eta`.
@@ -291,8 +305,8 @@ def solve_fe_coefficients(
     if selection not in {"smallest_m", "smallest_alpha"}:
         raise ValueError("selection must be 'smallest_m' or 'smallest_alpha'.")
 
-    spectral = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol, True)
-    spec = _make_spec(problem, shifted, spectral, eta, hermitian_tol, method)
+    spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
+    spec = _make_spec(problem, spectral, eta, method)
 
     if method != "sobolev":
         spec = spec | {"sobolev_r": None, "sobolev_w": None}
@@ -300,10 +314,10 @@ def solve_fe_coefficients(
         if sobolev_r is None:
             sobolev_r = default_sobolev_r(
                 problem,
-                shifted=shifted,
-                sigma_min=None if spectral is None else spectral["sigma_min"],
-                sigma_max=None if spectral is None else spectral["sigma_max"],
-                spectral_kind="auto" if spectral is None else spectral["kind"],
+                sigma_min=spectral["sigma_min"],
+                sigma_max=spectral["sigma_max"],
+                gap=spectral["gap"],
+                spectral_kind=spectral["kind"],
                 hermitian_tol=hermitian_tol,
                 eta=spec["eta"],
                 sobolev_w=sobolev_w,
@@ -313,17 +327,18 @@ def solve_fe_coefficients(
         spec = spec | {"sobolev_r": float(sobolev_r), "sobolev_w": float(sobolev_w)}
 
     logger.info(
-        "solve_fe_coefficients: problem=%s  method=%s  shifted=%s  metric=%s  target=%.3e  basis=%s  domain=%s  "
-        "eta=%.4f  tau=%s",
+        "solve_fe_coefficients: problem=%s  method=%s  kind=%s  metric=%s  target=%.3e  basis=%s  domain=%s  "
+        "eta=%.4f  tau=%s  mu=%.4g",
         problem,
         method,
-        shifted,
+        spectral["kind"],
         metric,
         target_error,
         spec["basis"],
         spec["domain"],
         spec["eta"],
         f"{spec['tau']:.4f}" if np.isfinite(spec["tau"]) else "inf",
+        spec["mu"],
     )
 
     target = float(target_error)

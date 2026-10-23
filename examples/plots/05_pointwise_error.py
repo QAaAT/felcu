@@ -4,7 +4,7 @@ The fitted series over a whole period, and its pointwise error
 
 Top: the series g_m over the full period [-pi, pi] against the target g on
 the fitted set Omega.  The shaded regions are not fitted: the extension
-region, and for unshifted inversion also the gap around the pole, where
+region, and for indefinite inversion also the gap around the pole, where
 g_m stays bounded.  Bottom: |g - g_m| on Omega.  Needs matplotlib.
 
 Run with:
@@ -25,8 +25,8 @@ from felcu import (
 TARGET = 1e-8
 CASES = [
     ("exponentiation", dict(sigma_min=0.1, sigma_max=2.0, m_values=range(4, 33, 2))),
-    ("inversion", dict(sigma_min=0.5, sigma_max=3.0, m_values=range(4, 65, 4))),
-    ("square_root", dict(shifted=True, sigma_min=0.15, sigma_max=1.0, m_values=range(8, 129, 8))),
+    ("inversion", dict(sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4), m_values=range(8, 129, 8))),
+    ("square_root", dict(sigma_min=0.15, sigma_max=1.0, m_values=range(8, 129, 8))),
 ]
 
 _style.apply()

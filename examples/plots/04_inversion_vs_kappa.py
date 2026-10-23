@@ -27,7 +27,12 @@ color = _style.PROBLEM_COLORS["inversion"]
 rows = []
 for kappa in KAPPAS:
     r = solve_fe_coefficients(
-        "inversion", sigma_min=1.0 / kappa, sigma_max=1.0, target_error=TARGET, selection="smallest_m"
+        "inversion",
+        sigma_min=1.0 / kappa,
+        sigma_max=1.0,
+        spectral_kind="singular_values",
+        target_error=TARGET,
+        selection="smallest_m",
     )
     rows.append((kappa, r.m, r.alpha, _style.alpha_floor(r), r.converged))
 

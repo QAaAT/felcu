@@ -38,34 +38,34 @@ def _meets_target(solve: dict, metric: str, target: float) -> bool:
 def _validation_data(spec: dict, m: int, val_n: int) -> list[tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """Uniform validation grids on the fitted set: ``(x, basis matrix, target)`` per interval."""
     basis = spec["basis"]
-    if spec["domain"] == "single":
-        segments = [np.linspace(-spec["x_max"], spec["x_max"], max(val_n, 201))]
-    else:
-        nv = max(val_n // 2, 201)
-        segments = [
-            np.linspace(-spec["x_max"], -spec["x_min"], nv),
-            np.linspace(spec["x_min"], spec["x_max"], nv),
-        ]
+    segments = [np.linspace(lo, hi, max(int(val_n * share), 201)) for lo, hi, share in _fitted_intervals(spec)]
     return [(xv, _basis_matrix(xv, m, basis), _spec_target(xv, spec)) for xv in segments]
+
+
+def _fitted_intervals(spec: dict) -> list[tuple[float, float, float]]:
+    """The intervals of the fitted set, each with its share of the total length."""
+    x_max, gap = spec["x_max"], spec["x_gap"]
+    if gap is None:
+        return [(-x_max, x_max, 1.0)]
+    left, right = gap[0] + x_max, x_max - gap[1]
+    return [(-x_max, gap[0], left / (left + right)), (gap[1], x_max, right / (left + right))]
 
 
 def _make_fit_data(spec: dict, m: int, fit_oversample: int, val_n: int) -> dict:
     basis = spec["basis"]
     ncols = _basis_size(basis, m)
 
-    if spec["domain"] == "single":
-        nq = max(fit_oversample * max(ncols, 1), 48)
-        logger.debug("  fit_data: domain=single  basis=%s  m=%d  ncols=%d  nq=%d  val_n=%d", basis, m, ncols, nq, val_n)
-        x, weights = _gauss_interval(-spec["x_max"], spec["x_max"], nq)
-    else:
-        xmin = spec["x_min"]
-        xmax = spec["x_max"]
-        nq = max((fit_oversample * max(ncols, 1) + 1) // 2, 32)
-        logger.debug("  fit_data: domain=double  basis=%s  m=%d  ncols=%d  nq=%d  val_n=%d", basis, m, ncols, nq, val_n)
-        xl, wl = _gauss_interval(-xmax, -xmin, nq)
-        xr, wr = _gauss_interval(xmin, xmax, nq)
-        x = np.concatenate([xl, xr])
-        weights = np.concatenate([wl, wr])
+    # Quadrature nodes are shared between the intervals in proportion to their lengths.
+    intervals = _fitted_intervals(spec)
+    floor = 48 if len(intervals) == 1 else 32
+    nodes = fit_oversample * max(ncols, 1)
+    nq = [max(math.ceil(nodes * share), floor) for _, _, share in intervals]
+    logger.debug(
+        "  fit_data: domain=%s  basis=%s  m=%d  ncols=%d  nq=%s  val_n=%d", spec["domain"], basis, m, ncols, nq, val_n
+    )
+    rules = [_gauss_interval(lo, hi, n) for (lo, hi, _), n in zip(intervals, nq, strict=True)]
+    x = np.concatenate([xi for xi, _ in rules])
+    weights = np.concatenate([wi for _, wi in rules])
 
     return {"x": x, "sw": np.sqrt(weights), "val": _validation_data(spec, m, val_n)}
 

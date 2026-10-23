@@ -17,9 +17,8 @@ class FourierExtensionResult:
 
     Returned by :func:`~felcu.solve_fe_coefficients`.  The fitted series is
     ``g(x) = a0 + sum_k ak[k-1] sin(kx) + bk[k-1] cos(kx)``, and the matrix
-    function is ``f(H) = g(tau H)`` (unshifted) or
-    ``f(H) = g(tau (H - mu I))`` (shifted, ``mu`` the centre of
-    ``[sigma_min, sigma_max]``).
+    function is ``f(H) = g(tau (H - mu I))``.  For singular values, ``H``
+    is the Hermitian dilation of the matrix and ``mu = 0``.
 
     Attributes
     ----------
@@ -28,8 +27,6 @@ class FourierExtensionResult:
     method : str
         Coefficient-selection strategy: ``'sobolev'``, ``'reflected'``, or
         ``'arcsine_taylor'``.
-    shifted : bool
-        Whether the shifted (centred) construction was used.
     basis_used : str
         ``'odd_sine'`` (sine terms only), ``'const_plus_sine'`` (constant
         plus sine terms), or ``'full'``.
@@ -39,9 +36,13 @@ class FourierExtensionResult:
         Extension parameter; the series was fitted on
         ``[-pi/eta, pi/eta]``.
     tau : float
-        Scale between the matrix spectrum and the fitted variable.  ``1``
-        without matrix-scale information; infinite for a zero-width
-        interval.
+        Scale between the matrix spectrum and the fitted variable,
+        ``pi / (eta delta)`` with ``delta`` the half-width of the fitted
+        spectrum; infinite for a zero-width interval.
+    mu : float
+        Centre of the fitted spectrum, which the fit is shifted by: the
+        midpoint of ``[sigma_min, sigma_max]`` for eigenvalues, and ``0`` for
+        singular values.
     alpha : float
         Subnormalisation ``alpha_m = sum_k |c_k| = |a0| + sum_k sqrt(ak**2 + bk**2)``.
     target_error : float
@@ -79,24 +80,29 @@ class FourierExtensionResult:
         Harmonic indices ``1, ..., m`` matching *ak* and *bk*.
     domain : str
         ``'single'`` for ``[-x_max, x_max]``, or ``'double'`` for
-        ``[-x_max, -x_min] U [x_min, x_max]`` (unshifted inversion).
+        ``[-x_max, x_gap[0]] U [x_gap[1], x_max]`` (inversion on an
+        indefinite interval or on singular values).
     x_max : float
         Outer edge of the fitted domain, ``pi / eta``.
-    x_min : float or None
-        Inner edge of a double domain; ``None`` otherwise.
-    sigma_min, sigma_max : float or None
+    x_gap : tuple of float or None
+        The gap around the pole that a double domain leaves free, in the
+        fitted variable; ``None`` otherwise.
+    sigma_min, sigma_max : float
         Spectral interval used (eigenvalues or singular values, per
-        *spectral_kind_used*); ``None`` without matrix-scale information.
-    spectral_kind_used : str or None
-        ``'eigenvalues'`` or ``'singular_values'``; ``None`` without
-        matrix-scale information.
+        *spectral_kind_used*).
+    gap : tuple of float or None
+        Eigenvalue gap ``(a, b)`` around 0 for inversion on an indefinite
+        interval; ``None`` otherwise.
+    spectral_kind_used : str
+        ``'eigenvalues'`` or ``'singular_values'``.
     matrix_shape : tuple of int or None
         Shape of the input matrix, if one was given.
     matrix_is_hermitian : bool or None
         Whether the input matrix passed the Hermitian test, if one was
         given.
     matrix_scale_provided : bool
-        Whether a matrix or spectral bounds were given.
+        Whether a matrix or spectral bounds were given; always ``True``,
+        since one of them is required.
     all_results : tuple of FourierExtensionResult
         Every candidate tried, sorted by ``m``.  Empty on the candidates
         themselves.
@@ -104,11 +110,11 @@ class FourierExtensionResult:
 
     problem: str
     method: str
-    shifted: bool
     basis_used: str
     m: int
     eta: float
     tau: float
+    mu: float
     alpha: float
     target_error: float
     error_metric: str
@@ -126,10 +132,11 @@ class FourierExtensionResult:
     k: np.ndarray
     domain: str
     x_max: float
-    x_min: float | None
-    sigma_min: float | None
-    sigma_max: float | None
-    spectral_kind_used: str | None
+    x_gap: tuple[float, float] | None
+    sigma_min: float
+    sigma_max: float
+    gap: tuple[float, float] | None
+    spectral_kind_used: str
     matrix_shape: tuple[int, int] | None
     matrix_is_hermitian: bool | None
     matrix_scale_provided: bool
