@@ -93,8 +93,9 @@ defaults suit most problems; this page explains when to change them.
 
 ## Spectral input
 
-`spectral_kind` (default `"auto"`)
-:   `"eigenvalues"`, `"singular_values"`, or `"auto"`; see
+`shifted` (default `None`)
+:   `True` for the shifted construction on eigenvalues, `False` for the
+    unshifted one on singular values, `None` to choose by problem; see
     [Spectral information](problems.md#spectral-information).
 
 `hermitian_tol` (default `1e-12`)

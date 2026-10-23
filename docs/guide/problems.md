@@ -16,22 +16,20 @@ solve_fe_coefficients("inversion", matrix=A)
 Passing neither, or both, raises an error.  With `matrix=`, `felcu`
 computes eigenvalues or singular values itself.
 
-The kind of interval fixes the construction: an eigenvalue interval is
-always fitted by the **shifted** construction, and a singular-value interval
-by the **unshifted** one.
+The construction fixes which interval is read: the **shifted**
+construction fits an eigenvalue interval, and the **unshifted** one a
+singular-value interval.  `shifted` chooses between them:
 
-| Problem | Default | Also available |
+| Problem | `shifted=None` (default) | Also available |
 |---|---|---|
-| `action` | eigenvalues, shifted (singular values, unshifted, for a non-Hermitian matrix) | `shifted=False` / `spectral_kind='singular_values'` |
-| `inversion` | singular values, unshifted | `shifted=True` / `spectral_kind='eigenvalues'` (must be definite) |
-| `exponentiation` | eigenvalues, shifted | none |
-| `square_root` | eigenvalues, shifted (must be positive definite) | none |
+| `action` | `True` (eigenvalues); `False` (singular values) for a non-Hermitian matrix | the other one |
+| `inversion` | `False` (singular values) | `True` (eigenvalues, must be definite) |
+| `exponentiation` | `True` (eigenvalues) | none |
+| `square_root` | `True` (eigenvalues, must be positive definite) | none |
 
-`shifted` and `spectral_kind` both default to automatic and follow this
-table; set either one to choose the other column, and the other follows.
-Asking for an unshifted fit of an eigenvalue interval, or a shifted fit of
-a singular-value interval, raises an error.  Eigenvalue-based constructions
-require a Hermitian matrix (tested to `hermitian_tol`).
+`sigma_min`/`sigma_max` are read as eigenvalue or singular-value bounds to
+match.  The shifted construction requires a Hermitian matrix (tested to
+`hermitian_tol`).
 
 ## The scaled variable
 

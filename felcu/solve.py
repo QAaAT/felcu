@@ -62,7 +62,7 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         spectral_kind_used=spectral["kind"],
         matrix_shape=spectral["matrix_shape"],
         matrix_is_hermitian=spectral["matrix_is_hermitian"],
-        matrix_scale_provided=bool(spec["matrix_scale_provided"]),
+        matrix_scale_provided=True,
     )
 
 
@@ -79,7 +79,6 @@ def _constant_result(spec: dict, target: float, metric: str, value: float) -> Fo
             "alpha": abs(value),
         },
     }
-    spec = spec | {"basis": "full" if spec["basis"] == "odd_sine" else spec["basis"]}
     out = _make_result(spec, target, metric, c)
     return replace(out, all_results=(out,))
 
@@ -89,21 +88,23 @@ def _exact_constant_if_any(
     target: float,
     metric: str,
 ) -> FourierExtensionResult | None:
-    """The exact constant series when the spectral interval is a single point."""
+    """The exact constant series when the eigenvalue interval is a single point.
+
+    Only shifted fits qualify: a point eigenvalue interval means H = lambda I,
+    but equal singular values do not make A a multiple of the identity (A
+    may be any scaled unitary), so unshifted fits are fitted as usual.
+    """
     s = spec["spectral"]
-    if s["sigma_min"] != s["sigma_max"]:
+    if not spec["shifted"] or s["sigma_min"] != s["sigma_max"]:
         return None
     value = s["sigma_min"]
     if spec["problem"] == "action":
         return _constant_result(spec, target, metric, value)
-    if spec["problem"] == "inversion" and spec["shifted"]:
+    if spec["problem"] == "inversion":
         return _constant_result(spec, target, metric, 1.0 / value)
     if spec["problem"] == "exponentiation":
         return _constant_result(spec, target, metric, math.exp(value))
-    if spec["problem"] == "square_root":
-        return _constant_result(spec, target, metric, math.sqrt(value))
-    # Unshifted inversion of a single singular value is fitted as usual.
-    return None
+    return _constant_result(spec, target, metric, math.sqrt(value))
 
 
 def _lambda_grid(lambdas: Sequence[float] | None) -> np.ndarray:
@@ -161,7 +162,6 @@ def solve_fe_coefficients(
     matrix: np.ndarray | Sequence[Sequence[complex]] | None = None,
     sigma_min: float | None = None,
     sigma_max: float | None = None,
-    spectral_kind: str = "auto",
     eta: float | None = None,
     target_error: float = 1e-12,
     error_metric: str = "linf",
@@ -184,21 +184,18 @@ def solve_fe_coefficients(
         One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``
         (several aliases accepted; see :func:`~felcu.utils.canonical_problem_name`).
     shifted:
-        ``True`` for the shifted (centred) construction on an eigenvalue
-        interval, ``False`` for the unshifted one on a singular-value
-        interval (action and inversion only).  ``None`` (default) follows
-        *spectral_kind*.
+        ``True`` for the shifted (centred) construction, which reads an
+        eigenvalue interval; ``False`` for the unshifted one, which reads a
+        singular-value interval (action and inversion only).  ``None``
+        (default) uses singular values for inversion and for action on a
+        non-Hermitian matrix, and eigenvalues otherwise.
     matrix:
         Square matrix whose spectral information drives the fitting.
         Mutually exclusive with *sigma_min* / *sigma_max*; one of the two
         is required.
     sigma_min, sigma_max:
-        Spectral interval (eigenvalue or singular-value bounds).
-    spectral_kind:
-        ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.  ``'auto'``
-        uses singular values for unshifted fits, for inversion unless
-        *shifted* is ``True``, and for action on a non-Hermitian matrix;
-        eigenvalues otherwise.
+        Spectral interval: eigenvalue bounds for a shifted fit,
+        singular-value bounds for an unshifted one.
     eta:
         Fourier-extension parameter (must exceed 1).  Computed automatically
         when omitted.
@@ -254,7 +251,7 @@ def solve_fe_coefficients(
     if selection not in {"smallest_m", "smallest_alpha"}:
         raise ValueError("selection must be 'smallest_m' or 'smallest_alpha'.")
 
-    spectral = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol)
+    spectral = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, hermitian_tol)
     spec = _make_spec(problem, spectral, eta, hermitian_tol)
 
     if sobolev_r is None:
@@ -263,7 +260,6 @@ def solve_fe_coefficients(
             shifted=spectral["shifted"],
             sigma_min=spectral["sigma_min"],
             sigma_max=spectral["sigma_max"],
-            spectral_kind=spectral["kind"],
             hermitian_tol=hermitian_tol,
             eta=spec["eta"],
             sobolev_w=sobolev_w,

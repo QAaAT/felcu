@@ -29,39 +29,16 @@ def _is_hermitian(A: np.ndarray, tol: float) -> bool:
     return bool(np.allclose(A, A.conj().T, rtol=tol, atol=tol))
 
 
-def _spectral_kind(
-    problem: str,
-    shifted: bool | None,
-    requested: str,
-    matrix_is_hermitian: bool | None,
-) -> str:
-    if requested not in {"auto", "eigenvalues", "singular_values"}:
-        raise ValueError("spectral_kind must be 'auto', 'eigenvalues', or 'singular_values'.")
-    if requested != "auto":
-        return requested
-    if shifted is not None:
-        return "eigenvalues" if shifted else "singular_values"
-    if problem == "inversion":
-        return "singular_values"
-    if problem == "action" and matrix_is_hermitian is False:
-        return "singular_values"
-    return "eigenvalues"
-
-
-def _check_spectral_choice(
-    problem: str,
-    shifted: bool,
-    kind: str,
-    matrix_is_hermitian: bool | None,
-) -> None:
-    if problem in EIGENVALUE_ONLY_PROBLEMS and kind != "eigenvalues":
-        raise ValueError(f"{problem} uses the shifted construction on an eigenvalue interval.")
-    if shifted and kind != "eigenvalues":
-        raise ValueError("Shifted constructions use an eigenvalue interval.")
-    if not shifted and kind != "singular_values":
-        raise ValueError("Unshifted constructions use a singular-value interval; eigenvalue intervals are shifted.")
-    if kind == "eigenvalues" and matrix_is_hermitian is False:
-        raise ValueError("Eigenvalue-based constructions require a Hermitian matrix.")
+def _resolve_shifted(problem: str, shifted: bool | None, matrix_is_hermitian: bool | None) -> bool:
+    """Whether to use the shifted (eigenvalue) or unshifted (singular-value) construction."""
+    if shifted is None:
+        # Singular values for inversion, and for action when there are no real eigenvalues.
+        shifted = not (problem == "inversion" or (problem == "action" and matrix_is_hermitian is False))
+    if not shifted and problem in EIGENVALUE_ONLY_PROBLEMS:
+        raise ValueError(f"{problem} has no unshifted construction: it is fitted on an eigenvalue interval.")
+    if shifted and matrix_is_hermitian is False:
+        raise ValueError("The shifted construction uses eigenvalues, so it requires a Hermitian matrix.")
+    return shifted
 
 
 def _definite_abs_bounds(lo: float, hi: float) -> tuple[float, float]:
@@ -78,42 +55,34 @@ def _spectral_data(
     matrix: np.ndarray | Sequence[Sequence[complex]] | None,
     sigma_min: float | None,
     sigma_max: float | None,
-    spectral_kind: str,
     hermitian_tol: float,
 ) -> dict:
-    """The spectral interval, its kind, and the construction it implies.
+    """The spectral interval and the construction that fits it.
 
-    *shifted* ``None`` picks the construction from the kind: shifted for
-    eigenvalues, unshifted for singular values.
+    The shifted construction reads eigenvalues and the unshifted one
+    singular values; *shifted* ``None`` picks one (see :func:`_resolve_shifted`).
     """
     if matrix is not None and (sigma_min is not None or sigma_max is not None):
         raise ValueError("Provide either matrix or sigma_min/sigma_max, not both.")
     if matrix is None and (sigma_min is None or sigma_max is None):
         raise ValueError("Provide a matrix or both sigma_min and sigma_max.")
 
+    A = None
+    hermitian = None
     if matrix is not None:
         A = np.asarray(matrix)
         if A.ndim != 2 or A.shape[0] != A.shape[1] or A.shape[0] == 0:
             raise ValueError("matrix must be a non-empty square array.")
         A = A.astype(np.complex128 if np.iscomplexobj(A) else float)
         hermitian = _is_hermitian(A, hermitian_tol)
-        kind = _spectral_kind(problem, shifted, spectral_kind, hermitian)
-        if shifted is None:
-            shifted = kind == "eigenvalues"
-        _check_spectral_choice(problem, shifted, kind, hermitian)
-        values = np.linalg.eigvalsh(A) if kind == "eigenvalues" else np.linalg.svd(A, compute_uv=False)
-        lo = float(np.min(values))
-        hi = float(np.max(values))
-        shape = (int(A.shape[0]), int(A.shape[1]))
+
+    shifted = _resolve_shifted(problem, shifted, hermitian)
+    kind = "eigenvalues" if shifted else "singular_values"
+    if A is None:
+        lo, hi, shape = float(sigma_min), float(sigma_max), None
     else:
-        hermitian = None
-        kind = _spectral_kind(problem, shifted, spectral_kind, None)
-        if shifted is None:
-            shifted = kind == "eigenvalues"
-        _check_spectral_choice(problem, shifted, kind, hermitian)
-        lo = float(sigma_min)
-        hi = float(sigma_max)
-        shape = None
+        values = np.linalg.eigvalsh(A) if shifted else np.linalg.svd(A, compute_uv=False)
+        lo, hi, shape = float(np.min(values)), float(np.max(values)), (int(A.shape[0]), int(A.shape[1]))
 
     if kind == "singular_values":
         if lo < 0 or hi < 0 or lo > hi:
@@ -150,7 +119,6 @@ def default_eta(
     matrix: np.ndarray | Sequence[Sequence[complex]] | None = None,
     sigma_min: float | None = None,
     sigma_max: float | None = None,
-    spectral_kind: str = "auto",
     hermitian_tol: float = 1e-12,
 ) -> float:
     """Return the default extension parameter eta for the given problem.
@@ -171,16 +139,15 @@ def default_eta(
         One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
         an alias; see :func:`~felcu.canonical_problem_name`).
     shifted:
-        Use the shifted (centred) construction, which fits an eigenvalue
-        interval, or the unshifted one, which fits a singular-value
-        interval.  ``None`` follows *spectral_kind*.
+        ``True`` for the shifted (centred) construction on an eigenvalue
+        interval, ``False`` for the unshifted one on a singular-value
+        interval.  ``None`` chooses as :func:`~felcu.solve_fe_coefficients`
+        does.
     matrix:
         Square matrix to read the spectral interval from.  Mutually
         exclusive with *sigma_min* / *sigma_max*.
     sigma_min, sigma_max:
         Spectral interval bounds.
-    spectral_kind:
-        ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.
     hermitian_tol:
         Tolerance for the Hermitian test.
 
@@ -192,21 +159,21 @@ def default_eta(
     Raises
     ------
     ValueError
-        For inversion and square root, if no spectral information is given or the interval
-        is invalid (see :func:`~felcu.solve_fe_coefficients`).
+        If no spectral information is given, or it is invalid (see
+        :func:`~felcu.solve_fe_coefficients`).
 
     Notes
     -----
-    Spectral information is only used for inversion and square root; for
-    action and exponentiation it is ignored.  The square root uses the
+    The spectral interval is validated for every problem but only changes
+    the default for inversion and square root.  The square root uses the
     shifted-inversion rule, which places the branch point at 0 on the
     periodic boundary.
     """
     problem = canonical_problem_name(problem)
+    s = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, hermitian_tol)
     if problem in {"action", "exponentiation"}:
         return 2.0
 
-    s = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol)
     lo, hi = s["sigma_min"], s["sigma_max"]
     if s["shifted"]:
         lo, hi = _definite_abs_bounds(lo, hi)
@@ -228,7 +195,6 @@ def default_sobolev_r(
     matrix: np.ndarray | Sequence[Sequence[complex]] | None = None,
     sigma_min: float | None = None,
     sigma_max: float | None = None,
-    spectral_kind: str = "auto",
     hermitian_tol: float = 1e-12,
     eta: float | None = None,
     sobolev_w: float = 1.0,
@@ -257,16 +223,15 @@ def default_sobolev_r(
         One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
         an alias; see :func:`~felcu.canonical_problem_name`).
     shifted:
-        Use the shifted (centred) construction, which fits an eigenvalue
-        interval, or the unshifted one, which fits a singular-value
-        interval.  ``None`` follows *spectral_kind*.
+        ``True`` for the shifted (centred) construction on an eigenvalue
+        interval, ``False`` for the unshifted one on a singular-value
+        interval.  ``None`` chooses as :func:`~felcu.solve_fe_coefficients`
+        does.
     matrix:
         Square matrix to read the spectral interval from.  Mutually
         exclusive with *sigma_min* / *sigma_max*.
     sigma_min, sigma_max:
         Spectral interval bounds.
-    spectral_kind:
-        ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.
     hermitian_tol:
         Tolerance for the Hermitian test.
     eta:
@@ -287,7 +252,7 @@ def default_sobolev_r(
         :func:`~felcu.solve_fe_coefficients`).
     """
     problem = canonical_problem_name(problem)
-    s = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, spectral_kind, hermitian_tol)
+    s = _spectral_data(problem, shifted, matrix, sigma_min, sigma_max, hermitian_tol)
 
     if problem == "action":
         return 1.0
@@ -322,7 +287,6 @@ def _make_spec(
             shifted=shifted,
             sigma_min=spectral["sigma_min"],
             sigma_max=spectral["sigma_max"],
-            spectral_kind=spectral["kind"],
             hermitian_tol=hermitian_tol,
         )
     eta = float(eta)
@@ -336,7 +300,6 @@ def _make_spec(
         "x_max": PI / eta,
         "x_min": None,
         "spectral": spectral,
-        "matrix_scale_provided": True,
         "domain": "single",
         "tau": 1.0,
         "mu": 0.0,
