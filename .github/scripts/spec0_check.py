@@ -47,10 +47,9 @@ def _text(version):
 
 
 def _add_years(date, years):
-    try:
-        return date.replace(year=date.year + years)
-    except ValueError:  # 29 February
-        return date.replace(year=date.year + years, day=28)
+    # SPEC 0's own schedule counts a year as 365 days, so a window spanning
+    # a leap day ends a day earlier than the anniversary.
+    return date + dt.timedelta(days=365 * years)
 
 
 def python_releases():
