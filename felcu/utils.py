@@ -63,8 +63,9 @@ def canonical_method_name(name: str) -> str:
     ----------
     name:
         Method name.  Accepted aliases are ``'regularised'``,
-        ``'regularized'`` and ``'reg'`` for ``'sobolev'``; ``'refl'`` and
-        ``'reflected_extension'`` for ``'reflected'``; and ``'asin'``,
+        ``'regularized'`` and ``'reg'`` for ``'sobolev'``; ``'refl'``,
+        ``'reflected_extension'`` and ``'reflected-extension'`` for
+        ``'reflected'``; and ``'asin'``,
         ``'arcsine'`` and ``'arcsine-taylor'`` for ``'arcsine_taylor'``.
 
     Returns

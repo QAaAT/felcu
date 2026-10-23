@@ -108,7 +108,9 @@ def _arcsine_taylor_coefficients(spec: dict, m: int) -> tuple[float, np.ndarray,
     """Fourier coefficients of g_m(x) = sum_{k<=m} d_k sin^k x."""
     d = _taylor_coefficients(spec, m)
     # g_m is a trigonometric polynomial of degree m, so 2m + 2 equispaced
-    # samples (Horner in sin x) give its coefficients exactly.
+    # samples (Horner in sin x) give its coefficients exactly: the same c_k
+    # as the binomial expansion of each sin^k x, since every alias c_{k+-n}
+    # has |k +- n| > m and vanishes (see docs/guide/method.md).
     n = 2 * m + 2
     s = np.sin(2.0 * math.pi * np.arange(n) / n)
     y = np.zeros(n)

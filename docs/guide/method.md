@@ -289,6 +289,26 @@ other problems.  It then evaluates \(\sum_k d_k \sin^k x\) by Horner's rule
 on \(2m + 2\) equispaced points, and reads off the Fourier coefficients with
 an FFT, which is exact for a trigonometric polynomial of degree \(m\).
 
+!!! note "Why an FFT rather than the binomial expansion"
+    Expanding each power with \(\sin x = (e^{ix} - e^{-ix})/(2i)\) gives
+    the coefficients in closed form,
+
+    \[
+    \sin^k x = \frac{1}{(2i)^k} \sum_{j=0}^{k} (-1)^j \binom{k}{j} e^{i(k-2j)x}
+    \quad\Longrightarrow\quad
+    c_n = \sum_{\substack{|n| \le k \le m \\ k \equiv n \ (\mathrm{mod}\ 2)}}
+    \frac{(-1)^{(k-n)/2}}{(2i)^k} \binom{k}{(k-n)/2}\, d_k .
+    \]
+
+    The FFT returns the same numbers.  Sampling \(g_m\) at \(N = 2m + 2\)
+    equispaced points and taking the discrete Fourier transform gives
+    \(c_n\) plus its aliases \(c_{n \pm N}, c_{n \pm 2N}, \dots\), and these
+    all vanish because \(|n \pm N| > m\).  The two routes therefore agree
+    exactly in exact arithmetic and differ only in rounding, which is of
+    order \(\varepsilon \sum_k |d_k|\) for both.  In tests against
+    exact rational arithmetic the FFT was as accurate as the binomial sum,
+    often slightly more so, and it needs no binomial table.
+
 - **\(\eta\).**  The method requires \(\eta > 2\).  The default is \(3\)
   (\(\rho_3 \approx 0.866\)) for action and exponentiation, as in the
   paper.  For inversion and square root, \(f\) must be analytic on

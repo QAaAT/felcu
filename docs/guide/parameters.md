@@ -11,7 +11,8 @@ defaults suit most problems; this page explains when to change them.
     squares), `"reflected"` (optimal \(\alpha\), \(O(m^{-1})\) error) or
     `"arcsine_taylor"` (exponential convergence at a larger \(\alpha\)).  See
     [Method](method.md) for the trade-offs.  Aliases: `"regularised"`,
-    `"regularized"`, `"reg"`; `"refl"`, `"reflected_extension"`;
+    `"regularized"`, `"reg"`; `"refl"`, `"reflected_extension"`,
+    `"reflected-extension"`;
     `"asin"`, `"arcsine"`, `"arcsine-taylor"`.
 
 ## Accuracy

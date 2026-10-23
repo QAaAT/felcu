@@ -49,6 +49,11 @@ Every candidate it tried is kept in `result.all_results`.
     range, e.g. `m_values=range(4, 41, 2)`.  See
     [Tuning the solver](guide/parameters.md#truncation-order).
 
+This uses the default Sobolev-regularised fit.  Pass
+`method="reflected"` or `method="arcsine_taylor"` for the paper's explicit
+extensions, which trade convergence against subnormalisation differently;
+see [Method](guide/method.md).
+
 ## Applying the result to a matrix
 
 The fit is done in a scaled variable \(x\), so the operator you implement
@@ -103,8 +108,8 @@ loaded = FourierExtensionResult.from_json("exp_coefficients.json")
 ```
 
 The file is standard JSON, so it can also be read outside Python.  It
-holds every field of the result: the parameters (`problem`, `eta`, `tau`,
-`sobolev_r`, ...), the errors and \(\alpha_m\), the real coefficients
+holds every field of the result: the parameters (`problem`, `method`,
+`eta`, `tau`, `sobolev_r`, ...), the errors and \(\alpha_m\), the real coefficients
 `a0`, `ak`, `bk`, and the complex coefficients as
 
 ```json
@@ -112,7 +117,9 @@ holds every field of the result: the parameters (`problem`, `eta`, `tau`,
 ```
 
 Floats are written with enough digits to round-trip exactly; an infinite
-\(\tau\) (a zero-width interval) is stored as the string `"inf"`.  Pass
+\(\tau\) (a zero-width interval) is stored as the string `"inf"`, and the
+Sobolev-only fields (`lambda_used`, `sobolev_r`, `sobolev_w`) are `null`
+for the explicit methods.  Pass
 `include_candidates=True` to also keep `all_results`, every order tried
 in the sweep.  [`to_dict`](api.md#felcu.FourierExtensionResult.to_dict)
 and [`from_dict`](api.md#felcu.FourierExtensionResult.from_dict) give the
