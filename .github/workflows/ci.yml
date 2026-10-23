@@ -57,12 +57,21 @@ jobs:
       - name: Install package and dev dependencies
         run: pip install -e ".[dev]"
 
-      # Functional tests first; the regression step appends to the same coverage data.
-      - name: Run functional tests
-        run: python -m pytest tests/ -v -m functional --cov=felcu --cov-report=
+      # One step per test category (see tests/conftest.py), lowest layer first:
+      # a failure low down usually explains the ones above it.  Every step runs
+      # even if an earlier one failed, so one failure cannot hide another, and
+      # each appends to the same coverage data.
+      - name: Run unit tests
+        run: python -m pytest tests/ -v -m unit --cov=felcu --cov-report=
 
-      # Runs even if the functional tests failed, so such a failure cannot hide
-      # whether this platform's results have drifted from the references.
+      - name: Run interface tests
+        if: ${{ !cancelled() }}
+        run: python -m pytest tests/ -v -m interface --cov=felcu --cov-append --cov-report=
+
+      - name: Run convergence tests
+        if: ${{ !cancelled() }}
+        run: python -m pytest tests/ -v -m convergence --cov=felcu --cov-append --cov-report=
+
       - name: Run regression tests
         id: regression
         if: ${{ !cancelled() }}
@@ -98,8 +107,16 @@ jobs:
       - name: Install package with minimum dependencies
         run: pip install -e ".[dev]" "numpy==2.0.*"
 
-      - name: Run functional tests
-        run: python -m pytest tests/ -v -m functional
+      - name: Run unit tests
+        run: python -m pytest tests/ -v -m unit
+
+      - name: Run interface tests
+        if: ${{ !cancelled() }}
+        run: python -m pytest tests/ -v -m interface
+
+      - name: Run convergence tests
+        if: ${{ !cancelled() }}
+        run: python -m pytest tests/ -v -m convergence
 
       - name: Run regression tests
         id: regression
@@ -117,9 +134,34 @@ jobs:
           name: regression-results-min-deps
           path: ${{ runner.temp }}/regression-results
 
+  # Every other job uses an editable install, which never checks that the
+  # built package is complete.  Install it normally and run the whole suite
+  # against it from outside the checkout, so felcu can only come from
+  # site-packages.
+  install:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install package (not editable) and dev dependencies
+        run: pip install ".[dev]"
+
+      - name: Run tests against the installed package
+        working-directory: ${{ runner.temp }}
+        run: |
+          cp -r "$GITHUB_WORKSPACE/tests" "$GITHUB_WORKSPACE/pyproject.toml" .
+          python -c "import felcu; print(felcu.__file__)" | grep site-packages
+          python -m pytest tests/ -q
+
   # Runs last: there is no point running the examples against a broken library.
   examples:
-    needs: [test, test-min-deps]
+    needs: [test, test-min-deps, install]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

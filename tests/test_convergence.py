@@ -1,19 +1,19 @@
-"""Tests for the explicit methods: reflected extensions and arcsine-Taylor."""
+"""Convergence tests: the output is mathematically correct.
+
+Each method meets its targets, and agrees with the paper: closed-form
+coefficients, convergence rates and subnormalisation bounds, and f(H)
+rebuilt from the series on real matrices.
+"""
 
 import math
 
 import numpy as np
 import pytest
+from helpers import max_error
 
-from felcu import (
-    FourierExtensionResult,
-    canonical_method_name,
-    default_eta,
-    evaluate_fourier_series,
-    solve_fe_coefficients,
-    to_complex_coefficients,
-)
-from felcu.utils import evaluate_target_function, fitted_domain_segments
+from felcu import evaluate_fourier_series, solve_fe_coefficients, to_complex_coefficients
+
+pytestmark = pytest.mark.convergence
 
 # (problem, kwargs, ||f(H)||) for convex endpoint-maximising f, where reflection is norm-saturating.
 SATURATING = [
@@ -26,12 +26,81 @@ SATURATING = [
 ]
 
 
-def _max_error(result, n=3001):
-    errors = []
-    for xs in fitted_domain_segments(result, num=n):
-        y_fit = evaluate_fourier_series(xs, result.a0, result.ak, result.bk)
-        errors.append(np.max(np.abs(y_fit - evaluate_target_function(xs, result))))
-    return max(errors)
+# ---------------------------------------------------------------------------
+# Sobolev-regularised least squares
+# ---------------------------------------------------------------------------
+
+
+class TestSobolev:
+    def test_exponentiation_converges(self):
+        result = solve_fe_coefficients(
+            "exponentiation",
+            sigma_min=0.1,
+            sigma_max=2.0,
+            target_error=1e-3,
+            m=16,
+        )
+        assert result.converged
+        assert result.achieved_l2_error <= 1e-3 * 1.01
+
+    def test_action_converges(self):
+        result = solve_fe_coefficients(
+            "action",
+            sigma_min=-1.0,
+            sigma_max=1.0,
+            target_error=1e-3,
+            m=8,
+        )
+        assert result.converged
+
+    def test_inversion_converges(self):
+        result = solve_fe_coefficients(
+            "inversion",
+            sigma_min=0.5,
+            sigma_max=2.0,
+            target_error=1e-3,
+            m=16,
+        )
+        assert result.converged
+
+    def test_linf_metric(self):
+        result = solve_fe_coefficients(
+            "exponentiation",
+            sigma_min=0.5,
+            sigma_max=1.5,
+            target_error=1e-2,
+            error_metric="linf",
+            m=20,
+        )
+        assert result.error_metric == "linf"
+        assert result.achieved_linf_error <= 1e-2 * 1.01
+
+
+class TestSobolevSquareRoot:
+    common = dict(shifted=True, sigma_min=0.15, sigma_max=1.0, target_error=1e-6, m_values=range(8, 65, 8))
+
+    @pytest.mark.parametrize("problem", ["square_root"])
+    def test_converges(self, problem):
+        result = solve_fe_coefficients(problem, **self.common)
+        assert result.converged
+        assert result.basis_used == "full"
+        assert max_error(result, n=500) <= 1e-6 * 1.01
+
+    @pytest.mark.parametrize("problem, f", [("sqrt", np.sqrt)])
+    def test_matrix_function(self, problem, f):
+        rng = np.random.default_rng(5)
+        Q, _ = np.linalg.qr(rng.standard_normal((6, 6)))
+        lam = np.linspace(0.3, 2.0, 6)
+        H = Q @ np.diag(lam) @ Q.T
+        r = solve_fe_coefficients(problem, shifted=True, matrix=H, target_error=1e-8, m_values=range(8, 65, 8))
+        mu = 0.5 * (r.sigma_min + r.sigma_max)
+        g = evaluate_fourier_series(r.tau * (lam - mu), r.a0, r.ak, r.bk)
+        np.testing.assert_allclose(Q @ np.diag(g) @ Q.T, Q @ np.diag(f(lam)) @ Q.T, atol=1e-7)
+
+
+# ---------------------------------------------------------------------------
+# Reflected extensions
+# ---------------------------------------------------------------------------
 
 
 class TestReflected:
@@ -69,6 +138,11 @@ class TestReflected:
         r3 = solve_fe_coefficients("exponentiation", eta=3.0, **kw)
         assert r3.achieved_linf_error < r2.achieved_linf_error / 2
         assert r3.alpha > r2.alpha
+
+
+# ---------------------------------------------------------------------------
+# Arcsine-Taylor
+# ---------------------------------------------------------------------------
 
 
 class TestArcsineTaylor:
@@ -126,7 +200,7 @@ class TestArcsineTaylor:
             "exponentiation", method="arcsine_taylor", shifted=True, sigma_min=0.1, sigma_max=2.0, target_error=1e-12
         )
         assert r.converged
-        assert _max_error(r) <= 1.01e-12
+        assert max_error(r) <= 1.01e-12
 
     def test_block_encoding_error(self):
         rng = np.random.default_rng(0)
@@ -140,105 +214,3 @@ class TestArcsineTaylor:
         g_m = V @ np.diag(np.exp(1j * np.outer(w, k)) @ to_complex_coefficients(r)) @ V.T
         # Attained at the spectral endpoint, up to round-off in the matrix products.
         assert np.linalg.norm(g_m - np.linalg.inv(H), 2) <= r.achieved_linf_error + 1e-13
-
-
-class TestDefaultEta:
-    def test_reflected(self):
-        assert default_eta("exponentiation", method="reflected") == 2.0
-        assert default_eta("inversion", method="refl", shifted=True, sigma_min=0.1, sigma_max=1.0) == 2.0
-
-    def test_arcsine_taylor(self):
-        assert default_eta("action", method="arcsine_taylor") == 3.0
-        # Midpoint of 2 < eta < 2 mu / delta, capped at 3.
-        assert default_eta("inversion", method="asin", shifted=True, sigma_min=0.1, sigma_max=1.0) == pytest.approx(
-            1 + 1.1 / 0.9
-        )
-        assert default_eta("square_root", method="asin", shifted=True, sigma_min=0.5, sigma_max=1.0) == 3.0
-        assert default_eta("inversion", method="asin", shifted=True, sigma_min=2.0, sigma_max=2.0) == 3.0
-
-    def test_sobolev_unchanged(self):
-        assert default_eta("inversion", shifted=True, sigma_min=0.1, sigma_max=1.0) == pytest.approx(1.1 / 0.9)
-
-
-class TestValidation:
-    def test_method_aliases(self):
-        assert canonical_method_name(" Regularized ") == "sobolev"
-        assert canonical_method_name("refl") == "reflected"
-        assert canonical_method_name("arcsine-taylor") == "arcsine_taylor"
-        with pytest.raises(ValueError, match="method must be"):
-            canonical_method_name("chebyshev")
-
-    @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
-    def test_unshifted_inversion_rejected(self, method):
-        with pytest.raises(ValueError, match="unshifted inversion"):
-            solve_fe_coefficients("inversion", method=method, sigma_min=0.5, sigma_max=2.0)
-
-    def test_eta_ranges(self):
-        with pytest.raises(ValueError, match="eta >= 2"):
-            solve_fe_coefficients("action", method="reflected", eta=1.5)
-        with pytest.raises(ValueError, match="eta > 2"):
-            solve_fe_coefficients("action", method="arcsine_taylor", eta=2.0)
-
-    @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
-    def test_extension_must_avoid_the_singularity(self, method):
-        # 2 mu / delta = 2.1 for [0.025, 1].
-        with pytest.raises(ValueError, match=r"2\|mu\|/delta = 2\.1"):
-            solve_fe_coefficients("square_root", method=method, shifted=True, sigma_min=0.025, sigma_max=1.0, eta=2.7)
-        r = solve_fe_coefficients("square_root", method=method, shifted=True, sigma_min=0.025, sigma_max=1.0, eta=2.05)
-        assert np.isfinite(r.alpha) and r.alpha < 5.0
-
-    @pytest.mark.parametrize("option", ["lambdas", "sobolev_w", "sobolev_r", "order_fit", "fit_oversample"])
-    def test_sobolev_options_rejected(self, option):
-        value = {"lambdas": [1e-3], "sobolev_w": 1.0, "sobolev_r": 0.5, "order_fit": 0, "fit_oversample": 4}[option]
-        with pytest.raises(ValueError, match=option):
-            solve_fe_coefficients("action", method="reflected", **{option: value})
-
-
-class TestResult:
-    @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
-    def test_fields(self, method):
-        r = solve_fe_coefficients(
-            "exponentiation", method=method, shifted=True, sigma_min=0.1, sigma_max=2.0, target_error=1e-2
-        )
-        assert r.method == method
-        assert r.lambda_used is None and r.sobolev_r is None and r.sobolev_w is None
-        assert all(c.method == method for c in r.all_results)
-        assert _max_error(r) == pytest.approx(r.achieved_linf_error, rel=1e-3)
-
-    def test_sobolev_is_the_default(self):
-        r = solve_fe_coefficients("exponentiation", sigma_min=0.1, sigma_max=2.0, target_error=1e-6, m=16)
-        assert r.method == "sobolev"
-        assert r.sobolev_w == 1.0
-
-    def test_unreachable_target_returns_the_best(self):
-        r = solve_fe_coefficients(
-            "exponentiation", method="reflected", shifted=True, sigma_min=0.1, sigma_max=2.0, m_values=[8, 16, 32]
-        )
-        assert not r.converged
-        assert r.m == 32
-
-    def test_selection_smallest_m(self):
-        r = solve_fe_coefficients(
-            "action",
-            method="arcsine_taylor",
-            shifted=True,
-            sigma_min=-1.0,
-            sigma_max=1.0,
-            target_error=1e-8,
-            selection="smallest_m",
-        )
-        assert r.converged
-        assert r.all_results[-1].m == r.m
-
-    def test_exact_constant(self):
-        r = solve_fe_coefficients("square_root", method="arcsine_taylor", shifted=True, sigma_min=4.0, sigma_max=4.0)
-        assert r.m == 0 and r.a0 == 2.0
-        assert r.method == "arcsine_taylor" and r.lambda_used is None
-
-    @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
-    def test_json_round_trip(self, method):
-        r = solve_fe_coefficients("inversion", method=method, shifted=True, sigma_min=0.5, sigma_max=1.0, m=12)
-        loaded = FourierExtensionResult.from_json(r.to_json())
-        assert loaded.method == method
-        assert loaded.lambda_used is None and loaded.sobolev_r is None
-        np.testing.assert_array_equal(loaded.ak, r.ak)
