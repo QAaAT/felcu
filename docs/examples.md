@@ -16,11 +16,12 @@ python examples/action/01_basic_interval.py
 
 ### Action on a symmetric interval
 
-Fit f(H) = H for a Hermitian H with eigenvalues in [-1, 1].
+Fit \(f(\mathcal H) = \mathcal H\) for a Hermitian \(\mathcal H\) with
+eigenvalues in \([-1, 1]\).
 
-felcu centres the fit at mu = 0, the middle of the interval, and fits
-g(x) = x / tau.  Because that is odd, every cosine coefficient (bk) and
-the constant term (a0) vanish.
+`felcu` centres the fit at \(\mu = 0\), the middle of the interval, and
+fits \(g(x) = x/\tau\).  Because that is odd, every cosine coefficient
+\(b_k\) and the constant term \(a_0\) vanish.
 
 ```python title="examples/action/01_basic_interval.py"
 --8<-- "examples/action/01_basic_interval.py"
@@ -28,17 +29,20 @@ the constant term (a0) vanish.
 
 ### Action on an off-centre interval
 
-For eigenvalues in [2, 5], felcu centres the fit at mu = 3.5:
+For eigenvalues in \([2, 5]\), `felcu` centres the fit at \(\mu = 3.5\):
 
-    g(x) = mu + x / tau,   f(H) = g(tau (H - mu I))
+\[
+g(x) = \mu + \frac{x}{\tau}, \qquad f(\mathcal H) = g(\tau(\mathcal H - \mu I)),
+\]
 
-so the constant term carries mu and only the half-width needs fitting.
+so the constant term carries \(\mu\) and only the half-width needs fitting.
 
-H is positive definite here, so its singular values are its eigenvalues,
-and spectral_kind='singular_values' fits them through the Hermitian
-dilation instead.  The dilation's spectrum, [-5, -2] U [2, 5], is centred at
-0, so mu = 0 and the odd g(x) = x / tau covers the whole of [-5, 5], which
-costs a larger alpha.
+\(\mathcal H\) is positive definite here, so its singular values are its
+eigenvalues, and `spectral_kind='singular_values'` fits them through the
+Hermitian dilation instead.  The dilation's spectrum,
+\([-5, -2] \cup [2, 5]\), is centred at \(0\), so \(\mu = 0\) and the odd
+\(g(x) = x/\tau\) covers the whole of \([-5, 5]\), which costs a larger
+\(\alpha_m\).
 
 ```python title="examples/action/02_off_centre.py"
 --8<-- "examples/action/02_off_centre.py"
@@ -46,9 +50,10 @@ costs a larger alpha.
 
 ### Action from a Hermitian matrix
 
-Pass the matrix itself: felcu reads its eigenvalue range.  We then check
-the block-encoded operator g(tau (H - mu I)) against H using an
-eigendecomposition, with mu the centre of the eigenvalue range.
+Pass the matrix itself: `felcu` reads its eigenvalue range.  We then
+check the block-encoded operator \(g(\tau(\mathcal H - \mu I))\) against
+\(\mathcal H\) using an eigendecomposition, with \(\mu\) the centre of the
+eigenvalue range.
 
 ```python title="examples/action/03_hermitian_matrix.py"
 --8<-- "examples/action/03_hermitian_matrix.py"
@@ -56,10 +61,13 @@ eigendecomposition, with mu the centre of the eigenvalue range.
 
 ### Action on a non-Hermitian matrix
 
-For a non-Hermitian A, felcu switches to the singular values automatically.
-The odd sine series acts on the singular values (as in QSVT):
+For a non-Hermitian \(A\), `felcu` switches to the singular values
+automatically.  The odd sine series acts on the singular values (as in
+QSVT): with \(A = U\Sigma V^\dagger\),
 
-    g(tau A) = U diag(g(tau s)) V^dagger  ~=  A
+\[
+U g(\tau\Sigma) V^\dagger \approx A .
+\]
 
 ```python title="examples/action/04_non_hermitian_matrix.py"
 --8<-- "examples/action/04_non_hermitian_matrix.py"
@@ -69,11 +77,11 @@ The odd sine series acts on the singular values (as in QSVT):
 
 ### Inversion on a definite interval
 
-Fit f(H) = H^{-1} for eigenvalues in [0.5, 3].
+Fit \(f(\mathcal H) = \mathcal H^{-1}\) for eigenvalues in \([0.5, 3]\).
 
-The target 1/x has a pole at 0.  The interval is definite, so the pole lies
-outside it, and the default eta places it on the periodic boundary,
-x = -tau mu = -pi.
+The target \(1/x\) has a pole at \(0\).  The interval is definite, so the
+pole lies outside it, and the default \(\eta\) places it on the periodic
+boundary, \(x = -\tau\mu = -\pi\).
 
 ```python title="examples/inversion/01_basic_interval.py"
 --8<-- "examples/inversion/01_basic_interval.py"
@@ -81,8 +89,9 @@ x = -tau mu = -pi.
 
 ### Cost of inversion versus condition number
 
-Fix sigma_max = 1 and shrink sigma_min, so kappa = 1 / sigma_min grows.
-Both the truncation order m and the subnormalisation alpha increase.
+Fix \(\lambda_{\max} = 1\) (`sigma_max`) and shrink \(\lambda_{\min}\)
+(`sigma_min`), so the condition number \(\kappa = 1/\lambda_{\min}\) grows.  Both the truncation order \(m\) and the subnormalisation
+\(\alpha_m\) increase.
 
 ```python title="examples/inversion/02_condition_number.py"
 --8<-- "examples/inversion/02_condition_number.py"
@@ -90,13 +99,16 @@ Both the truncation order m and the subnormalisation alpha increase.
 
 ### Inverting a non-Hermitian matrix
 
-A has no real eigenvalue interval, so felcu fits its singular values,
-through the Hermitian dilation [[0, A], [A^dagger, 0]].  The dilation's
-spectrum is symmetric about 0, so mu = 0, and the fit is the odd
-g(x) = tau / x on two intervals either side of the pole.  With
-A = U diag(s) V^dagger,
+\(A\) has no real eigenvalue interval, so `felcu` fits its singular
+values, through the Hermitian dilation
+\(\mathcal H = \begin{pmatrix} 0 & A \\ A^\dagger & 0 \end{pmatrix}\).
+The dilation's spectrum is symmetric about \(0\), so \(\mu = 0\), and the
+fit is the odd \(g(x) = \tau/x\) on two intervals either side of the pole.
+With \(A = U\Sigma V^\dagger\),
 
-    V diag(g(tau s)) U^dagger  ~=  A^{-1}
+\[
+V g(\tau\Sigma) U^\dagger \approx A^{-1} .
+\]
 
 ```python title="examples/inversion/03_non_hermitian_matrix.py"
 --8<-- "examples/inversion/03_non_hermitian_matrix.py"
@@ -104,12 +116,14 @@ A = U diag(s) V^dagger,
 
 ### Inversion of a definite Hermitian matrix
 
-When H is definite (all eigenvalues the same sign), felcu fits 1/x on a
-single interval centred at mu:
+When \(\mathcal H\) is definite (all eigenvalues the same sign), `felcu`
+fits \(1/x\) on a single interval centred at \(\mu\):
 
-    f(H) = g(tau (H - mu I))
+\[
+f(\mathcal H) = g(\tau(\mathcal H - \mu I)) .
+\]
 
-This works for positive- and negative-definite H alike.
+This works for positive- and negative-definite \(\mathcal H\) alike.
 
 ```python title="examples/inversion/04_definite_matrix.py"
 --8<-- "examples/inversion/04_definite_matrix.py"
@@ -117,15 +131,18 @@ This works for positive- and negative-definite H alike.
 
 ### Inversion of an indefinite Hermitian matrix
 
-When H has eigenvalues on both sides of 0, in [lambda_min, a] U [b, lambda_max]
-with a < 0 < b, felcu fits 1/x on both parts and leaves the gap (a, b) around
-the pole free.  The fit is still centred at the midpoint mu of
-[lambda_min, lambda_max], which need not be 0:
+When \(\mathcal H\) has eigenvalues on both sides of \(0\), in
+\([\lambda_{\min}, a] \cup [b, \lambda_{\max}]\) with \(a < 0 < b\),
+`felcu` fits \(1/x\) on both parts and leaves the gap \((a, b)\) around the
+pole free.  The fit is still centred at the midpoint \(\mu\) of
+\([\lambda_{\min}, \lambda_{\max}]\), which need not be \(0\):
 
-    f(H) = g(tau (H - mu I))
+\[
+f(\mathcal H) = g(\tau(\mathcal H - \mu I)) .
+\]
 
 With a matrix, the gap is read from its eigenvalues; with bounds, pass
-gap=(a, b).
+`gap=(a, b)`.
 
 ```python title="examples/inversion/05_indefinite_matrix.py"
 --8<-- "examples/inversion/05_indefinite_matrix.py"
@@ -135,8 +152,9 @@ gap=(a, b).
 
 ### Truncation order versus target error
 
-Tighten target_error and watch how the selected order m grows.  For a
-smooth target like exp, m grows roughly logarithmically in 1/error.
+Tighten `target_error` and watch how the selected order \(m\) grows.  For
+a smooth target like \(e^x\), \(m\) grows roughly logarithmically in
+\(1/\epsilon_{\rm t}\).
 
 ```python title="examples/exponentiation/01_target_sweep.py"
 --8<-- "examples/exponentiation/01_target_sweep.py"
@@ -144,8 +162,9 @@ smooth target like exp, m grows roughly logarithmically in 1/error.
 
 ### Matrix exponential from a Hermitian matrix
 
-Fit exp(H) from H directly, then compare g(tau (H - mu I)) with the exact
-matrix exponential computed by eigendecomposition.
+Fit \(e^{\mathcal H}\) from \(\mathcal H\) directly, then compare
+\(g(\tau(\mathcal H - \mu I))\) with the exact matrix exponential computed
+by eigendecomposition.
 
 ```python title="examples/exponentiation/02_matrix_exponential.py"
 --8<-- "examples/exponentiation/02_matrix_exponential.py"
@@ -153,9 +172,10 @@ matrix exponential computed by eigendecomposition.
 
 ### Complex coefficients for an LCU circuit
 
-An LCU circuit implements sum_k c_k e^{i k x}.  felcu returns these as
-result.complex_coefficients = [c_{-m}, ..., c_0, ..., c_m].  The LCU
-subnormalisation alpha is the sum of the magnitudes |c_k|.
+An LCU circuit implements \(\sum_k c_k e^{ikx}\).  `felcu` returns these
+as `result.complex_coefficients`
+\(= [c_{-m}, \dots, c_0, \dots, c_m]\).  The LCU subnormalisation
+\(\alpha_m = \sum_k |c_k|\) is the sum of their magnitudes.
 
 ```python title="examples/exponentiation/03_lcu_coefficients.py"
 --8<-- "examples/exponentiation/03_lcu_coefficients.py"
@@ -175,10 +195,11 @@ the order \(w\) and the scale \(r\) and see how `lambda_used`
 
 ### Choosing between candidate truncation orders
 
-With the default selection='smallest_alpha', felcu solves for every m in
-m_values, keeps all candidates in result.all_results, and picks the one
-with the smallest subnormalisation.  'smallest_m' picks the shortest
-series that meets the target instead, and stops the sweep there.
+With the default `selection='smallest_alpha'`, `felcu` solves for every
+\(m\) in `m_values`, keeps all candidates in `result.all_results`, and picks
+the one with the smallest subnormalisation \(\alpha_m\).  `'smallest_m'`
+picks the shortest series that meets the target instead, and stops the
+sweep there.
 
 ```python title="examples/exponentiation/05_selection_and_candidates.py"
 --8<-- "examples/exponentiation/05_selection_and_candidates.py"
@@ -188,10 +209,11 @@ series that meets the target instead, and stops the sweep there.
 
 ### Square root on a positive-definite interval
 
-Fit f(H) = sqrt(H) for eigenvalues in [0.15, 1], the square-root example of
-the paper.  sqrt has a branch point at 0, and the default
-eta = (kappa + 1) / (kappa - 1) places it on the periodic boundary.  The Sobolev scale defaults to
-r = kappa^(-1/2) for w = 1.
+Fit \(f(\mathcal H) = \sqrt{\mathcal H}\) for eigenvalues in
+\([0.15, 1]\), the square-root example of the paper.  \(\sqrt x\) has a
+branch point at \(0\), and the default
+\(\eta = (\kappa + 1)/(\kappa - 1)\) places it on the periodic boundary.
+The Sobolev scale defaults to \(r = \kappa^{-1/2}\) for \(w = 1\).
 
 ```python title="examples/square_root/01_basic_interval.py"
 --8<-- "examples/square_root/01_basic_interval.py"
@@ -199,8 +221,9 @@ r = kappa^(-1/2) for w = 1.
 
 ### Matrix square root from a positive-definite matrix
 
-Fit sqrt(H) from H directly, then check that the block-encoded operator
-g(tau (H - mu I)) squares back to H.
+Fit \(\sqrt{\mathcal H}\) from \(\mathcal H\) directly, then check that
+the block-encoded operator \(g(\tau(\mathcal H - \mu I))\) squares back to
+\(\mathcal H\).
 
 ```python title="examples/square_root/02_matrix_square_root.py"
 --8<-- "examples/square_root/02_matrix_square_root.py"
@@ -210,11 +233,12 @@ g(tau (H - mu I)) squares back to H.
 
 ### Comparing the three coefficient-selection methods
 
-Fit exp(H) for eigenvalues in [0.1, 2] with each `method=` at the same
-orders.  The reflected extension has the optimal subnormalisation
-alpha_m = ||f(H)|| - error but converges only as O(1/m); arcsine-Taylor
-converges exponentially at a larger alpha; the Sobolev-regularised default
-reaches the target with alpha close to optimal.  See
+Fit \(e^{\mathcal H}\) for eigenvalues in \([0.1, 2]\) with each
+`method=` at the same orders.  The reflected extension has the optimal
+subnormalisation \(\alpha_m = \|f(\mathcal H)\| - \epsilon_m\) but
+converges only as \(O(m^{-1})\); arcsine-Taylor converges exponentially at
+a larger \(\alpha_m\); the Sobolev-regularised default reaches the target
+with \(\alpha_m\) close to optimal.  See
 [Method](guide/method.md).
 
 ```python title="examples/methods/01_compare_methods.py"
