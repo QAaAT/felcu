@@ -117,11 +117,11 @@ The defaults are the scale-adapted choices of Sec. VI:
 | action | \(r_{\rm id} = 1\) |
 | exponentiation | \(r_{\exp} = (1 + 1/\tau)^{-1}\), i.e. \((1 + \eta\delta/\pi)^{-1}\) |
 | inversion | \(\min\{1,\ \tau \min_{\lambda \in \operatorname{spec}} \lvert\lambda\rvert\}\), the distance from the fitted set to the pole |
+| square root | \(r_{\rm sqrt} = \kappa^{-(2w-1)/(2w)}\), i.e. \(\kappa^{-1/2}\) for \(w = 1\) |
 
 For inversion at the default \(\eta\) this is the paper's
 \(r_{\rm def} = \min\{1,\ 2\pi/(\kappa + 1)\}\) for a definite interval and
 \(r_{\rm indef} = \min\{1,\ \pi/(\kappa + 1)\}\) for singular values.
-| square root | \(r_{\rm sqrt} = \kappa^{-(2w-1)/(2w)}\), i.e. \(\kappa^{-1/2}\) for \(w = 1\) |
 
 ### The constant baseline
 

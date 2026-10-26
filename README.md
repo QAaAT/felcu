@@ -9,24 +9,33 @@ It supports four problems:
 
 | Problem | Function |
 |---|---|
-| `action` | f(H) = H |
-| `inversion` | f(H) = H⁻¹ |
-| `exponentiation` | f(H) = exp(H) |
-| `square_root` | f(H) = √H (H positive definite) |
+| `action` | $f(\mathcal H) = \mathcal H$ |
+| `inversion` | $f(\mathcal H) = \mathcal H^{-1}$ |
+| `exponentiation` | $f(\mathcal H) = e^{\mathcal H}$ |
+| `square_root` | $f(\mathcal H) = \sqrt{\mathcal H}$ ($\mathcal H$ positive definite) |
 
 A matrix or spectral bounds are required.  Every fit is centred on the
-spectrum, f(H) = g(τ(H − μI)).  Action and inversion also work on singular
-values, for non-Hermitian matrices, through the Hermitian dilation (μ = 0, odd
+spectrum,
+
+$$
+f(\mathcal H) = g\bigl(\tau(\mathcal H - \mu I)\bigr),
+\qquad
+g(x) \approx g_m(x) = \sum_{k=-m}^{m} c_k e^{ikx},
+$$
+
+so the block encoding is a linear combination of Hamiltonian simulations
+$e^{ik\tau\mathcal H}$.  Action and inversion also work on singular values,
+for non-Hermitian matrices, through the Hermitian dilation ($\mu = 0$, odd
 series).  Inversion handles definite and indefinite spectra.
 
 The coefficients come from one of the paper's three strategies, chosen with
 `method=`:
 
-| Method | Convergence | Subnormalisation |
+| Method | Convergence | Subnormalisation $\alpha_m = \sum_k \lvert c_k\rvert$ |
 |---|---|---|
-| `sobolev` (default) | near-exponential, down to the target | O(‖f(H)‖) |
-| `reflected` | algebraic, O(1/m) | ‖f(H)‖ (optimal) for convex f |
-| `arcsine_taylor` | exponential, O(sin(π/η)^m) | bounded, larger than optimal |
+| `sobolev` (default) | near-exponential, down to the target | $O(\lVert f(\mathcal H)\rVert)$ |
+| `reflected` | algebraic, $O(m^{-1})$ | $\lVert f(\mathcal H)\rVert$ (optimal) for convex $f$ |
+| `arcsine_taylor` | exponential, $O(\sin^m(\pi/\eta))$ | bounded, larger than optimal |
 
 ## Installation
 
