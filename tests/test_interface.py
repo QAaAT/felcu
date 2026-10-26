@@ -13,6 +13,12 @@ from felcu import compute_fe_coefficients, default_sobolev_r, solve_fe_coefficie
 pytestmark = pytest.mark.interface
 
 
+def _rotated(eigenvalues):
+    """A symmetric matrix with these eigenvalues, which rounding perturbs."""
+    Q, _ = np.linalg.qr(np.random.default_rng(6).standard_normal((len(eigenvalues),) * 2))
+    return Q @ np.diag(eigenvalues) @ Q.T
+
+
 # ---------------------------------------------------------------------------
 # Input validation
 # ---------------------------------------------------------------------------
@@ -105,15 +111,17 @@ class TestInputValidation:
             np.diag([0.0, 1.0]),  # zero at an end of the spectrum
             np.diag([-2.0, -1.0, 0.0, 1.0, 3.0]),  # zero inside an indefinite spectrum
             [[0.0, 1.0], [0.0, 0.0]],  # non-Hermitian, a zero singular value
+            _rotated([-1.0, 0.0, 1.0, 2.0, 3.0]),  # zero only to working precision
         ],
     )
     def test_singular_matrix_inversion_raises(self, matrix):
         with pytest.raises(ValueError, match="nonsingular"):
             solve_fe_coefficients("inversion", matrix=matrix)
 
-    def test_singular_matrix_square_root_raises(self):
+    @pytest.mark.parametrize("matrix", [np.diag([0.0, 1.0]), _rotated([0.0, 1.0, 2.0])])
+    def test_singular_matrix_square_root_raises(self, matrix):
         with pytest.raises(ValueError, match="positive-definite"):
-            solve_fe_coefficients("square_root", matrix=np.diag([0.0, 1.0]))
+            solve_fe_coefficients("square_root", matrix=matrix)
 
     @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
     @pytest.mark.parametrize(
@@ -295,6 +303,12 @@ class TestExactConstant:
         r = solve_fe_coefficients("square_root", method="arcsine_taylor", sigma_min=4.0, sigma_max=4.0)
         assert r.m == 0 and r.a0 == 2.0
         assert r.method == "arcsine_taylor" and r.lambda_used is None
+
+    def test_rotated_scalar_matrix_is_exact(self):
+        # Rounding spreads the eigenvalues of Q (2 I) Q^T; it is still 2 I.
+        r = solve_fe_coefficients("exponentiation", matrix=_rotated([2.0] * 5))
+        assert r.m == 0
+        assert r.a0 == pytest.approx(np.exp(2.0))
 
 
 # ---------------------------------------------------------------------------

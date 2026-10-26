@@ -59,6 +59,30 @@ def _eigenvalue_gap(values: np.ndarray) -> tuple[float, float] | None:
     return float(np.max(negative)), float(np.min(positive))
 
 
+def _matrix_spectrum(A: np.ndarray, kind: str, problem: str) -> tuple[float, float, tuple[float, float] | None]:
+    """The spectral interval of *A*, and for indefinite inversion the eigenvalue gap around 0.
+
+    eigvalsh and svd are backward stable, so the values are only accurate to
+    about ``n eps ||A||``: closer values are equal, and smaller ones 0, to
+    working precision.  Snapping them finds a singular matrix, and keeps a
+    repeated end of the spectrum a point rather than a sliver.
+    """
+    values = np.linalg.eigvalsh(A) if kind == "eigenvalues" else np.linalg.svd(A, compute_uv=False)
+    res = 4 * A.shape[0] * np.finfo(float).eps * float(np.max(np.abs(values)))
+    values = np.where(np.abs(values) <= res, 0.0, values)
+    if problem == "inversion" and np.any(values == 0):
+        raise ValueError(
+            "Inversion requires a nonsingular matrix: it has an eigenvalue or singular value of 0 to working precision."
+        )
+    lo, hi = float(np.min(values)), float(np.max(values))
+    if hi - lo <= res:
+        lo = hi
+    gap = _eigenvalue_gap(values) if kind == "eigenvalues" and problem == "inversion" else None
+    if gap is not None:
+        gap = (lo if gap[0] - lo <= res else gap[0], hi if hi - gap[1] <= res else gap[1])
+    return lo, hi, gap
+
+
 def _check_inversion_interval(lo: float, hi: float, gap: tuple[float, float] | None) -> None:
     if lo > 0 or hi < 0:
         if gap is not None:
@@ -110,12 +134,8 @@ def _spectral_data(
         lo, hi, shape = float(sigma_min), float(sigma_max), None
         gap = None if gap is None else (float(gap[0]), float(gap[1]))
     else:
-        values = np.linalg.eigvalsh(A) if kind == "eigenvalues" else np.linalg.svd(A, compute_uv=False)
-        if problem == "inversion" and np.any(values == 0):
-            raise ValueError("Inversion requires a nonsingular matrix: it has an eigenvalue or singular value of 0.")
-        lo, hi, shape = float(np.min(values)), float(np.max(values)), (int(A.shape[0]), int(A.shape[1]))
-        if kind == "eigenvalues" and problem == "inversion":
-            gap = _eigenvalue_gap(values)
+        lo, hi, gap = _matrix_spectrum(A, kind, problem)
+        shape = (int(A.shape[0]), int(A.shape[1]))
     if lo > hi:
         raise ValueError("Require sigma_min <= sigma_max.")
     if gap is not None and not (kind == "eigenvalues" and problem == "inversion"):

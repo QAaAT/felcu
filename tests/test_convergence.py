@@ -118,6 +118,14 @@ class TestSobolevIndefiniteInversion:
         assert r.converged
         np.testing.assert_allclose(_apply(r, H), np.linalg.inv(H), atol=1e-5)
 
+    @pytest.mark.parametrize("metric", ["linf", "l2"])
+    def test_repeated_end_eigenvalue_is_a_point(self, metric):
+        # Rounding can split a repeated -1 into a sliver, as here; it must be fitted as the point it is.
+        H = np.diag([-1.0, np.nextafter(np.nextafter(-1.0, 0.0), 0.0), 1.0, 2.0])
+        r = solve_fe_coefficients("inversion", matrix=H, error_metric=metric, **self.common)
+        assert r.x_gap[0] == -r.x_max
+        np.testing.assert_allclose(_apply(r, H), np.linalg.inv(H), atol=1e-5)
+
     def test_equal_singular_values(self):
         # A scaled orthogonal matrix: both sides of the dilation's spectrum are points.
         A = 2.0 * np.array([[0.0, 1.0], [-1.0, 0.0]])
