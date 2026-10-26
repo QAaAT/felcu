@@ -1,12 +1,12 @@
 """
-Inversion on a singular-value interval
-======================================
+Inversion on a definite interval
+================================
 
-Fit f(A) = A^{-1} for singular values in [0.5, 3].
+Fit f(H) = H^{-1} for eigenvalues in [0.5, 3].
 
-The target 1/x has a pole at 0, so felcu fits on two intervals,
-[-x_max, -x_min] and [x_min, x_max], and leaves the gap around the pole
-unconstrained.
+The target 1/x has a pole at 0.  The interval is definite, so the pole lies
+outside it, and the default eta places it on the periodic boundary,
+x = -tau mu = -pi.
 
 Run with:
     python examples/inversion/01_basic_interval.py
@@ -23,10 +23,10 @@ result = solve_fe_coefficients(
 )
 
 print(f"converged   = {result.converged}")
-print(f"domain      = {result.domain}")
-print(f"fitted on   = [-{result.x_max:.4f}, -{result.x_min:.4f}] U [{result.x_min:.4f}, {result.x_max:.4f}]")
+print(f"mu, tau     = {result.mu:.4f}, {result.tau:.4f}")
+print(f"pole at x   = {-result.tau * result.mu:.4f}")
 print(f"basis       = {result.basis_used}")
-print(f"eta         = {result.eta:.4f}   (default 1 + 1/kappa)")
+print(f"eta         = {result.eta:.4f}   (default (kappa + 1) / (kappa - 1))")
 print(f"m           = {result.m}")
 print(f"Linf error  = {result.achieved_linf_error:.2e}")
 print(f"alpha (LCU) = {result.alpha:.4f}")

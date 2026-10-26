@@ -8,7 +8,7 @@ with the smallest subnormalisation.  'smallest_m' picks the shortest
 series that meets the target instead, and stops the sweep there.
 
 Run with:
-    python examples/exponentiation/07_selection_and_candidates.py
+    python examples/exponentiation/05_selection_and_candidates.py
 """
 
 from felcu import solve_fe_coefficients

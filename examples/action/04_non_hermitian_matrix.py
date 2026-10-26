@@ -8,7 +8,7 @@ The odd sine series acts on the singular values (as in QSVT):
     g(tau A) = U diag(g(tau s)) V^dagger  ~=  A
 
 Run with:
-    python examples/action/05_non_hermitian_matrix.py
+    python examples/action/04_non_hermitian_matrix.py
 """
 
 import numpy as np

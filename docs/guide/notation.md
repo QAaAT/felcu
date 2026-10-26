@@ -16,8 +16,9 @@ corresponding argument or result field.
 | \(A = U\Sigma V^\dagger\) | general input matrix (acted on through its singular values) | `matrix=` |
 | \(\lambda_{\min}, \lambda_{\max}\) | eigenvalue endpoints, \(\operatorname{spec}(\mathcal H) \subseteq [\lambda_{\min}, \lambda_{\max}]\) | `sigma_min`, `sigma_max` with eigenvalues |
 | \(\Sigma_{\min}, \Sigma_{\max}\) | singular-value endpoints | `sigma_min`, `sigma_max` with singular values |
-| \(\mu = (\lambda_{\max} + \lambda_{\min})/2\) | spectral midpoint | derived; used by shifted fits |
-| \(\delta = (\lambda_{\max} - \lambda_{\min})/2\) | spectral half-width | derived; used by shifted fits |
+| \(a < 0 < b\) | eigenvalues either side of 0, \(\operatorname{spec}(\mathcal H) \subseteq [\lambda_{\min}, a] \cup [b, \lambda_{\max}]\) (indefinite inversion) | `gap=(a, b)`, `result.gap` |
+| \(\mu = (\lambda_{\max} + \lambda_{\min})/2\) | spectral midpoint; \(0\) for singular values | `result.mu` |
+| \(\delta = (\lambda_{\max} - \lambda_{\min})/2\) | spectral half-width; \(\Sigma_{\max}\) for singular values | derived |
 | \(\kappa\) | condition number, ratio of largest to smallest \(\lvert\lambda\rvert\) or \(\Sigma\) | derived |
 
 `sigma_min` and `sigma_max` hold whichever endpoints the construction uses
@@ -31,15 +32,16 @@ corresponding argument or result field.
 | \(\mathbb T = [-\pi, \pi)\) | one period | |
 | \(\eta > 1\) | domain extension factor | `eta`, `result.eta` |
 | \(\Omega_\eta = [-\pi/\eta, \pi/\eta]\) | fitted interval | `result.x_max` \(= \pi/\eta\) |
-| \(\Omega^{\rm indef}_{\eta,\kappa} = [-x_{\max}, -x_{\min}] \cup [x_{\min}, x_{\max}]\) | two-interval fitted set (unshifted inversion) | `result.x_min`, `result.x_max`; `result.domain == "double"` |
+| \([-x_{\max}, \tau(a - \mu)] \cup [\tau(b - \mu), x_{\max}]\) | two-interval fitted set (indefinite or singular-value inversion); \(\Omega^{\rm indef}_{\eta,\kappa}\) when symmetric | `result.x_gap`, `result.x_max` |
 | \(\Omega\) | the fitted set in general | `fitted_domain_segments(result)` |
 | \(\tau\) | scale, \(\mathcal G = \tau(\mathcal H - \mu I)\) | `result.tau` |
 | \(\mathcal G\) | scaled matrix with \(\operatorname{spec}(\mathcal G) \subseteq \Omega\) | |
 | \(f\) | the matrix function: \(x\), \(x^{-1}\), \(e^x\) or \(\sqrt x\) | `problem=` |
 | \(g(x) = f(\mu + x/\tau)\) | fitted (scaled) target, \(f(\mathcal H) = g(\mathcal G)\) | `evaluate_target_function(x, result)` |
 
-Unshifted constructions take \(\mu = 0\), so \(\mathcal G = \tau\mathcal H\)
-and \(g(x) = f(x/\tau)\).
+For singular values, \(\mathcal H\) is the Hermitian dilation of \(A\), whose
+spectrum \(\pm\operatorname{sv}(A)\) is centred at \(\mu = 0\), so
+\(g(x) = f(x/\tau)\) and the series is odd.
 
 ## The series
 

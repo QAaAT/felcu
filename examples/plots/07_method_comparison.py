@@ -57,7 +57,7 @@ for col, (problem, name, f, (lo, hi), eta_asin, convex) in enumerate(CASES):
     color = _style.PROBLEM_COLORS[problem]
     ax_fit, ax_err, ax_alpha = axes[:, col]
     mu, delta = (lo + hi) / 2, (hi - lo) / 2
-    common = dict(shifted=True, sigma_min=lo, sigma_max=hi, target_error=TARGET, m_values=M_VALUES)
+    common = dict(sigma_min=lo, sigma_max=hi, target_error=TARGET, m_values=M_VALUES)
 
     for method, (short, linestyle) in METHODS.items():
         kwargs = common | ({"eta": eta_asin} if method == "arcsine_taylor" else {})

@@ -19,7 +19,7 @@ import math
 
 from felcu import solve_fe_coefficients
 
-common = dict(shifted=True, sigma_min=0.1, sigma_max=2.0, target_error=1e-10)
+common = dict(sigma_min=0.1, sigma_max=2.0, target_error=1e-10)
 print(f"||f(H)|| = exp(2) = {math.exp(2.0):.6f}\n")
 print(f"{'m':>4}  {'method':<15} {'eta':>5}  {'Linf':>9}  {'alpha':>9}")
 for m in (16, 32, 64):

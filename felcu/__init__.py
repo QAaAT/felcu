@@ -4,14 +4,14 @@ The coefficients are returned in the real Fourier basis
 
     g(x) = a0 + sum_{k=1}^m ak[k-1] sin(k x) + bk[k-1] cos(k x).
 
-When matrix-scale information is supplied, the scalar function is fitted in a
-scaled variable x:
+A matrix or spectral bounds are required.  The scalar function is fitted in a
+scaled variable x, centred on the spectrum:
 
-    unshifted: g(x) = f(x/tau),        f(H) = g(tau H)
-    shifted:   g(x) = f(x/tau + mu),   f(H) = g(tau (H - mu I))
+    g(x) = f(mu + x/tau),   f(H) = g(tau (H - mu I))
 
-When no matrix scale is supplied, the fitted function is the unscaled scalar
-function f(x), except for inversion where a nonzero interval is required.
+with mu the centre of the fitted spectrum and tau = pi / (eta delta), delta its
+half-width.  Singular values are fitted through the Hermitian dilation of the
+matrix, whose spectrum is symmetric, so mu = 0 and the series is odd.
 
 The coefficients come from one of three strategies (``method=``):
 Sobolev-regularised least squares (the default), reflected extensions, or

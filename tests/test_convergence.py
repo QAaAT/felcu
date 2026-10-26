@@ -17,12 +17,12 @@ pytestmark = pytest.mark.convergence
 
 # (problem, kwargs, ||f(H)||) for convex endpoint-maximising f, where reflection is norm-saturating.
 SATURATING = [
-    ("action", dict(shifted=True, sigma_min=-1.0, sigma_max=3.0), 3.0),
+    ("action", dict(sigma_min=-1.0, sigma_max=3.0), 3.0),
     ("action", dict(sigma_min=-2.0, sigma_max=1.0), 2.0),
-    ("exponentiation", dict(shifted=True, sigma_min=0.1, sigma_max=2.0), math.exp(2.0)),
+    ("exponentiation", dict(sigma_min=0.1, sigma_max=2.0), math.exp(2.0)),
     ("exponentiation", dict(sigma_min=-0.5, sigma_max=1.5), math.exp(1.5)),
-    ("inversion", dict(shifted=True, sigma_min=0.5, sigma_max=1.0), 2.0),
-    ("inversion", dict(shifted=True, sigma_min=-1.0, sigma_max=-0.2), 5.0),
+    ("inversion", dict(sigma_min=0.5, sigma_max=1.0), 2.0),
+    ("inversion", dict(sigma_min=-1.0, sigma_max=-0.2), 5.0),
 ]
 
 
@@ -76,8 +76,77 @@ class TestSobolev:
         assert result.achieved_linf_error <= 1e-2 * 1.01
 
 
+def _apply(r, H):
+    """g(tau (H - mu I)) for a Hermitian H, by eigendecomposition."""
+    w, V = np.linalg.eigh(H)
+    return (V * evaluate_fourier_series(r.tau * (w - r.mu), r.a0, r.ak, r.bk)) @ V.conj().T
+
+
+class TestSobolevIndefiniteInversion:
+    common = dict(target_error=1e-6, m_values=range(16, 129, 16))
+
+    @pytest.mark.parametrize("gap", [(-0.5, 0.5), (-0.5, 0.25)])
+    def test_converges(self, gap):
+        result = solve_fe_coefficients("inversion", sigma_min=-2.0, sigma_max=3.0, gap=gap, **self.common)
+        assert result.converged
+        assert result.x_gap is not None
+        assert max_error(result) <= 1e-6 * 1.01
+
+    def test_hermitian_matrix(self):
+        # The gap is read from the eigenvalues, and the fit inverts H directly.
+        rng = np.random.default_rng(3)
+        Q, _ = np.linalg.qr(rng.standard_normal((6, 6)))
+        lam = np.array([-2.0, -1.1, -0.4, 0.3, 1.5, 3.0])
+        H = Q @ np.diag(lam) @ Q.T
+        r = solve_fe_coefficients("inversion", matrix=H, **self.common)
+        assert r.gap == (pytest.approx(-0.4), pytest.approx(0.3))
+        assert r.mu == pytest.approx(0.5)
+        np.testing.assert_allclose(_apply(r, H), np.linalg.inv(H), atol=1e-5)
+
+    @pytest.mark.parametrize(
+        "lam",
+        [
+            [-1.0, 1.0],  # both sides a point
+            [-1.0, 1.0, 2.0, 3.0],  # the negative side a point
+            [-3.0, -2.0, -1.0, 1.0],  # the positive side a point
+        ],
+    )
+    def test_point_sides(self, lam):
+        # A gap that reaches an end of the spectrum leaves that side a single point, which must still be fitted.
+        H = np.diag(lam)
+        r = solve_fe_coefficients("inversion", matrix=H, **self.common)
+        assert r.converged
+        np.testing.assert_allclose(_apply(r, H), np.linalg.inv(H), atol=1e-5)
+
+    @pytest.mark.parametrize("metric", ["linf", "l2"])
+    def test_repeated_end_eigenvalue_is_a_point(self, metric):
+        # Rounding can split a repeated -1 into a sliver, as here; it must be fitted as the point it is.
+        H = np.diag([-1.0, np.nextafter(np.nextafter(-1.0, 0.0), 0.0), 1.0, 2.0])
+        r = solve_fe_coefficients("inversion", matrix=H, error_metric=metric, **self.common)
+        assert r.x_gap[0] == -r.x_max
+        np.testing.assert_allclose(_apply(r, H), np.linalg.inv(H), atol=1e-5)
+
+    def test_equal_singular_values(self):
+        # A scaled orthogonal matrix: both sides of the dilation's spectrum are points.
+        A = 2.0 * np.array([[0.0, 1.0], [-1.0, 0.0]])
+        r = solve_fe_coefficients("inversion", matrix=A, **self.common)
+        assert r.converged
+        D = np.block([[np.zeros((2, 2)), A], [A.T, np.zeros((2, 2))]])
+        np.testing.assert_allclose(_apply(r, D)[2:, :2], np.linalg.inv(A), atol=1e-5)
+
+    def test_general_matrix_through_its_dilation(self):
+        # An odd g of the dilation [[0, A], [A^T, 0]] is [[0, g(A)-block], ...]; for 1/x it is the inverse.
+        rng = np.random.default_rng(4)
+        A = rng.standard_normal((4, 4)) + 2 * np.eye(4)
+        r = solve_fe_coefficients("inversion", matrix=A, **self.common)
+        assert r.spectral_kind_used == "singular_values"
+        assert r.mu == 0.0
+        D = np.block([[np.zeros((4, 4)), A], [A.T, np.zeros((4, 4))]])
+        np.testing.assert_allclose(_apply(r, D)[4:, :4], np.linalg.inv(A), atol=1e-5)
+
+
 class TestSobolevSquareRoot:
-    common = dict(shifted=True, sigma_min=0.15, sigma_max=1.0, target_error=1e-6, m_values=range(8, 65, 8))
+    common = dict(sigma_min=0.15, sigma_max=1.0, target_error=1e-6, m_values=range(8, 65, 8))
 
     @pytest.mark.parametrize("problem", ["square_root"])
     def test_converges(self, problem):
@@ -92,8 +161,8 @@ class TestSobolevSquareRoot:
         Q, _ = np.linalg.qr(rng.standard_normal((6, 6)))
         lam = np.linspace(0.3, 2.0, 6)
         H = Q @ np.diag(lam) @ Q.T
-        r = solve_fe_coefficients(problem, shifted=True, matrix=H, target_error=1e-8, m_values=range(8, 65, 8))
-        mu = 0.5 * (r.sigma_min + r.sigma_max)
+        r = solve_fe_coefficients(problem, matrix=H, target_error=1e-8, m_values=range(8, 65, 8))
+        mu = r.mu
         g = evaluate_fourier_series(r.tau * (lam - mu), r.a0, r.ak, r.bk)
         np.testing.assert_allclose(Q @ np.diag(g) @ Q.T, Q @ np.diag(f(lam)) @ Q.T, atol=1e-7)
 
@@ -113,27 +182,27 @@ class TestReflected:
             assert r.alpha + r.achieved_linf_error == pytest.approx(norm, rel=1e-10)
 
     def test_algebraic_convergence(self):
-        kw = dict(method="reflected", shifted=True, sigma_min=0.1, sigma_max=2.0)
+        kw = dict(method="reflected", sigma_min=0.1, sigma_max=2.0)
         e1 = solve_fe_coefficients("exponentiation", m=32, **kw).achieved_linf_error
         e4 = solve_fe_coefficients("exponentiation", m=128, **kw).achieved_linf_error
         assert 0.2 < e4 / e1 < 0.3
 
     def test_identity_is_the_triangle_wave(self):
         # Sec. III A: a_k = (4 / (pi k^2)) sin(k pi / 2) / tau, with the constant mu exact.
-        r = solve_fe_coefficients("action", method="reflected", shifted=True, sigma_min=1.0, sigma_max=4.0, m=9)
+        r = solve_fe_coefficients("action", method="reflected", sigma_min=1.0, sigma_max=4.0, m=9)
         k = np.arange(1, 10)
         np.testing.assert_allclose(r.ak, 4 / (np.pi * k**2) * np.sin(k * np.pi / 2) / r.tau, atol=1e-14)
         assert r.a0 == pytest.approx(2.5, abs=1e-14)
         assert r.basis_used == "const_plus_sine"
 
     def test_square_root_is_bounded(self):
-        kw = dict(method="reflected", shifted=True, sigma_min=0.15, sigma_max=1.0)
+        kw = dict(method="reflected", sigma_min=0.15, sigma_max=1.0)
         alphas = [solve_fe_coefficients("square_root", m=m, **kw).alpha for m in (16, 64, 256)]
         assert alphas == sorted(alphas)
         assert alphas[-1] < 1.1
 
     def test_larger_eta_moves_the_endpoint_inside(self):
-        kw = dict(method="reflected", shifted=True, sigma_min=0.1, sigma_max=2.0, m=64)
+        kw = dict(method="reflected", sigma_min=0.1, sigma_max=2.0, m=64)
         r2 = solve_fe_coefficients("exponentiation", **kw)
         r3 = solve_fe_coefficients("exponentiation", eta=3.0, **kw)
         assert r3.achieved_linf_error < r2.achieved_linf_error / 2
@@ -149,9 +218,7 @@ class TestArcsineTaylor:
     def test_identity_coefficients_match_the_paper(self):
         # Eq. (arcsin_lcu_coefficients) with m = 2T + 1, scaled by 1/tau.
         T = 6
-        r = solve_fe_coefficients(
-            "action", method="arcsine_taylor", shifted=True, sigma_min=-1.0, sigma_max=3.0, m=2 * T + 1
-        )
+        r = solve_fe_coefficients("action", method="arcsine_taylor", sigma_min=-1.0, sigma_max=3.0, m=2 * T + 1)
         c = [
             (-1) ** k
             * sum(math.comb(2 * j, j) * math.comb(2 * j + 1, j - k) / (16**j * (2 * j + 1)) for j in range(k, T + 1))
@@ -167,11 +234,10 @@ class TestArcsineTaylor:
     @pytest.mark.parametrize(
         "problem, kwargs, eta",
         [
-            ("action", dict(shifted=True, sigma_min=-1.0, sigma_max=3.0), 3.0),
-            ("exponentiation", dict(shifted=True, sigma_min=0.1, sigma_max=2.0), 3.0),
-            ("inversion", dict(shifted=True, sigma_min=0.5, sigma_max=1.0), 2.5),
-            ("square_root", dict(shifted=True, sigma_min=0.15, sigma_max=1.0), 2.7),
-            ("exponentiation", {}, 3.0),
+            ("action", dict(sigma_min=-1.0, sigma_max=3.0), 3.0),
+            ("exponentiation", dict(sigma_min=0.1, sigma_max=2.0), 3.0),
+            ("inversion", dict(sigma_min=0.5, sigma_max=1.0), 2.5),
+            ("square_root", dict(sigma_min=0.15, sigma_max=1.0), 2.7),
         ],
     )
     def test_exponential_convergence(self, problem, kwargs, eta):
@@ -197,7 +263,7 @@ class TestArcsineTaylor:
 
     def test_reaches_tight_targets(self):
         r = solve_fe_coefficients(
-            "exponentiation", method="arcsine_taylor", shifted=True, sigma_min=0.1, sigma_max=2.0, target_error=1e-12
+            "exponentiation", method="arcsine_taylor", sigma_min=0.1, sigma_max=2.0, target_error=1e-12
         )
         assert r.converged
         assert max_error(r) <= 1.01e-12
@@ -207,8 +273,8 @@ class TestArcsineTaylor:
         Q, _ = np.linalg.qr(rng.standard_normal((6, 6)))
         lam = np.array([0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
         H = Q @ np.diag(lam) @ Q.T
-        r = solve_fe_coefficients("inversion", method="arcsine_taylor", shifted=True, matrix=H, m=60)
-        mu = 0.5 * (r.sigma_min + r.sigma_max)
+        r = solve_fe_coefficients("inversion", method="arcsine_taylor", matrix=H, m=60)
+        mu = r.mu
         w, V = np.linalg.eigh(r.tau * (H - mu * np.eye(6)))
         k = np.arange(-r.m, r.m + 1)
         g_m = V @ np.diag(np.exp(1j * np.outer(w, k)) @ to_complex_coefficients(r)) @ V.T

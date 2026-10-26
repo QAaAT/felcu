@@ -43,13 +43,13 @@ def _alpha(a0: float, ak: np.ndarray, bk: np.ndarray) -> float:
 
 def _validation_errors(
     c: np.ndarray,
-    val: list[tuple[np.ndarray, np.ndarray, np.ndarray]],
+    val: list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]],
 ) -> tuple[float, float]:
     integral = 0.0
     linf = 0.0
-    for x, A, y in val:
+    for _, A, y, w in val:
         r = np.abs(A @ c - y)
-        integral += float(np.trapezoid(r**2, x))
+        integral += float(np.dot(w, r**2))
         if r.size:
             linf = max(linf, float(np.max(r)))
     return math.sqrt(max(integral, 0.0)), linf

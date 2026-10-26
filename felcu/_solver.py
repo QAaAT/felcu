@@ -35,37 +35,70 @@ def _meets_target(solve: dict, metric: str, target: float) -> bool:
     return solve[metric] <= target + _tolerance(target)
 
 
-def _validation_data(spec: dict, m: int, val_n: int) -> list[tuple[np.ndarray, np.ndarray, np.ndarray]]:
-    """Uniform validation grids on the fitted set: ``(x, basis matrix, target)`` per interval."""
+def _validation_data(spec: dict, m: int, val_n: int) -> list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    """Validation grids on the fitted set: ``(x, basis matrix, target, L2 weights)`` per part.
+
+    Each interval gets a uniform grid with trapezoid weights, and a point one
+    node with the weight of :func:`_point_weight`.
+    """
     basis = spec["basis"]
-    if spec["domain"] == "single":
-        segments = [np.linspace(-spec["x_max"], spec["x_max"], max(val_n, 201))]
-    else:
-        nv = max(val_n // 2, 201)
-        segments = [
-            np.linspace(-spec["x_max"], -spec["x_min"], nv),
-            np.linspace(spec["x_min"], spec["x_max"], nv),
-        ]
-    return [(xv, _basis_matrix(xv, m, basis), _spec_target(xv, spec)) for xv in segments]
+    parts = _fitted_parts(spec)
+    length = sum(hi - lo for lo, hi in parts)
+    out = []
+    for lo, hi in parts:
+        if lo == hi:
+            xv, wv = np.array([lo]), np.array([_point_weight(length)])
+        else:
+            xv = np.linspace(lo, hi, max(int(val_n * (hi - lo) / length), 201))
+            wv = np.full(xv.size, xv[1] - xv[0])
+            wv[[0, -1]] /= 2
+        out.append((xv, _basis_matrix(xv, m, basis), _spec_target(xv, spec), wv))
+    return out
+
+
+def _fitted_parts(spec: dict) -> list[tuple[float, float]]:
+    """The parts of the fitted set.  A side of a two-part set is a point when the gap reaches the spectrum's end."""
+    x_max, gap = spec["x_max"], spec["x_gap"]
+    if gap is None:
+        return [(-x_max, x_max)]
+    return [(-x_max, gap[0]), (gap[1], x_max)]
+
+
+def _point_weight(length: float) -> float:
+    """Weight of a point of the fitted set, in the fit and the L2 error.
+
+    A point has no length, so as a measure it would be ignored.  It counts as
+    much as the whole set instead, or 1 when the set is only points.
+    """
+    return length or 1.0
 
 
 def _make_fit_data(spec: dict, m: int, fit_oversample: int, val_n: int) -> dict:
     basis = spec["basis"]
     ncols = _basis_size(basis, m)
 
-    if spec["domain"] == "single":
-        nq = max(fit_oversample * max(ncols, 1), 48)
-        logger.debug("  fit_data: domain=single  basis=%s  m=%d  ncols=%d  nq=%d  val_n=%d", basis, m, ncols, nq, val_n)
-        x, weights = _gauss_interval(-spec["x_max"], spec["x_max"], nq)
-    else:
-        xmin = spec["x_min"]
-        xmax = spec["x_max"]
-        nq = max((fit_oversample * max(ncols, 1) + 1) // 2, 32)
-        logger.debug("  fit_data: domain=double  basis=%s  m=%d  ncols=%d  nq=%d  val_n=%d", basis, m, ncols, nq, val_n)
-        xl, wl = _gauss_interval(-xmax, -xmin, nq)
-        xr, wr = _gauss_interval(xmin, xmax, nq)
-        x = np.concatenate([xl, xr])
-        weights = np.concatenate([wl, wr])
+    # Quadrature nodes are shared between the intervals in proportion to their lengths.
+    parts = _fitted_parts(spec)
+    length = sum(hi - lo for lo, hi in parts)
+    floor = 48 if len(parts) == 1 else 32
+    nodes = fit_oversample * max(ncols, 1)
+    rules = [
+        (np.array([lo]), np.array([_point_weight(length)]))
+        if lo == hi
+        else _gauss_interval(lo, hi, max(math.ceil(nodes * (hi - lo) / length), floor))
+        for lo, hi in parts
+    ]
+    logger.debug(
+        "  fit_data: x_gap=%s  basis=%s  m=%d  ncols=%d  nq=%s  val_n=%d",
+        spec["x_gap"],
+        basis,
+        m,
+        ncols,
+        [xi.size for xi, _ in rules],
+        val_n,
+    )
+    x = np.concatenate([xi for xi, _ in rules])
+    weights = np.concatenate([wi for _, wi in rules])
 
     return {"x": x, "sw": np.sqrt(weights), "val": _validation_data(spec, m, val_n)}
 

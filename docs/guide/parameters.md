@@ -80,9 +80,10 @@ The options in this section, and `fit_oversample`, only apply to
     [`default_sobolev_r`](../api.md#felcu.default_sobolev_r), the paper's
     scale-adapted choices: \(r_{\rm id} = 1\) for action,
     \(r_{\exp} = (1 + 1/\tau)^{-1}\) for exponentiation, and
-    \(r_{\rm def} = \min\{1, 2\pi/(\kappa+1)\}\) or
-    \(r_{\rm indef} = \min\{1, \pi/(\kappa+1)\}\) for shifted or unshifted
-    inversion, and \(r_{\rm sqrt} = \kappa^{-(2w-1)/(2w)}\) for the square
+    the distance from the fitted set to the pole, capped at \(1\), for
+    inversion (at the default \(\eta\), \(r_{\rm def} = \min\{1, 2\pi/(\kappa+1)\}\)
+    for a definite interval and \(r_{\rm indef} = \min\{1, \pi/(\kappa+1)\}\)
+    for singular values), and \(r_{\rm sqrt} = \kappa^{-(2w-1)/(2w)}\) for the square
     root (see
     [The Sobolev penalty](method.md#the-sobolev-penalty)).
     The value used is reported as `result.sobolev_r`.
@@ -110,8 +111,16 @@ The options in this section, and `fit_oversample`, only apply to
 ## Spectral input
 
 `spectral_kind` (default `"auto"`)
-:   `"eigenvalues"`, `"singular_values"`, or `"auto"`; see
+:   `"eigenvalues"`, `"singular_values"`, or `"auto"`: which data the
+    bounds or matrix give.  Singular values are fitted through the
+    Hermitian dilation; see
     [Spectral information](problems.md#spectral-information).
+
+`gap` (default `None`)
+:   For inversion on an indefinite eigenvalue interval, the eigenvalues
+    `(a, b)` closest to 0 on either side.  Required in that case and read
+    from the eigenvalues when `matrix=` is given; see
+    [Inversion](problems.md#inversion).
 
 `hermitian_tol` (default `1e-12`)
 :   Tolerance for deciding whether `matrix` is Hermitian.

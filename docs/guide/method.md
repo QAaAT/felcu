@@ -12,7 +12,7 @@ chosen with `method=`:
 The **Sobolev-regularised extension** is a least-squares Fourier fit in
 \(H^1\) on the fitted set \(\Omega\), with a weighted fractional Sobolev
 penalty over the whole period.  It is the most flexible: it handles the
-two-interval fit of unshifted inversion, and reaches tight tolerances with
+two-interval fit of indefinite inversion, and reaches tight tolerances with
 near-optimal \(\alpha\).  The two **explicit** methods instead prescribe
 the periodic extension outright, so every order \(m\) has a closed-form
 series and no search over regularisation strengths.  They are described in
@@ -22,10 +22,9 @@ there, describes the Sobolev-regularised solver.  Symbols are listed on
 the [Notation](notation.md) page.
 
 ```python
-solve_fe_coefficients("exponentiation", shifted=True, sigma_min=0.1, sigma_max=2.0)  # Sobolev
-solve_fe_coefficients("exponentiation", method="reflected", shifted=True, sigma_min=0.1, sigma_max=2.0,
-                      target_error=1e-2)
-solve_fe_coefficients("exponentiation", method="arcsine_taylor", shifted=True, sigma_min=0.1, sigma_max=2.0)
+solve_fe_coefficients("exponentiation", sigma_min=0.1, sigma_max=2.0)  # Sobolev
+solve_fe_coefficients("exponentiation", method="reflected", sigma_min=0.1, sigma_max=2.0, target_error=1e-2)
+solve_fe_coefficients("exponentiation", method="arcsine_taylor", sigma_min=0.1, sigma_max=2.0)
 ```
 
 `result.method` records which one was used.
@@ -116,23 +115,22 @@ The defaults are the scale-adapted choices of Sec. VI:
 | Problem | Default \(r\) |
 |---|---|
 | action | \(r_{\rm id} = 1\) |
-| exponentiation | \(r_{\exp} = (1 + 1/\tau)^{-1}\), i.e. \((1 + \eta\delta/\pi)^{-1}\) when shifted |
-| inversion, shifted (definite) | \(r_{\rm def} = \min\{1,\ 2\pi/(\kappa + 1)\}\) |
-| inversion, unshifted (two intervals) | \(r_{\rm indef} = \min\{1,\ \pi/(\kappa + 1)\}\) |
-| square root | \(r_{\rm sqrt} = \kappa^{-(2w-1)/(2w)}\), i.e. \(\kappa^{-1/2}\) for \(w = 1\) |
+| exponentiation | \(r_{\exp} = (1 + 1/\tau)^{-1}\), i.e. \((1 + \eta\delta/\pi)^{-1}\) |
+| inversion | \(\min\{1,\ \tau \min_{\lambda \in \operatorname{spec}} \lvert\lambda\rvert\}\), the distance from the fitted set to the pole |
 
-For unshifted exponentiation \(1/\tau = \eta\|\mathcal H\|/\pi\), so the
-spectral norm takes the place of the half-width \(\delta\).  Without spectral information the default is \(r = 1\).
+For inversion at the default \(\eta\) this is the paper's
+\(r_{\rm def} = \min\{1,\ 2\pi/(\kappa + 1)\}\) for a definite interval and
+\(r_{\rm indef} = \min\{1,\ \pi/(\kappa + 1)\}\) for singular values.
+| square root | \(r_{\rm sqrt} = \kappa^{-(2w-1)/(2w)}\), i.e. \(\kappa^{-1/2}\) for \(w = 1\) |
 
 ### The constant baseline
 
 Before fitting, `felcu` subtracts a constant baseline \(\beta = g(0)\)
-(\(\mu\), \(1/\mu\), \(e^{\mu}\), or \(\sqrt{\mu}\) for the
-shifted problems, \(1\) for unshifted exponentiation, and \(0\) for the
-odd problems), solves for the correction, and adds
+(\(\mu\), \(1/\mu\), \(e^{\mu}\), or \(\sqrt{\mu}\) on a single interval,
+and \(0\) for singular values and two-interval fits), solves for the correction, and adds
 \(\beta\) back to \(a_0\).  The penalty therefore acts on \(h - \beta\)
 rather than \(h\), so the exactly-known constant part \(c_0 I\) is not
-shrunk towards zero.  For the odd problems \(\beta = 0\) and this is the
+shrunk towards zero.  For \(\beta = 0\) this is the
 paper's problem unchanged.
 
 ## Choosing \(\gamma\)
@@ -321,9 +319,9 @@ an FFT, which is exact for a trigonometric polynomial of degree \(m\).
 
 ## Restrictions of the explicit methods
 
-- **Unshifted inversion is not supported.**  Its two-interval fit has the
-  pole inside the period, and neither extension can pass it.  Use
-  `shifted=True` for a definite matrix, or `method="sobolev"`.
+- **Two-interval inversion is not supported.**  On an indefinite interval or
+  on singular values the pole lies between the fitted intervals, and neither
+  extension can pass it.  Use `method="sobolev"`.
 - **The extension must avoid the singularity.**  Both methods evaluate \(f\)
   on \([\mu - \eta\delta/2, \mu + \eta\delta/2]\), so for inversion and
   square root `felcu` rejects \(\eta \ge 2|\mu|/\delta\).
