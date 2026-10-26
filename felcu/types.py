@@ -52,7 +52,8 @@ class FourierExtensionResult:
     achieved_error : float
         Achieved error in *error_metric*.
     achieved_l2_error : float
-        Achieved L2 error on the fitted domain.
+        Achieved L2 error on the fitted domain.  A side of a two-interval
+        domain that is a single point counts as much as the whole domain.
     achieved_linf_error : float
         Achieved maximum pointwise error on the fitted domain.
     converged : bool
@@ -78,15 +79,13 @@ class FourierExtensionResult:
         :func:`~felcu.to_complex_coefficients`.
     k : numpy.ndarray
         Harmonic indices ``1, ..., m`` matching *ak* and *bk*.
-    domain : str
-        ``'single'`` for ``[-x_max, x_max]``, or ``'double'`` for
-        ``[-x_max, x_gap[0]] U [x_gap[1], x_max]`` (inversion on an
-        indefinite interval or on singular values).
     x_max : float
         Outer edge of the fitted domain, ``pi / eta``.
     x_gap : tuple of float or None
-        The gap around the pole that a double domain leaves free, in the
-        fitted variable; ``None`` otherwise.
+        For inversion on an indefinite interval or on singular values, the
+        gap around the pole that the fit leaves free, in the fitted
+        variable: the fitted set is ``[-x_max, x_gap[0]] U [x_gap[1], x_max]``.
+        ``None`` when it is ``[-x_max, x_max]``.
     sigma_min, sigma_max : float
         Spectral interval used (eigenvalues or singular values, per
         *spectral_kind_used*).
@@ -127,7 +126,6 @@ class FourierExtensionResult:
     bk: np.ndarray
     complex_coefficients: np.ndarray
     k: np.ndarray
-    domain: str
     x_max: float
     x_gap: tuple[float, float] | None
     sigma_min: float

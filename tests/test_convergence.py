@@ -89,7 +89,7 @@ class TestSobolevIndefiniteInversion:
     def test_converges(self, gap):
         result = solve_fe_coefficients("inversion", sigma_min=-2.0, sigma_max=3.0, gap=gap, **self.common)
         assert result.converged
-        assert result.domain == "double"
+        assert result.x_gap is not None
         assert max_error(result) <= 1e-6 * 1.01
 
     def test_hermitian_matrix(self):
@@ -102,6 +102,29 @@ class TestSobolevIndefiniteInversion:
         assert r.gap == (pytest.approx(-0.4), pytest.approx(0.3))
         assert r.mu == pytest.approx(0.5)
         np.testing.assert_allclose(_apply(r, H), np.linalg.inv(H), atol=1e-5)
+
+    @pytest.mark.parametrize(
+        "lam",
+        [
+            [-1.0, 1.0],  # both sides a point
+            [-1.0, 1.0, 2.0, 3.0],  # the negative side a point
+            [-3.0, -2.0, -1.0, 1.0],  # the positive side a point
+        ],
+    )
+    def test_point_sides(self, lam):
+        # A gap that reaches an end of the spectrum leaves that side a single point, which must still be fitted.
+        H = np.diag(lam)
+        r = solve_fe_coefficients("inversion", matrix=H, **self.common)
+        assert r.converged
+        np.testing.assert_allclose(_apply(r, H), np.linalg.inv(H), atol=1e-5)
+
+    def test_equal_singular_values(self):
+        # A scaled orthogonal matrix: both sides of the dilation's spectrum are points.
+        A = 2.0 * np.array([[0.0, 1.0], [-1.0, 0.0]])
+        r = solve_fe_coefficients("inversion", matrix=A, **self.common)
+        assert r.converged
+        D = np.block([[np.zeros((2, 2)), A], [A.T, np.zeros((2, 2))]])
+        np.testing.assert_allclose(_apply(r, D)[2:, :2], np.linalg.inv(A), atol=1e-5)
 
     def test_general_matrix_through_its_dilation(self):
         # An odd g of the dilation [[0, A], [A^T, 0]] is [[0, g(A)-block], ...]; for 1/x it is the inverse.

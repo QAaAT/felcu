@@ -35,20 +35,42 @@ def _meets_target(solve: dict, metric: str, target: float) -> bool:
     return solve[metric] <= target + _tolerance(target)
 
 
-def _validation_data(spec: dict, m: int, val_n: int) -> list[tuple[np.ndarray, np.ndarray, np.ndarray]]:
-    """Uniform validation grids on the fitted set: ``(x, basis matrix, target)`` per interval."""
+def _validation_data(spec: dict, m: int, val_n: int) -> list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    """Validation grids on the fitted set: ``(x, basis matrix, target, L2 weights)`` per part.
+
+    Each interval gets a uniform grid with trapezoid weights, and a point one
+    node with the weight of :func:`_point_weight`.
+    """
     basis = spec["basis"]
-    segments = [np.linspace(lo, hi, max(int(val_n * share), 201)) for lo, hi, share in _fitted_intervals(spec)]
-    return [(xv, _basis_matrix(xv, m, basis), _spec_target(xv, spec)) for xv in segments]
+    parts = _fitted_parts(spec)
+    length = sum(hi - lo for lo, hi in parts)
+    out = []
+    for lo, hi in parts:
+        if lo == hi:
+            xv, wv = np.array([lo]), np.array([_point_weight(length)])
+        else:
+            xv = np.linspace(lo, hi, max(int(val_n * (hi - lo) / length), 201))
+            wv = np.full(xv.size, xv[1] - xv[0])
+            wv[[0, -1]] /= 2
+        out.append((xv, _basis_matrix(xv, m, basis), _spec_target(xv, spec), wv))
+    return out
 
 
-def _fitted_intervals(spec: dict) -> list[tuple[float, float, float]]:
-    """The intervals of the fitted set, each with its share of the total length."""
+def _fitted_parts(spec: dict) -> list[tuple[float, float]]:
+    """The parts of the fitted set.  A side of a two-part set is a point when the gap reaches the spectrum's end."""
     x_max, gap = spec["x_max"], spec["x_gap"]
     if gap is None:
-        return [(-x_max, x_max, 1.0)]
-    left, right = gap[0] + x_max, x_max - gap[1]
-    return [(-x_max, gap[0], left / (left + right)), (gap[1], x_max, right / (left + right))]
+        return [(-x_max, x_max)]
+    return [(-x_max, gap[0]), (gap[1], x_max)]
+
+
+def _point_weight(length: float) -> float:
+    """Weight of a point of the fitted set, in the fit and the L2 error.
+
+    A point has no length, so as a measure it would be ignored.  It counts as
+    much as the whole set instead, or 1 when the set is only points.
+    """
+    return length or 1.0
 
 
 def _make_fit_data(spec: dict, m: int, fit_oversample: int, val_n: int) -> dict:
@@ -56,14 +78,25 @@ def _make_fit_data(spec: dict, m: int, fit_oversample: int, val_n: int) -> dict:
     ncols = _basis_size(basis, m)
 
     # Quadrature nodes are shared between the intervals in proportion to their lengths.
-    intervals = _fitted_intervals(spec)
-    floor = 48 if len(intervals) == 1 else 32
+    parts = _fitted_parts(spec)
+    length = sum(hi - lo for lo, hi in parts)
+    floor = 48 if len(parts) == 1 else 32
     nodes = fit_oversample * max(ncols, 1)
-    nq = [max(math.ceil(nodes * share), floor) for _, _, share in intervals]
+    rules = [
+        (np.array([lo]), np.array([_point_weight(length)]))
+        if lo == hi
+        else _gauss_interval(lo, hi, max(math.ceil(nodes * (hi - lo) / length), floor))
+        for lo, hi in parts
+    ]
     logger.debug(
-        "  fit_data: domain=%s  basis=%s  m=%d  ncols=%d  nq=%s  val_n=%d", spec["domain"], basis, m, ncols, nq, val_n
+        "  fit_data: x_gap=%s  basis=%s  m=%d  ncols=%d  nq=%s  val_n=%d",
+        spec["x_gap"],
+        basis,
+        m,
+        ncols,
+        [xi.size for xi, _ in rules],
+        val_n,
     )
-    rules = [_gauss_interval(lo, hi, n) for (lo, hi, _), n in zip(intervals, nq, strict=True)]
     x = np.concatenate([xi for xi, _ in rules])
     weights = np.concatenate([wi for _, wi in rules])
 

@@ -32,7 +32,7 @@ corresponding argument or result field.
 | \(\mathbb T = [-\pi, \pi)\) | one period | |
 | \(\eta > 1\) | domain extension factor | `eta`, `result.eta` |
 | \(\Omega_\eta = [-\pi/\eta, \pi/\eta]\) | fitted interval | `result.x_max` \(= \pi/\eta\) |
-| \([-x_{\max}, \tau(a - \mu)] \cup [\tau(b - \mu), x_{\max}]\) | two-interval fitted set (indefinite or singular-value inversion); \(\Omega^{\rm indef}_{\eta,\kappa}\) when symmetric | `result.x_gap`, `result.x_max`; `result.domain == "double"` |
+| \([-x_{\max}, \tau(a - \mu)] \cup [\tau(b - \mu), x_{\max}]\) | two-interval fitted set (indefinite or singular-value inversion); \(\Omega^{\rm indef}_{\eta,\kappa}\) when symmetric | `result.x_gap`, `result.x_max` |
 | \(\Omega\) | the fitted set in general | `fitted_domain_segments(result)` |
 | \(\tau\) | scale, \(\mathcal G = \tau(\mathcal H - \mu I)\) | `result.tau` |
 | \(\mathcal G\) | scaled matrix with \(\operatorname{spec}(\mathcal G) \subseteq \Omega\) | |

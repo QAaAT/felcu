@@ -60,7 +60,7 @@ for col, (problem, kwargs) in enumerate(CASES):
     ax_fit.legend(loc="upper left")
     ax_err.set_title(r"pointwise error $|g(x) - g_m(x)|$ on the fitted set $\Omega$")
     ax_err.set_xlabel(r"scaled variable $x$")
-    print(f"{problem}: m={r.m}  domain={r.domain}  max |g - f| = {worst:.2e}  (target {TARGET:g})")
+    print(f"{problem}: m={r.m}  x_gap={r.x_gap}  max |g - f| = {worst:.2e}  (target {TARGET:g})")
 
 fig.tight_layout()
 _style.finish(fig, "05_pointwise_error")

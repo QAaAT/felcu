@@ -7,10 +7,11 @@ from dataclasses import replace
 
 import numpy as np
 
+from felcu._coefficients import _value
 from felcu._explicit import _explicit_candidate
 from felcu._logging import logger
 from felcu._solver import _candidate_for_m, _meets_target
-from felcu.spectral import _CENTRE_VALUE, _make_spec, _spectral_data, default_sobolev_r
+from felcu.spectral import _make_spec, _spectral_data, default_sobolev_r
 from felcu.types import FourierExtensionResult
 from felcu.utils import (
     canonical_error_metric,
@@ -57,7 +58,6 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         bk=bk.copy(),
         complex_coefficients=to_complex_coefficients(a0, ak, bk),
         k=np.arange(1, ak.size + 1, dtype=int),
-        domain=spec["domain"],
         x_max=float(spec["x_max"]),
         x_gap=spec["x_gap"],
         sigma_min=float(spectral["sigma_min"]),
@@ -100,7 +100,7 @@ def _exact_constant_if_any(
     s = spec["spectral"]
     if s["kind"] != "eigenvalues" or s["sigma_min"] != s["sigma_max"]:
         return None
-    return _constant_result(spec, target, metric, _CENTRE_VALUE[spec["problem"]](s["sigma_min"]))
+    return _constant_result(spec, target, metric, _value(spec["problem"], s["sigma_min"]))
 
 
 def _lambda_grid(lambdas: Sequence[float] | None) -> np.ndarray:
@@ -326,7 +326,7 @@ def solve_fe_coefficients(
         spec = spec | {"sobolev_r": float(sobolev_r), "sobolev_w": float(sobolev_w)}
 
     logger.info(
-        "solve_fe_coefficients: problem=%s  method=%s  kind=%s  metric=%s  target=%.3e  basis=%s  domain=%s  "
+        "solve_fe_coefficients: problem=%s  method=%s  kind=%s  metric=%s  target=%.3e  basis=%s  x_gap=%s  "
         "eta=%.4f  tau=%s  mu=%.4g",
         problem,
         method,
@@ -334,7 +334,7 @@ def solve_fe_coefficients(
         metric,
         target_error,
         spec["basis"],
-        spec["domain"],
+        spec["x_gap"],
         spec["eta"],
         f"{spec['tau']:.4f}" if np.isfinite(spec["tau"]) else "inf",
         spec["mu"],

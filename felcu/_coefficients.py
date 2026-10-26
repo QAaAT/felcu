@@ -80,6 +80,11 @@ def _target(x: np.ndarray, problem: str, tau: float, mu: float, d: int = 0) -> n
     return (1.0 / tau**d) * F_d
 
 
+def _value(problem: str, t: float) -> float:
+    """F(t), which is also the constant g on a zero-width interval centred at t."""
+    return float(_target(0.0, problem, math.inf, t))
+
+
 def _spec_target(x: np.ndarray, spec: dict, d: int = 0) -> np.ndarray:
     """:func:`_target` for a problem spec."""
     return _target(x, spec["problem"], spec["tau"], spec["mu"], d)

@@ -7,6 +7,7 @@ from collections.abc import Sequence
 
 import numpy as np
 
+from felcu._coefficients import _value
 from felcu.utils import canonical_method_name, canonical_problem_name
 
 PI = float(np.pi)
@@ -25,14 +26,6 @@ ODD_PROBLEMS = frozenset({"action", "inversion"})
 
 # Default eta of the arcsine-Taylor construction for an entire f (Sec. VI).
 ARCSINE_TAYLOR_ETA = 3.0
-
-# f(mu): the constant the series would be if the fitted interval had zero width.
-_CENTRE_VALUE = {
-    "action": lambda mu: mu,
-    "inversion": lambda mu: 1.0 / mu,
-    "exponentiation": math.exp,
-    "square_root": math.sqrt,
-}
 
 
 # ---------------------------------------------------------------------------
@@ -118,6 +111,8 @@ def _spectral_data(
         gap = None if gap is None else (float(gap[0]), float(gap[1]))
     else:
         values = np.linalg.eigvalsh(A) if kind == "eigenvalues" else np.linalg.svd(A, compute_uv=False)
+        if problem == "inversion" and np.any(values == 0):
+            raise ValueError("Inversion requires a nonsingular matrix: it has an eigenvalue or singular value of 0.")
         lo, hi, shape = float(np.min(values)), float(np.max(values)), (int(A.shape[0]), int(A.shape[1]))
         if kind == "eigenvalues" and problem == "inversion":
             gap = _eigenvalue_gap(values)
@@ -189,8 +184,8 @@ def _centre_and_halfwidth(spectral: dict) -> tuple[float, float]:
     return 0.5 * (lo + hi), 0.5 * (hi - lo)
 
 
-def _default_eta(problem: str, method: str, spectral: dict) -> float:
-    _check_method(method, spectral)
+def _default_eta(problem: str, method: str, spectral: dict | None) -> float:
+    """The default eta; *spectral* is only read, and may only be omitted, for an entire f."""
     if method == "reflected":
         return 2.0
     if problem in ENTIRE_PROBLEMS:
@@ -288,10 +283,9 @@ def default_eta(
     problem = canonical_problem_name(problem)
     method = canonical_method_name(method)
     if problem in ENTIRE_PROBLEMS:
-        if method == "reflected":
-            return 2.0
-        return ARCSINE_TAYLOR_ETA if method == "arcsine_taylor" else 2.0
+        return _default_eta(problem, method, None)
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
+    _check_method(method, spectral)
     return _default_eta(problem, method, spectral)
 
 
@@ -393,18 +387,25 @@ def _make_spec(problem: str, spectral: dict, eta: float | None, method: str = "s
     of the fitted set and ``tau = pi / (eta delta)``, so the fitted set
     spans ``[-pi/eta, pi/eta]``, less any gap around a pole.
     """
+    _check_method(method, spectral)
     if eta is None:
         eta = _default_eta(problem, method, spectral)
-    else:
-        _check_method(method, spectral)
     eta = float(eta)
     if eta <= 1.0:
         raise ValueError("eta must exceed 1.")
 
     mu, delta = _centre_and_halfwidth(spectral)
     tau = math.inf if delta == 0 else PI / (eta * delta)
+    x_max = PI / eta
     gap = spectral["fit_gap"]
-    x_gap = None if gap is None else (tau * (gap[0] - mu), tau * (gap[1] - mu))
+    x_gap = None
+    if gap is not None:
+        # A gap that reaches an end of the spectrum leaves that side a single
+        # point, placed exactly at the end so that it is not a sliver.
+        x_gap = (
+            -x_max if gap[0] == spectral["fit_lo"] else tau * (gap[0] - mu),
+            x_max if gap[1] == spectral["fit_hi"] else tau * (gap[1] - mu),
+        )
 
     # The dilation of a general matrix needs an odd series.  Otherwise the
     # constant carries f(mu), which the fit subtracts as a baseline when mu
@@ -413,15 +414,14 @@ def _make_spec(problem: str, spectral: dict, eta: float | None, method: str = "s
         basis, baseline = "odd_sine", 0.0
     else:
         basis = "const_plus_sine" if problem == "action" else "full"
-        baseline = 0.0 if gap is not None else _CENTRE_VALUE[problem](mu)
+        baseline = 0.0 if gap is not None else _value(problem, mu)
 
     spec = {
         "problem": problem,
         "method": method,
         "eta": eta,
-        "x_max": PI / eta,
+        "x_max": x_max,
         "x_gap": x_gap,
-        "domain": "single" if gap is None else "double",
         "spectral": spectral,
         "tau": tau,
         "mu": mu,

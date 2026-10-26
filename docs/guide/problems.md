@@ -116,9 +116,13 @@ pole unconstrained:
 \qquad x_{\max} = \frac{\pi}{\eta}.
 \]
 
-`result.domain` is `"double"` and `result.x_gap` holds the gap in the
-scaled variable.  Give the gap with `gap=(a, b)`; with `matrix=`, it is read
-from the eigenvalues either side of zero:
+`result.x_gap` holds the gap in the scaled variable.  Give the gap with
+`gap=(a, b)`; with `matrix=`, it is read from the eigenvalues either side of
+zero, and a matrix with an eigenvalue at zero is rejected as singular.  When
+the gap reaches an end of the spectrum, as for a matrix with a single
+negative eigenvalue, that side of \(\Omega\) is a single point.  It is still
+fitted, weighted as much as the whole set, since as a measure it would carry
+no weight:
 
 ```python
 solve_fe_coefficients("inversion", sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4))

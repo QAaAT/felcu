@@ -99,9 +99,21 @@ class TestInputValidation:
         with pytest.raises(ValueError, match="not both"):
             solve_fe_coefficients("inversion", matrix=np.diag([-1.0, 1.0]), gap=(-1.0, 1.0))
 
-    def test_singular_matrix_inversion_raises(self):
-        with pytest.raises(ValueError, match="clear of 0"):
-            solve_fe_coefficients("inversion", matrix=np.diag([0.0, 1.0]))
+    @pytest.mark.parametrize(
+        "matrix",
+        [
+            np.diag([0.0, 1.0]),  # zero at an end of the spectrum
+            np.diag([-2.0, -1.0, 0.0, 1.0, 3.0]),  # zero inside an indefinite spectrum
+            [[0.0, 1.0], [0.0, 0.0]],  # non-Hermitian, a zero singular value
+        ],
+    )
+    def test_singular_matrix_inversion_raises(self, matrix):
+        with pytest.raises(ValueError, match="nonsingular"):
+            solve_fe_coefficients("inversion", matrix=matrix)
+
+    def test_singular_matrix_square_root_raises(self):
+        with pytest.raises(ValueError, match="positive-definite"):
+            solve_fe_coefficients("square_root", matrix=np.diag([0.0, 1.0]))
 
     @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
     @pytest.mark.parametrize(
