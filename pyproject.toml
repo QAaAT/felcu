@@ -35,7 +35,7 @@ Issues = "https://github.com/QAaAT/felcu/issues"
 Paper = "https://arxiv.org/abs/2601.18024"
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-cov", "ruff==0.17.1"]
+dev = ["pytest", "pytest-cov", "ruff==0.17.3"]
 plots = ["matplotlib>=3.10"]
 docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.5", "mkdocstrings[python]>=0.26"]
 
