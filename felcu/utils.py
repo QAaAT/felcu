@@ -11,15 +11,15 @@ from felcu.types import ArrayLike, FourierExtensionResult
 
 
 def canonical_problem_name(name: str) -> str:
-    """Normalise a problem name to one of 'action', 'inversion', 'exponentiation', 'square_root'.
+    """Normalise a problem name to one of 'identity', 'inversion', 'exponentiation', 'square_root'.
 
     Matching ignores case and surrounding whitespace.
 
     Parameters
     ----------
     name:
-        Problem name.  Accepted aliases are ``'identity'`` and
-        ``'matrix-action'`` for ``'action'``; ``'inverse'`` for
+        Problem name.  Accepted aliases are ``'action'`` (its former
+        name) and ``'matrix-action'`` for ``'identity'``; ``'inverse'`` for
         ``'inversion'``; ``'exp'`` and ``'exponential'`` for
         ``'exponentiation'``; and ``'sqrt'`` and ``'square-root'`` for
         ``'square_root'``.
@@ -27,7 +27,7 @@ def canonical_problem_name(name: str) -> str:
     Returns
     -------
     str
-        ``'action'``, ``'inversion'``, ``'exponentiation'``, or
+        ``'identity'``, ``'inversion'``, ``'exponentiation'``, or
         ``'square_root'``.
 
     Raises
@@ -36,9 +36,9 @@ def canonical_problem_name(name: str) -> str:
         If *name* is not a recognised problem or alias.
     """
     aliases = {
-        "action": "action",
-        "identity": "action",
-        "matrix-action": "action",
+        "identity": "identity",
+        "action": "identity",
+        "matrix-action": "identity",
         "inversion": "inversion",
         "inverse": "inversion",
         "exp": "exponentiation",
@@ -50,7 +50,7 @@ def canonical_problem_name(name: str) -> str:
     }
     key = name.strip().lower()
     if key not in aliases:
-        raise ValueError("problem must be 'action', 'inversion', 'exponentiation', or 'square_root'.")
+        raise ValueError("problem must be 'identity', 'inversion', 'exponentiation', or 'square_root'.")
     return aliases[key]
 
 

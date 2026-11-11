@@ -90,7 +90,7 @@ def _series_sqrt(u: np.ndarray) -> np.ndarray:
 
 
 _COMPOSE = {
-    "action": lambda u: u,
+    "identity": lambda u: u,
     "inversion": _series_reciprocal,
     "exponentiation": _series_exp,
     "square_root": _series_sqrt,

@@ -44,7 +44,7 @@ class TestInputValidation:
                 selection="biggest_m",
             )
 
-    @pytest.mark.parametrize("problem", ["action", "inversion", "exponentiation", "square_root"])
+    @pytest.mark.parametrize("problem", ["identity", "inversion", "exponentiation", "square_root"])
     def test_requires_spectral_information(self, problem):
         with pytest.raises(ValueError, match="Provide a matrix"):
             solve_fe_coefficients(problem)
@@ -99,7 +99,7 @@ class TestInputValidation:
 
     def test_gap_only_for_inversion(self):
         with pytest.raises(ValueError, match="gap only applies"):
-            solve_fe_coefficients("action", sigma_min=-1.0, sigma_max=2.0, gap=(-0.5, 0.5))
+            solve_fe_coefficients("identity", sigma_min=-1.0, sigma_max=2.0, gap=(-0.5, 0.5))
 
     def test_gap_and_matrix_raises(self):
         with pytest.raises(ValueError, match="not both"):
@@ -137,9 +137,9 @@ class TestInputValidation:
 
     def test_eta_ranges(self):
         with pytest.raises(ValueError, match="eta >= 2"):
-            solve_fe_coefficients("action", method="reflected", sigma_min=-1.0, sigma_max=1.0, eta=1.5)
+            solve_fe_coefficients("identity", method="reflected", sigma_min=-1.0, sigma_max=1.0, eta=1.5)
         with pytest.raises(ValueError, match="eta > 2"):
-            solve_fe_coefficients("action", method="arcsine_taylor", sigma_min=-1.0, sigma_max=1.0, eta=2.0)
+            solve_fe_coefficients("identity", method="arcsine_taylor", sigma_min=-1.0, sigma_max=1.0, eta=2.0)
 
     @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
     def test_extension_must_avoid_the_singularity(self, method):
@@ -190,7 +190,7 @@ class TestSobolevOptions:
     def test_sobolev_options_rejected(self, option):
         value = {"lambdas": [1e-3], "sobolev_w": 1.0, "sobolev_r": 0.5, "order_fit": 0, "fit_oversample": 4}[option]
         with pytest.raises(ValueError, match=option):
-            solve_fe_coefficients("action", method="reflected", **{option: value})
+            solve_fe_coefficients("identity", method="reflected", **{option: value})
 
 
 # ---------------------------------------------------------------------------
@@ -276,7 +276,7 @@ class TestSelection:
 
     def test_selection_smallest_m(self):
         r = solve_fe_coefficients(
-            "action",
+            "identity",
             method="arcsine_taylor",
             sigma_min=-1.0,
             sigma_max=1.0,

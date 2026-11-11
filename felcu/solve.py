@@ -185,7 +185,7 @@ def solve_fe_coefficients(
     Parameters
     ----------
     problem:
-        One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``
+        One of ``'identity'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``
         (several aliases accepted; see :func:`~felcu.utils.canonical_problem_name`).
     method:
         Coefficient-selection strategy (see
@@ -197,7 +197,7 @@ def solve_fe_coefficients(
         - ``'reflected'``: the Fourier series of g reflected about
           ``x = +-pi/2``.  Optimal subnormalisation
           ``alpha_m = ||f(H)|| - epsilon_m`` for convex endpoint-maximising f
-          (action, exponentiation, definite inversion) at the default
+          (identity, exponentiation, definite inversion) at the default
           ``eta = 2``, but only ``O(1/m)`` convergence, so the default
           *target_error* is out of reach.
         - ``'arcsine_taylor'``: the Taylor series of ``g(arcsin z)`` with
@@ -230,8 +230,8 @@ def solve_fe_coefficients(
         Which spectral data the bounds (or *matrix*) describe.
         ``'eigenvalues'`` needs a Hermitian matrix.  ``'singular_values'``
         acts on a general matrix through its Hermitian dilation, with an odd
-        series, so it is available for action and inversion only.
-        ``'auto'`` (default) uses singular values for action and inversion
+        series, so it is available for identity and inversion only.
+        ``'auto'`` (default) uses singular values for identity and inversion
         of a non-Hermitian matrix, and eigenvalues otherwise.
     eta:
         Fourier-extension parameter (must exceed 1).  Computed automatically

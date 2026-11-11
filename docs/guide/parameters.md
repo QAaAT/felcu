@@ -78,7 +78,7 @@ The options in this section, and `fit_oversample`, only apply to
 :   Scale \(r\) of the \(H_r^w\) regulariser, with \(0 < r \le 1\).  When
     omitted it comes from
     [`default_sobolev_r`](../api.md#felcu.default_sobolev_r), the paper's
-    scale-adapted choices: \(r_{\rm id} = 1\) for action,
+    scale-adapted choices: \(r_{\rm id} = 1\) for identity,
     \(r_{\exp} = (1 + 1/\tau)^{-1}\) for exponentiation, and
     the distance from the fitted set to the pole, capped at \(1\), for
     inversion (at the default \(\eta\), \(r_{\rm def} = \min\{1, 2\pi/(\kappa+1)\}\)

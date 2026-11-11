@@ -9,7 +9,7 @@ It supports four problems:
 
 | Problem | Function |
 |---|---|
-| `action` | $f(\mathcal H) = \mathcal H$ |
+| `identity` | $f(\mathcal H) = \mathcal H$ |
 | `inversion` | $f(\mathcal H) = \mathcal H^{-1}$ |
 | `exponentiation` | $f(\mathcal H) = e^{\mathcal H}$ |
 | `square_root` | $f(\mathcal H) = \sqrt{\mathcal H}$ ($\mathcal H$ positive definite) |
@@ -24,7 +24,7 @@ g(x) \approx g_m(x) = \sum_{k=-m}^{m} c_k e^{ikx},
 $$
 
 so the block encoding is a linear combination of Hamiltonian simulations
-$e^{ik\tau\mathcal H}$.  Action and inversion also work on singular values,
+$e^{ik\tau\mathcal H}$.  Identity and inversion also work on singular values,
 for non-Hermitian matrices, through the Hermitian dilation ($\mu = 0$, odd
 series).  Inversion handles definite and indefinite spectra.
 

@@ -37,7 +37,7 @@ M_SHOW = 128
 # 2 mu / delta, 46/17 ~ 2.71 for the square root and 3 for the inverse, as in
 # the paper.  The arcsine-Taylor limit of alpha only holds for convex f.
 CASES = [
-    ("action", r"$\mathcal{H}$", lambda t: t, (-1.0, 2.0), 3.0, True),
+    ("identity", r"$\mathcal{H}$", lambda t: t, (-1.0, 2.0), 3.0, True),
     ("exponentiation", r"$e^{\mathcal{H}}$", np.exp, (-1.0, 1.0), 3.0, True),
     ("square_root", r"$\sqrt{\mathcal{H}}$", np.sqrt, (0.15, 1.0), 2.7, False),
     ("inversion", r"$\mathcal{H}^{-1}$", lambda t: 1.0 / t, (0.2, 1.0), 2.5, True),

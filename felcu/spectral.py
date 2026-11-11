@@ -18,11 +18,11 @@ POSITIVE_DEFINITE_PROBLEMS = frozenset({"square_root"})
 
 # Functions analytic on the whole plane.  The others have a pole or branch
 # point at 0 that bounds how far the explicit methods may extend them.
-ENTIRE_PROBLEMS = frozenset({"action", "exponentiation"})
+ENTIRE_PROBLEMS = frozenset({"identity", "exponentiation"})
 
 # Odd functions.  Only these can act on singular values, through the odd
 # series that the Hermitian dilation of a general matrix needs.
-ODD_PROBLEMS = frozenset({"action", "inversion"})
+ODD_PROBLEMS = frozenset({"identity", "inversion"})
 
 # Default eta of the arcsine-Taylor construction for an entire f (Sec. VI).
 ARCSINE_TAYLOR_ETA = 3.0
@@ -45,7 +45,7 @@ def _resolve_spectral_kind(problem: str, requested: str, matrix_is_hermitian: bo
     if kind == "auto":
         kind = "singular_values" if problem in ODD_PROBLEMS and matrix_is_hermitian is False else "eigenvalues"
     if kind == "singular_values" and problem not in ODD_PROBLEMS:
-        raise ValueError(f"{problem} uses an eigenvalue interval: singular values only support action and inversion.")
+        raise ValueError(f"{problem} uses an eigenvalue interval: singular values only support identity and inversion.")
     if kind == "eigenvalues" and matrix_is_hermitian is False:
         raise ValueError("Eigenvalue intervals require a Hermitian matrix; use spectral_kind='singular_values'.")
     return kind
@@ -246,7 +246,7 @@ def default_eta(
     and half-width of the fitted spectrum, the defaults for the
     Sobolev-regularised method are
 
-    - action and exponentiation: ``2``;
+    - identity and exponentiation: ``2``;
     - inversion on a definite interval, and square root:
       ``|mu| / delta = (kappa + 1) / (kappa - 1)``, which puts the pole or
       branch point at 0 on the periodic boundary (``2`` if ``kappa == 1``);
@@ -258,14 +258,14 @@ def default_eta(
     The reflected extension always defaults to ``2``, which maps the
     spectral endpoints onto the reflection points and gives the optimal
     subnormalisation.  Arcsine-Taylor needs ``eta > 2``: it defaults to
-    ``3`` for action and exponentiation, and to
+    ``3`` for identity and exponentiation, and to
     ``min(3, 1 + |mu|/delta)`` for definite inversion and square root, the
     midpoint of the admissible range ``2 < eta < 2 |mu|/delta``.
 
     Parameters
     ----------
     problem:
-        One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
+        One of ``'identity'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
         an alias; see :func:`~felcu.canonical_problem_name`).
     method:
         ``'sobolev'``, ``'reflected'``, or ``'arcsine_taylor'`` (or an
@@ -298,7 +298,7 @@ def default_eta(
     Notes
     -----
     Spectral information is only used for inversion and square root; for
-    action and exponentiation it is ignored.
+    identity and exponentiation it is ignored.
     """
     problem = canonical_problem_name(problem)
     method = canonical_method_name(method)
@@ -333,7 +333,7 @@ def default_sobolev_r(
     to resolve.  The defaults follow the scale-adapted choices of
     Brearley, Howarth and Adcock (Sec. VI):
 
-    - action: ``r_id = 1``, since g is linear;
+    - identity: ``r_id = 1``, since g is linear;
     - exponentiation: ``r_exp = 1 / (1 + 1/tau)``, since ``g' = g / tau``,
       which is ``1 / (1 + eta delta / pi)``;
     - inversion: ``min(1, d)``, with ``d`` the distance from the fitted set
@@ -347,7 +347,7 @@ def default_sobolev_r(
     Parameters
     ----------
     problem:
-        One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
+        One of ``'identity'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
         an alias; see :func:`~felcu.canonical_problem_name`).
     matrix:
         Square matrix to read the spectral interval from.  Mutually
@@ -375,11 +375,11 @@ def default_sobolev_r(
     Raises
     ------
     ValueError
-        Except for action, if no spectral information is given or the
+        Except for identity, if no spectral information is given or the
         interval is invalid.
     """
     problem = canonical_problem_name(problem)
-    if problem == "action":
+    if problem == "identity":
         return 1.0
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
     tau = _make_spec(problem, spectral, eta)["tau"]
@@ -433,7 +433,7 @@ def _make_spec(problem: str, spectral: dict, eta: float | None, method: str = "s
     if spectral["kind"] == "singular_values":
         basis, baseline = "odd_sine", 0.0
     else:
-        basis = "const_plus_sine" if problem == "action" else "full"
+        basis = "const_plus_sine" if problem == "identity" else "full"
         baseline = 0.0 if gap is not None else _value(problem, mu)
 
     spec = {
