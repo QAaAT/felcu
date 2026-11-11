@@ -17,9 +17,14 @@ if TYPE_CHECKING:
     from felcu.types import FourierExtensionResult
 
 FORMAT = "felcu.FourierExtensionResult"
-FORMAT_VERSION = 1
+# Version 2 can hold complex coefficients; version 1 files (real only) are
+# read unchanged.
+FORMAT_VERSION = 2
+READABLE_VERSIONS = (1, 2)
 
-_FLOAT_ARRAYS = {"ak", "bk"}
+# Coefficients: real lists, or {"real": [...], "imag": [...]} when complex
+# (a0 likewise as {"real": x, "imag": y}).
+_COEFFICIENT_ARRAYS = {"ak", "bk"}
 _FLOAT_PAIRS = {"x_gap", "gap"}
 _SKIP_FIELDS = {"complex_coefficients", "all_results"}  # written separately
 
@@ -40,6 +45,30 @@ def _decode_float(value: float | str) -> float:
     return float(value)
 
 
+def _encode_coefficients(value):
+    """A coefficient array or scalar: as is when real, as real and imaginary parts when complex."""
+    array = np.asarray(value)
+    if np.iscomplexobj(array):
+        real, imag = array.real, array.imag
+        if array.ndim == 0:
+            return {"real": _encode_float(float(real)), "imag": _encode_float(float(imag))}
+        return {"real": [_encode_float(float(v)) for v in real], "imag": [_encode_float(float(v)) for v in imag]}
+    if array.ndim == 0:
+        return _encode_float(float(array))
+    return [_encode_float(float(v)) for v in array]
+
+
+def _decode_coefficients(value, scalar: bool):
+    if isinstance(value, dict):
+        real = np.asarray([_decode_float(v) for v in np.atleast_1d(value["real"])], dtype=float)
+        imag = np.asarray([_decode_float(v) for v in np.atleast_1d(value["imag"])], dtype=float)
+        out = real + 1j * imag
+        return complex(out[0]) if scalar else out
+    if scalar:
+        return _decode_float(value)
+    return np.asarray([_decode_float(v) for v in value], dtype=float)
+
+
 def _fields_to_dict(result: FourierExtensionResult) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for field in dataclasses.fields(result):
@@ -47,8 +76,8 @@ def _fields_to_dict(result: FourierExtensionResult) -> dict[str, Any]:
         if name in _SKIP_FIELDS:
             continue
         value = getattr(result, name)
-        if name in _FLOAT_ARRAYS:
-            out[name] = [_encode_float(float(v)) for v in value]
+        if name in _COEFFICIENT_ARRAYS or name == "a0":
+            out[name] = _encode_coefficients(value)
         elif name == "k":
             out[name] = [int(v) for v in value]
         elif isinstance(value, float):
@@ -85,8 +114,10 @@ def _fields_from_dict(cls: type[FourierExtensionResult], data: dict[str, Any]) -
         value = data[name]
         if name == "k":
             value = np.asarray(value, dtype=int)
-        elif name in _FLOAT_ARRAYS:
-            value = np.asarray([_decode_float(v) for v in value], dtype=float)
+        elif name in _COEFFICIENT_ARRAYS:
+            value = _decode_coefficients(value, scalar=False)
+        elif name == "a0":
+            value = _decode_coefficients(value, scalar=True)
         elif name == "matrix_shape" and value is not None:
             value = tuple(int(v) for v in value)
         elif name in _FLOAT_PAIRS and value is not None:
@@ -108,8 +139,9 @@ def from_dict(cls: type[FourierExtensionResult], data: dict[str, Any]) -> Fourie
     if data.get("format") != FORMAT:
         raise ValueError(f"Not a saved felcu result (expected format '{FORMAT}').")
     version = data.get("format_version")
-    if version != FORMAT_VERSION:
-        raise ValueError(f"Unsupported format_version {version!r}; this felcu reads version {FORMAT_VERSION}.")
+    if version not in READABLE_VERSIONS:
+        readable = " and ".join(str(v) for v in READABLE_VERSIONS)
+        raise ValueError(f"Unsupported format_version {version!r}; this felcu reads versions {readable}.")
     candidates = tuple(cls(**_fields_from_dict(cls, c)) for c in data.get("all_results", []))
     return cls(**_fields_from_dict(cls, data), all_results=candidates)
 

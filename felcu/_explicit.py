@@ -13,7 +13,7 @@ import math
 
 import numpy as np
 
-from felcu._coefficients import _pack_coefficients, _spec_target
+from felcu._coefficients import _pack_coefficients, _scalar, _spec_target
 from felcu._linalg import _gauss_interval
 from felcu._solver import _meets_target, _summarise, _validation_data
 
@@ -36,7 +36,7 @@ def _reflected_coefficients(spec: dict, m: int) -> tuple[float, np.ndarray, np.n
     wg = w * _spec_target(x, spec)
     k = np.arange(1, m + 1)
     kx = np.outer(k, x)
-    a0 = float(np.sum(wg)) / math.pi
+    a0 = _scalar(np.sum(wg)) / math.pi
     ak = np.where(k % 2 == 1, (2.0 / math.pi) * (np.sin(kx) @ wg), 0.0)
     bk = np.where(k % 2 == 0, (2.0 / math.pi) * (np.cos(kx) @ wg), 0.0)
     return a0, ak, bk
@@ -61,10 +61,13 @@ def _arcsin_series(n: int) -> np.ndarray:
     return s
 
 
+# The series below work for real or complex u.
+
+
 def _series_exp(u: np.ndarray) -> np.ndarray:
     """exp(u) as a power series, from y' = u' y."""
     y = np.zeros_like(u)
-    y[0] = math.exp(u[0])
+    y[0] = np.exp(u[0])
     ju = np.arange(u.size) * u
     for k in range(1, u.size):
         y[k] = (ju[1 : k + 1] @ y[k - 1 :: -1]) / k
@@ -83,7 +86,7 @@ def _series_reciprocal(u: np.ndarray) -> np.ndarray:
 def _series_sqrt(u: np.ndarray) -> np.ndarray:
     """sqrt(u) as a power series, from y^2 = u."""
     y = np.zeros_like(u)
-    y[0] = math.sqrt(u[0])
+    y[0] = np.sqrt(u[0])
     for k in range(1, u.size):
         y[k] = (u[k] - y[1:k] @ y[k - 1 : 0 : -1]) / (2.0 * y[0])
     return y
@@ -116,8 +119,14 @@ def _arcsine_taylor_coefficients(spec: dict, m: int) -> tuple[float, np.ndarray,
     y = np.zeros(n)
     for dk in d[::-1]:
         y = y * s + dk
-    c = np.fft.rfft(y) / n  # c[k] is the complex coefficient c_k
-    return float(c[0].real), -2.0 * c[1 : m + 1].imag, 2.0 * c[1 : m + 1].real
+    if not np.iscomplexobj(y):
+        c = np.fft.rfft(y) / n  # c[k] is the complex coefficient c_k, and c_{-k} = conj(c_k)
+        return float(c[0].real), -2.0 * c[1 : m + 1].imag, 2.0 * c[1 : m + 1].real
+    # A complex g has independent c_k and c_{-k} = c[n - k]:
+    # a_k = i (c_k - c_{-k}) and b_k = c_k + c_{-k}.
+    c = np.fft.fft(y) / n
+    pos, neg = c[1 : m + 1], c[n - 1 : n - m - 1 : -1]
+    return _scalar(c[0]), 1j * (pos - neg), pos + neg
 
 
 # ---------------------------------------------------------------------------

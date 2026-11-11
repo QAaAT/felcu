@@ -80,9 +80,15 @@ def _target(x: np.ndarray, problem: str, tau: float, mu: float, d: int = 0) -> n
     return (1.0 / tau**d) * F_d
 
 
-def _value(problem: str, t: float) -> float:
+def _scalar(value) -> float | complex:
+    """*value* as a Python float, or as a complex if it has a nonzero imaginary part."""
+    value = complex(value)
+    return value.real if value.imag == 0.0 else value
+
+
+def _value(problem: str, t: float) -> float | complex:
     """F(t), which is also the constant g on a zero-width interval centred at t."""
-    return float(_target(0.0, problem, math.inf, t))
+    return _scalar(_target(0.0, problem, math.inf, t))
 
 
 def _spec_target(x: np.ndarray, spec: dict, d: int = 0) -> np.ndarray:
@@ -93,18 +99,28 @@ def _spec_target(x: np.ndarray, spec: dict, d: int = 0) -> np.ndarray:
 # ---------------------------------------------------------------------------
 # Coefficient packing/unpacking
 # ---------------------------------------------------------------------------
+#
+# A real-valued g has real a0, ak, bk, stored as float64.  A complex-valued g
+# has complex ones (complex128): its exponential coefficients satisfy
+# c_{-k} = conj(c_k) only when g is real, so nothing below assumes it.
 
 
-def _pack_coefficients(a0: float, ak: Sequence, bk: Sequence, basis: str) -> np.ndarray:
-    ak = np.asarray(ak, dtype=float).reshape(-1)
-    bk = np.asarray(bk, dtype=float).reshape(-1)
+def _coefficient_dtype(*values) -> np.dtype:
+    """float64 for real coefficients, complex128 as soon as any is complex."""
+    return np.result_type(float, *(np.asarray(v) for v in values))
+
+
+def _pack_coefficients(a0: float | complex, ak: Sequence, bk: Sequence, basis: str) -> np.ndarray:
+    dtype = _coefficient_dtype(a0, ak, bk)
+    ak = np.asarray(ak, dtype=dtype).reshape(-1)
+    bk = np.asarray(bk, dtype=dtype).reshape(-1)
     if ak.shape != bk.shape:
         raise ValueError("ak and bk must have the same length.")
     return _assemble(basis, [a0], ak, bk)
 
 
-def _add_baseline(c: np.ndarray, basis: str, baseline: float) -> np.ndarray:
-    c = np.array(c, dtype=float, copy=True)
+def _add_baseline(c: np.ndarray, basis: str, baseline: float | complex) -> np.ndarray:
+    c = np.array(c, dtype=_coefficient_dtype(c, baseline), copy=True)
     if baseline != 0.0:
         if not _has_constant(basis):
             raise ValueError("A nonzero baseline requires a constant basis function.")
@@ -112,9 +128,10 @@ def _add_baseline(c: np.ndarray, basis: str, baseline: float) -> np.ndarray:
     return c
 
 
-def _unpack_coefficients(c: np.ndarray, basis: str, m: int) -> tuple[float, np.ndarray, np.ndarray]:
+def _unpack_coefficients(c: np.ndarray, basis: str, m: int) -> tuple[float | complex, np.ndarray, np.ndarray]:
+    """``(a0, ak, bk)`` from packed coefficients, complex if *c* is complex."""
     start = int(_has_constant(basis))
-    a0 = float(c[0]) if start else 0.0
+    a0 = c.dtype.type(c[0]).item() if start else c.dtype.type(0).item()
     ak = c[start : start + m].copy()
-    bk = c[start + m :].copy() if _has_cosine(basis) else np.zeros(m)
+    bk = c[start + m :].copy() if _has_cosine(basis) else np.zeros(m, dtype=c.dtype)
     return a0, ak, bk

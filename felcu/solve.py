@@ -7,7 +7,7 @@ from dataclasses import replace
 
 import numpy as np
 
-from felcu._coefficients import _value
+from felcu._coefficients import _coefficient_dtype, _scalar, _value
 from felcu._explicit import _explicit_candidate
 from felcu._logging import logger
 from felcu._solver import _candidate_for_m, _meets_target
@@ -30,9 +30,10 @@ from felcu.utils import (
 def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierExtensionResult:
     s = cand["solve"]
     spectral = spec["spectral"]
-    a0 = float(s["a0"])
-    ak = np.asarray(s["ak"], dtype=float)
-    bk = np.asarray(s["bk"], dtype=float)
+    a0 = _scalar(s["a0"])
+    dtype = _coefficient_dtype(a0, s["ak"], s["bk"])
+    ak = np.asarray(s["ak"], dtype=dtype)
+    bk = np.asarray(s["bk"], dtype=dtype)
 
     sobolev = spec["method"] == "sobolev"
     return FourierExtensionResult(
@@ -69,7 +70,7 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
     )
 
 
-def _constant_result(spec: dict, target: float, metric: str, value: float) -> FourierExtensionResult:
+def _constant_result(spec: dict, target: float, metric: str, value: float | complex) -> FourierExtensionResult:
     c = {
         "m": 0,
         "lambda": 0.0,
@@ -392,7 +393,7 @@ def solve_fe_coefficients(
     return replace(selected, all_results=all_results)
 
 
-def compute_fe_coefficients(*args, **kwargs) -> tuple[float, np.ndarray, np.ndarray]:
+def compute_fe_coefficients(*args, **kwargs) -> tuple[float | complex, np.ndarray, np.ndarray]:
     """Convenience wrapper; returns ``(a0, ak, bk)`` directly.
 
     Takes the same arguments as :func:`solve_fe_coefficients` and discards
@@ -402,10 +403,11 @@ def compute_fe_coefficients(*args, **kwargs) -> tuple[float, np.ndarray, np.ndar
 
     Returns
     -------
-    a0 : float
+    a0 : float or complex
         Constant term.
     ak, bk : numpy.ndarray
-        Sine and cosine coefficients (copies), each of length ``m``.
+        Sine and cosine coefficients (copies), each of length ``m``;
+        complex for a complex-valued f.
     """
     result = solve_fe_coefficients(*args, **kwargs)
     return result.a0, result.ak.copy(), result.bk.copy()

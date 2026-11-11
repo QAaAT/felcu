@@ -17,7 +17,8 @@ class FourierExtensionResult:
 
     Returned by :func:`~felcu.solve_fe_coefficients`.  The fitted series is
     ``g(x) = a0 + sum_k ak[k-1] sin(kx) + bk[k-1] cos(kx)``, and the matrix
-    function is ``f(H) = g(tau (H - mu I))``.  For singular values, ``H``
+    function is ``f(H) = g(tau (H - mu I))``.  The spectrum is always real;
+    for a complex-valued f the coefficients are complex.  For singular values, ``H``
     is the Hermitian dilation of the matrix and ``mu = 0``.
 
     Attributes
@@ -44,7 +45,8 @@ class FourierExtensionResult:
         midpoint of ``[sigma_min, sigma_max]`` for eigenvalues, and ``0`` for
         singular values.
     alpha : float
-        Subnormalisation ``alpha_m = sum_k |c_k| = |a0| + sum_k sqrt(ak**2 + bk**2)``.
+        Subnormalisation ``alpha_m = sum_{k=-m}^{m} |c_k|``, over both signed
+        modes; ``|a0| + sum_k sqrt(ak**2 + bk**2)`` when f is real.
     target_error : float
         The requested error.
     error_metric : str
@@ -67,13 +69,14 @@ class FourierExtensionResult:
     sobolev_w : float or None
         Order *w* of the H_r^w regulariser that was used; ``None`` for the
         explicit methods.
-    a0 : float
-        Constant term.
+    a0 : float or complex
+        Constant term; complex for a complex-valued f.
     ak : numpy.ndarray
-        Sine coefficients, length ``m``.
+        Sine coefficients, length ``m``: float64 for a real f, complex128
+        for a complex one.
     bk : numpy.ndarray
         Cosine coefficients, length ``m`` (all zero for the sine-only
-        bases).
+        bases), with the same dtype as *ak*.
     complex_coefficients : numpy.ndarray
         The same series as ``[c_{-m}, ..., c_m]``; see
         :func:`~felcu.to_complex_coefficients`.
@@ -121,7 +124,7 @@ class FourierExtensionResult:
     lambda_used: float | None
     sobolev_r: float | None
     sobolev_w: float | None
-    a0: float
+    a0: float | complex
     ak: np.ndarray
     bk: np.ndarray
     complex_coefficients: np.ndarray
@@ -156,7 +159,8 @@ class FourierExtensionResult:
         """Return the result as a JSON-compatible dictionary.
 
         Arrays become lists, ``complex_coefficients`` becomes
-        ``{"k": [-m..m], "real": [...], "imag": [...]}``, and non-finite
+        ``{"k": [-m..m], "real": [...], "imag": [...]}``, complex ``a0``,
+        ``ak`` and ``bk`` become ``{"real": ..., "imag": ...}``, and non-finite
         floats (``tau`` is infinite for a zero-width interval) become the
         strings ``"inf"``, ``"-inf"`` or ``"nan"``.  The dictionary also
         records ``format``, ``format_version`` and ``felcu_version``.

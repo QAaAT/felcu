@@ -37,8 +37,14 @@ def _penalty(m: int, basis: str, lam: float, r: float, w: float) -> np.ndarray:
     return _assemble(basis, [lam], p, p)
 
 
-def _alpha(a0: float, ak: np.ndarray, bk: np.ndarray) -> float:
-    return float(abs(a0) + np.sum(np.sqrt(ak**2 + bk**2)))
+def _alpha(a0: float | complex, ak: np.ndarray, bk: np.ndarray) -> float:
+    """sum_k |c_k| over both signed modes, with c_{+-k} = (b_k -+ i a_k) / 2.
+
+    For real coefficients |c_k| = |c_{-k}| = sqrt(a_k^2 + b_k^2) / 2.
+    """
+    if not (np.iscomplexobj(ak) or np.iscomplexobj(bk) or isinstance(a0, complex)):
+        return float(abs(a0) + np.sum(np.sqrt(ak**2 + bk**2)))
+    return float(abs(a0) + 0.5 * np.sum(np.abs(bk - 1j * ak) + np.abs(bk + 1j * ak)))
 
 
 def _validation_errors(
@@ -56,7 +62,14 @@ def _validation_errors(
 
 
 def _lstsq(A: np.ndarray, b: np.ndarray) -> np.ndarray:
-    """Least-squares solve via LAPACK (numpy.linalg.lstsq)."""
+    """Least-squares solve via LAPACK (numpy.linalg.lstsq).
+
+    *A* is real.  A complex *b* is solved as its real and imaginary parts,
+    two right-hand sides of the same real system.
+    """
+    if np.iscomplexobj(b):
+        x, _, _, _ = np.linalg.lstsq(A, np.column_stack([b.real, b.imag]), rcond=None)
+        return x[:, 0] + 1j * x[:, 1]
     x, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
     return x
 

@@ -110,12 +110,17 @@ loaded = FourierExtensionResult.from_json("exp_coefficients.json")
 
 The file is standard JSON, so it can also be read outside Python.  It
 holds every field of the result: the parameters (`problem`, `method`,
-`eta`, `tau`, `sobolev_r`, ...), the errors and \(\alpha_m\), the real coefficients
-`a0`, `ak`, `bk`, and the complex coefficients as
+`eta`, `tau`, `sobolev_r`, ...), the errors and \(\alpha_m\), the
+coefficients `a0`, `ak`, `bk`, and the exponential coefficients as
 
 ```json
 "complex_coefficients": {"k": [-m, ..., m], "real": [...], "imag": [...]}
 ```
+
+For a real-valued function `a0`, `ak` and `bk` are plain numbers and lists.
+For a complex-valued one they are complex, and are stored in the same
+`{"real": ..., "imag": ...}` form.  Files are written as `format_version` 2;
+version 1 files, which hold only real coefficients, still load.
 
 Floats are written with enough digits to round-trip exactly; an infinite
 \(\tau\) (a zero-width interval) is stored as the string `"inf"`, and the

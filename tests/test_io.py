@@ -70,7 +70,7 @@ def test_infinite_tau_is_standard_json():
 def test_layout(result):
     data = json.loads(result.to_json())
     assert data["format"] == "felcu.FourierExtensionResult"
-    assert data["format_version"] == 1
+    assert data["format_version"] == 2
     assert data["method"] == "sobolev"
     assert data["problem"] == "exponentiation"
     assert len(data["ak"]) == len(data["bk"]) == result.m

@@ -41,6 +41,32 @@ with \(c_0 = a_0\) and \(c_{\pm k} = (b_k \mp i a_k)/2\), restricted to the
 basis that suits the problem (see [Bases](problems.md#bases)).  It lies in
 \(\mathcal F_m = \operatorname{span}\{e^{-imx}, \dots, e^{imx}\}\).
 
+### Complex-valued functions
+
+The spectrum is always real, but \(f\), and so \(g\), may be
+complex-valued.  The coefficients are then complex, and
+\(c_{-k} = \overline{c_k}\) holds only for a real \(g\), so nothing assumes
+it.  The general conversion is
+
+\[
+a_0 = c_0, \qquad a_k = i(c_k - c_{-k}), \qquad b_k = c_k + c_{-k}.
+\]
+
+Every method handles complex targets:
+
+- **Sobolev.**  The basis matrix and the penalty are real, so the least-squares
+  problem splits into its real and imaginary parts, which share the same
+  system.  The penalty on \((a_k, b_k)\) is unchanged, since
+  \(|c_k|^2 + |c_{-k}|^2 = (|a_k|^2 + |b_k|^2)/2\) for complex coefficients
+  too.
+- **Reflected.**  The quadrature is linear in \(g\).
+- **Arcsine-Taylor.**  The power-series arithmetic works over \(\mathbb C\),
+  and the FFT reads off \(c_k\) and \(c_{-k}\) separately.
+
+Errors are complex magnitudes \(|g_m - g|\), and \(\alpha_m\) sums
+\(|c_k|\) over both signed modes.  A real \(g\) keeps real (float64)
+coefficients.
+
 ## The regularised problem
 
 The coefficients solve the paper's regularised problem
@@ -181,10 +207,11 @@ points (split between the two intervals for a double domain):
 The LCU block encoding of \(g_m(\mathcal G)\) has subnormalisation
 
 \[
-\alpha_m = \sum_{k=-m}^{m} |c_k| = |a_0| + \sum_{k=1}^{m} \sqrt{a_k^2 + b_k^2}
+\alpha_m = \sum_{k=-m}^{m} |c_k|,
 \]
 
-(for real coefficients), and its success probability scales as
+which is \(|a_0| + \sum_{k=1}^{m} \sqrt{a_k^2 + b_k^2}\) for real
+coefficients, and its success probability scales as
 \(1/\alpha_m^2\), so smaller is better.  No extension can beat
 \(\alpha_m \ge \|g\|_{L^\infty(\Omega)} - \epsilon_m\), and for these
 problems the Sobolev-regularised fits reach the optimal scale
