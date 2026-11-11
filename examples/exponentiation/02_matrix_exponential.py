@@ -11,7 +11,7 @@ Run with:
 
 import numpy as np
 
-from felcu import evaluate_fourier_series, solve_fe_coefficients
+from felcu import solve_fe_coefficients
 
 rng = np.random.default_rng(4)
 n = 10
@@ -22,10 +22,8 @@ result = solve_fe_coefficients("exponentiation", matrix=H, target_error=1e-8, m_
 print(f"eigenvalues in = [{result.sigma_min:.4f}, {result.sigma_max:.4f}]")
 print(f"m              = {result.m}")
 
-mu = 0.5 * (result.sigma_min + result.sigma_max)
 w, V = np.linalg.eigh(H)
 exp_H = V @ np.diag(np.exp(w)) @ V.T
-g = evaluate_fourier_series(result.tau * (w - mu), result.a0, result.ak, result.bk)
-approx = V @ np.diag(g) @ V.T
+approx = result.apply(H)  # g(tau (H - mu I)), by eigendecomposition
 
 print(f"||g(tau (H - mu I)) - exp(H)||_2 = {np.linalg.norm(approx - exp_H, 2):.2e}")

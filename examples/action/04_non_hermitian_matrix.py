@@ -7,13 +7,15 @@ The odd sine series acts on the singular values (as in QSVT):
 
     g(tau A) = U diag(g(tau s)) V^dagger  ~=  A
 
+result.evaluate(s) gives g(tau s) for the singular values s.
+
 Run with:
     python examples/action/04_non_hermitian_matrix.py
 """
 
 import numpy as np
 
-from felcu import evaluate_fourier_series, solve_fe_coefficients
+from felcu import solve_fe_coefficients
 
 rng = np.random.default_rng(1)
 A = rng.standard_normal((6, 6)) / 3
@@ -25,7 +27,6 @@ print(f"singular values in   = [{result.sigma_min:.4f}, {result.sigma_max:.4f}]"
 print(f"m                    = {result.m}")
 
 U, s, Vh = np.linalg.svd(A)
-g = evaluate_fourier_series(result.tau * s, result.a0, result.ak, result.bk)
-A_approx = U @ np.diag(g) @ Vh
+A_approx = U @ np.diag(result.evaluate(s)) @ Vh
 
 print(f"||g(tau A) - A||_2   = {np.linalg.norm(A_approx - A, 2):.2e}")

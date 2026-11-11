@@ -15,7 +15,7 @@ Run with:
 
 import numpy as np
 
-from felcu import evaluate_fourier_series, solve_fe_coefficients
+from felcu import solve_fe_coefficients
 
 rng = np.random.default_rng(3)
 Q, _ = np.linalg.qr(rng.standard_normal((6, 6)))
@@ -24,9 +24,7 @@ for label, eigs in [("positive definite", np.linspace(0.5, 2.0, 6)), ("negative 
     H = Q @ np.diag(eigs) @ Q.T
     r = solve_fe_coefficients("inversion", matrix=H, target_error=1e-6, m_values=range(4, 65, 4))
 
-    w, V = np.linalg.eigh(H)
-    g = evaluate_fourier_series(r.tau * (w - r.mu), r.a0, r.ak, r.bk)
-    err = np.linalg.norm(V @ np.diag(g) @ V.T - np.linalg.inv(H), 2)
+    err = np.linalg.norm(r.apply(H) - np.linalg.inv(H), 2)
 
     print(
         f"{label}:  mu={r.mu:+.2f}  basis={r.basis_used}  m={r.m}  alpha={r.alpha:.3f}  ||approx - H^-1||_2={err:.1e}"
