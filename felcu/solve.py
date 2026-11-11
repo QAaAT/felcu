@@ -70,6 +70,7 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         matrix_is_hermitian=spectral["matrix_is_hermitian"],
         polynomial_coefficients=None if spec["polynomial"] is None else spec["polynomial"][0].copy(),
         polynomial_basis=None if spec["polynomial"] is None else spec["polynomial"][1],
+        closure_mean=None if cand.get("closure_mean") is None else _scalar(cand["closure_mean"]),
     )
 
 
@@ -198,6 +199,7 @@ def solve_fe_coefficients(
     hermitian_tol: float = 1e-12,
     polynomial_coefficients: Sequence[complex] | None = None,
     polynomial_basis: str | None = None,
+    closure_mean: complex | None = None,
 ) -> FourierExtensionResult:
     """Compute Fourier-extension LCU block-encoding coefficients.
 
@@ -227,15 +229,18 @@ def solve_fe_coefficients(
           ``alpha_m = ||f(H)|| - epsilon_m`` for convex endpoint-maximising f
           (identity, exponentiation, definite inversion) at the default
           ``eta = 2``, but only ``O(1/m)`` convergence, so the default
-          *target_error* is out of reach.
+          *target_error* is out of reach.  For ``eta > 2`` the profile is
+          reflected about the endpoint where ``|g|`` is larger and closed
+          with a quadratic continuation of mean *closure_mean*.
         - ``'arcsine_taylor'``: the Taylor series of ``g(arcsin z)`` with
           ``z = sin x``.  Exponential convergence with factor
           ``sin(pi/eta)`` (requires ``eta > 2``) and subnormalisation
           bounded independently of the error.
 
         The explicit methods do not support the two-interval fit of
-        inversion on an indefinite interval or on singular values, and for
-        definite inversion and square root need ``eta < 2 |mu| / delta``.
+        inversion on an indefinite interval or on singular values.
+        Arcsine-Taylor needs ``eta < 2 |mu| / delta`` for definite
+        inversion and square root.
         They have no regularisation, so the Sobolev-only options
         (*lambdas*, *sobolev_w*, *sobolev_r*, *order_fit*,
         *fit_oversample*) must be left unset.
@@ -312,6 +317,14 @@ def solve_fe_coefficients(
         ``[-1, 1]``.  A polynomial is entire, so it takes the entire-function
         default *eta*, and the default Sobolev scale is ``r = 1``.
 
+    closure_mean:
+        For ``method='reflected'`` with ``eta > 2`` only: the mean
+        ``beta_0`` of the quadratic continuation, which may be complex.
+        ``None`` (default) chooses it for each order m to minimise
+        ``sum_k |c_k|`` without raising the maximum error above that of
+        ``beta_0 = 0``.  To compare orders of one continuation, pass the
+        value from ``result.closure_mean`` so that it stays fixed.
+
     Returns
     -------
     FourierExtensionResult
@@ -321,6 +334,11 @@ def solve_fe_coefficients(
     method = canonical_method_name(method)
     metric = canonical_error_metric(error_metric)
     polynomial = _polynomial(problem, polynomial_coefficients, polynomial_basis)
+    if closure_mean is not None:
+        if method != "reflected":
+            raise ValueError(f"closure_mean only applies to method='reflected', not method='{method}'.")
+        if not (isinstance(closure_mean, (int, float, complex, np.number)) and np.isfinite(closure_mean)):
+            raise ValueError("closure_mean must be a finite real or complex number, or None.")
     sobolev_options = {
         "lambdas": lambdas,
         "sobolev_w": sobolev_w,
@@ -346,6 +364,13 @@ def solve_fe_coefficients(
 
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
     spec = _make_spec(problem, spectral, eta, method, polynomial)
+    if closure_mean is not None:
+        if spec["eta"] <= 2.0:
+            raise ValueError(
+                "closure_mean sets the quadratic continuation, which reflected uses only for eta > 2; "
+                f"this fit has eta={spec['eta']:.6g}."
+            )
+        spec["closure_mean"] = _scalar(closure_mean)
 
     if method != "sobolev":
         spec = spec | {"sobolev_r": None, "sobolev_w": None}

@@ -78,7 +78,7 @@ def _fields_to_dict(result: FourierExtensionResult) -> dict[str, Any]:
         value = getattr(result, name)
         if name in _COEFFICIENT_ARRAYS or name == "a0":
             out[name] = _encode_coefficients(value)
-        elif name == "polynomial_coefficients":
+        elif name in ("polynomial_coefficients", "closure_mean"):
             out[name] = None if value is None else _encode_coefficients(value)
         elif name == "k":
             out[name] = [int(v) for v in value]
@@ -126,6 +126,8 @@ def _fields_from_dict(cls: type[FourierExtensionResult], data: dict[str, Any]) -
             value = _decode_coefficients(value, scalar=True)
         elif name == "polynomial_coefficients" and value is not None:
             value = _decode_coefficients(value, scalar=False)
+        elif name == "closure_mean" and value is not None:
+            value = _decode_coefficients(value, scalar=True)
         elif name == "matrix_shape" and value is not None:
             value = tuple(int(v) for v in value)
         elif name in _FLOAT_PAIRS and value is not None:

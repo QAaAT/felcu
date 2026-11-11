@@ -180,12 +180,22 @@ def _check_method(method: str, spectral: dict) -> None:
 def _check_explicit_eta(spec: dict) -> None:
     """Check that *eta* suits the reflected or arcsine-Taylor construction of *spec*.
 
-    Both evaluate g on [-pi/2, pi/2], i.e. f on [mu - eta delta/2, mu + eta delta/2],
-    which must stay clear of the pole or branch point at 0.
+    Arcsine-Taylor evaluates g on [-pi/2, pi/2], i.e. f on
+    [mu - eta delta/2, mu + eta delta/2], which must stay clear of the pole or
+    branch point at 0.  The reflected extension only evaluates g on the
+    fitted interval: at eta = 2 that is [-pi/2, pi/2], and for eta > 2 the
+    quadratic continuation takes over beyond it.
     """
     method, eta = spec["method"], spec["eta"]
-    if method == "reflected" and eta < 2.0:
-        raise ValueError("The reflected extension requires eta >= 2.")
+    if method == "reflected":
+        if eta < 2.0:
+            raise ValueError("The reflected extension requires eta >= 2.")
+        if eta > 2.0 and spec["spectral"]["kind"] == "singular_values":
+            raise ValueError(
+                "The quadratic continuation (reflected with eta > 2) is not odd, so it cannot act on singular "
+                "values; use eta=2 or another method."
+            )
+        return
     if method == "arcsine_taylor" and eta <= 2.0:
         raise ValueError("The arcsine-Taylor construction requires eta > 2.")
     if spec["problem"] in ENTIRE_PROBLEMS or not math.isfinite(spec["tau"]):
@@ -460,4 +470,7 @@ def _make_spec(
     }
     if method != "sobolev":
         _check_explicit_eta(spec)
+    if method == "reflected" and eta > 2.0:
+        # The continuation has no symmetry, so it needs every mode.
+        spec["basis"] = "full"
     return spec

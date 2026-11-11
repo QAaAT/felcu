@@ -275,9 +275,82 @@ Concave functions such as \(\sqrt x\) still get a bounded, but not optimal,
 
 - **\(\eta\).**  The default \(\eta = 2\) maps the spectral endpoints onto
   the reflection points, which is what makes \(\alpha\) optimal.
-  \(\eta > 2\) leaves the endpoints inside the smooth part of \(F\), which
-  speeds convergence up to \(O(m^{-2})\) but raises \(\alpha\).  \(\eta < 2\)
+  \(\eta > 2\) switches to the quadratic continuation below.  \(\eta < 2\)
   is rejected.
+
+### Quadratic continuations (\(\eta > 2\))
+
+For \(\eta > 2\) the fitted interval \(\Omega_\eta = [-\pi/\eta, \pi/\eta]\)
+is shorter than half a period, so reflecting \(g\) alone does not fill it.
+`felcu` reflects about the endpoint \(x^\star\) where \(|g|\) is larger
+(\(q = +1\) at the left endpoint, \(-1\) at the right) and closes the
+period with a quadratic.  With
+
+\[
+\zeta = \frac{g(x^\star)}{|g(x^\star)|}, \qquad
+h(y) = \overline{\zeta}\, g(x^\star + qy), \qquad
+\theta = \frac{2\pi}{\eta}, \qquad \ell = \pi - \theta
+\]
+
+(\(\zeta = 1\) when \(g(x^\star) = 0\)), the profile is \(h\) on
+\(0 \le y \le \theta\), which covers \(\Omega_\eta\), and on
+\(\theta < y \le \pi\)
+
+\[
+p(s) = h(\theta) - \frac32\left[h(\theta) + \frac{\int_0^\theta h(y)\,dy - \pi\beta_0}{\ell}\right](2s - s^2),
+\qquad s = \frac{y - \theta}{\ell}.
+\]
+
+\(p\) is continuous with \(h\) at \(\theta\), flat at \(\pi\), and gives
+the completed profile \(E\) the mean \(\beta_0\).  \(E\) is extended evenly
+and periodically, and with quadrature split at \(y = \theta\),
+
+\[
+\beta_k = \frac2\pi \int_0^\pi E(y) \cos(ky)\,dy, \qquad
+c_0 = \zeta\beta_0, \qquad
+c_{\pm k} = \frac{\zeta\beta_k}{2} e^{\mp ikx^\star}\quad(k \ge 1).
+\]
+
+The even extension still has a corner at \(x^\star\), so the error falls
+as \(O(m^{-1})\), as at \(\eta = 2\).
+
+**The closure mean.**  \(\beta_0\) is free, and may be complex.  Pass a
+number as `closure_mean` to fix it.  With `closure_mean=None` (the
+default), `felcu` takes \(\varepsilon_0\), the largest error on the
+validation grid \(X\) at \(\beta_0 = 0\), and solves
+
+\[
+\min_{\beta_0}\ \sum_{k=-m}^{m} |c_k(\beta_0)|
+\quad\text{subject to}\quad
+\max_{x \in X} |g_m(x; \beta_0) - g(x)| \le \varepsilon_0 .
+\]
+
+Every \(c_k\) and every residual is affine in \(\beta_0\), so the problem
+is convex.  For a real profile (one phase makes \(h\) real, as for any
+real \(f\)) it is a weighted median on an interval, solved exactly.  For a
+complex profile it is a two-variable weighted Fermat–Weber problem on an
+intersection of discs, solved by nested golden-section search.  Other
+trade-offs between accuracy and \(\alpha\) are possible by passing
+`closure_mean` yourself.  `result.closure_mean` reports the value used.
+
+The objective can be nearly flat over a range of \(\beta_0\), so the
+chosen mean may jump between orders.  To study the convergence of *one*
+continuation, fix it for every \(m\):
+`closure_mean=result.closure_mean`.
+
+The continuation only evaluates \(g\) on \(\Omega_\eta\), so it needs no
+\(\eta < 2|\mu|/\delta\) bound.  It has no symmetry, so it uses the full
+basis, and it is not available for singular values, which need an odd
+series.
+
+!!! note "Positivity and norm saturation"
+    Phase-aligned coefficients, and with them the optimal
+    \(\alpha_m = \|f(\mathcal H)\| - \epsilon_m\), need more than the
+    construction.  BHA's sufficient criterion applies when one constant
+    phase rotation makes the completed profile real, convex and
+    non-increasing, with finite endpoint derivatives and nonnegative mean.
+    `felcu` does not check this.  In particular it cannot be inferred from
+    the endpoint derivatives alone for a general polynomial.
 
 ## Arcsine-Taylor
 
@@ -350,9 +423,10 @@ an FFT, which is exact for a trigonometric polynomial of degree \(m\).
 - **Two-interval inversion is not supported.**  On an indefinite interval or
   on singular values the pole lies between the fitted intervals, and neither
   extension can pass it.  Use `method="sobolev"`.
-- **The extension must avoid the singularity.**  Both methods evaluate \(f\)
-  on \([\mu - \eta\delta/2, \mu + \eta\delta/2]\), so for inversion and
-  square root `felcu` rejects \(\eta \ge 2|\mu|/\delta\).
+- **The extension must avoid the singularity.**  Arcsine-Taylor evaluates
+  \(f\) on \([\mu - \eta\delta/2, \mu + \eta\delta/2]\), so for
+  inversion and square root `felcu` rejects \(\eta \ge 2|\mu|/\delta\).  The
+  reflected extension only evaluates \(f\) on the spectrum.
 - **No regularisation options.**  `lambdas`, `sobolev_w`, `sobolev_r`,
   `order_fit` and `fit_oversample` only apply to the Sobolev method, and
   passing them with an explicit method raises an error.  The result's

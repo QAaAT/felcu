@@ -15,6 +15,14 @@ defaults suit most problems; this page explains when to change them.
     `"reflected-extension"`;
     `"asin"`, `"arcsine"`, `"arcsine-taylor"`.
 
+`closure_mean` (default `None`)
+:   For `method="reflected"` with \(\eta > 2\) only: the mean \(\beta_0\)
+    of the [quadratic continuation](method.md#quadratic-continuations-eta-2),
+    real or complex.  `None` chooses it for each \(m\) to minimise
+    \(\sum_k |c_k|\) without raising the error above that of
+    \(\beta_0 = 0\); the value used is `result.closure_mean`.  Fix it to
+    compare orders of one continuation.
+
 ## Accuracy
 
 `target_error` (default `1e-12`)

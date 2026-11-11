@@ -141,12 +141,18 @@ class TestInputValidation:
         with pytest.raises(ValueError, match="eta > 2"):
             solve_fe_coefficients("identity", method="arcsine_taylor", sigma_min=-1.0, sigma_max=1.0, eta=2.0)
 
-    @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
-    def test_extension_must_avoid_the_singularity(self, method):
+    def test_extension_must_avoid_the_singularity(self):
         # 2 mu / delta = 2.1 for [0.025, 1].
+        kw = dict(method="arcsine_taylor", sigma_min=0.025, sigma_max=1.0)
         with pytest.raises(ValueError, match=r"2\|mu\|/delta = 2\.1"):
-            solve_fe_coefficients("square_root", method=method, sigma_min=0.025, sigma_max=1.0, eta=2.7)
-        r = solve_fe_coefficients("square_root", method=method, sigma_min=0.025, sigma_max=1.0, eta=2.05)
+            solve_fe_coefficients("square_root", eta=2.7, **kw)
+        r = solve_fe_coefficients("square_root", eta=2.05, **kw)
+        assert np.isfinite(r.alpha) and r.alpha < 5.0
+
+    def test_reflected_continuation_stays_on_the_spectrum(self):
+        # For eta > 2 the reflected extension only evaluates g on the fitted interval,
+        # so eta >= 2 |mu| / delta is allowed.
+        r = solve_fe_coefficients("square_root", method="reflected", sigma_min=0.025, sigma_max=1.0, eta=2.7, m=32)
         assert np.isfinite(r.alpha) and r.alpha < 5.0
 
 

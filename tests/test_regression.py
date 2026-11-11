@@ -41,10 +41,12 @@ _SERIES_ATOL = 1e-3  # relative to target_error
 _COEFFICIENTS = {"a0", "ak", "bk", "complex_coefficients"}
 
 # lambda is found by bisection on a flat error curve, and the achieved errors
-# follow it, so they move more than alpha does.  The explicit methods have no
+# follow it, so they move more than alpha does.  The closure mean of a
+# quadratic continuation minimises a convex, nearly flat function.  The explicit methods have no
 # lambda (it is None) and are only compared this loosely for simplicity.
 _SOLVER_RTOL = {
     "alpha": 1e-6,
+    "closure_mean": 1e-6,
     "lambda_used": 1e-4,
     "achieved_error": 1e-4,
     "achieved_l2_error": 1e-4,

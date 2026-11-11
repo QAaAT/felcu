@@ -43,6 +43,183 @@ def _reflected_coefficients(spec: dict, m: int) -> tuple[float, np.ndarray, np.n
 
 
 # ---------------------------------------------------------------------------
+# Quadratic continuation of a reflection (eta > 2)
+# ---------------------------------------------------------------------------
+#
+# For eta > 2 the fitted interval [-pi/eta, pi/eta] is shorter than half a
+# period.  Measure y from the endpoint x* where |g| is larger, into the
+# interval (q = +1 at the left end, -1 at the right), and rotate by the phase
+# zeta of g(x*): h(y) = conj(zeta) g(x* + q y) on [0, theta], theta = 2 pi/eta.
+# On (theta, pi] the profile continues as the quadratic
+#
+#     p(s) = h(theta) - (3/2) [h(theta) + (int_0^theta h - pi beta_0) / l] (2s - s^2),
+#
+# with s = (y - theta) / l and l = pi - theta, which is continuous at theta,
+# flat at pi, and gives the completed profile E the mean beta_0.  E is
+# extended evenly and periodically, so g_m(x) = zeta E_m(q (x - x*)) with
+#
+#     c_0 = zeta beta_0,   c_{+-k} = zeta beta_k e^{-+ i k x*} / 2,
+#     beta_k = (2/pi) int_0^pi E(y) cos(k y) dy,
+#
+# i.e. a_k = zeta beta_k sin(k x*) and b_k = zeta beta_k cos(k x*).  Every
+# beta_k is affine in beta_0, the closure mean.
+
+
+def _continuation_profile(spec: dict, m: int) -> dict:
+    """The parts of the continuation that do not depend on the closure mean.
+
+    Returns ``x_star``, ``zeta``, ``beta`` (beta_1..beta_m at beta_0 = 0) and
+    ``dbeta`` (their derivative with respect to beta_0), and whether the
+    profile is ``real``.
+    """
+    eta = spec["eta"]
+    x_max = math.pi / eta
+    theta = 2.0 * x_max
+    ell = math.pi - theta
+    g_left, g_right = (complex(v) for v in _spec_target(np.array([-x_max, x_max]), spec))
+    # The endpoint with the larger |g|; q = +1 at the left end, -1 at the right.
+    if abs(g_left) >= abs(g_right):
+        x_star, q, g_star, g_far = -x_max, 1.0, g_left, g_right
+    else:
+        x_star, q, g_star, g_far = x_max, -1.0, g_right, g_left
+    zeta = g_star / abs(g_star) if g_star != 0 else 1.0
+
+    n = max(8 * (m + 1) + 64, 600)
+    y1, w1 = _gauss_interval(0.0, theta, n)
+    y2, w2 = _gauss_interval(theta, math.pi, n)
+    h1 = np.conj(zeta) * _spec_target(x_star + q * y1, spec)
+    h_theta = np.conj(zeta) * g_far
+    real = bool(np.max(np.abs(np.imag(h1)), initial=0.0) <= 1e-14 * max(np.max(np.abs(h1)), 1e-300))
+    real = real and abs(np.imag(h_theta)) <= 1e-14 * max(abs(h_theta), 1e-300)
+    if real:
+        h1, h_theta = np.real(h1), float(np.real(h_theta))
+        zeta = float(np.real(zeta))
+
+    s = (y2 - theta) / ell
+    bump = 2.0 * s - s**2
+    p0 = h_theta - 1.5 * (h_theta + np.dot(w1, h1) / ell) * bump  # p at beta_0 = 0
+    dp = (1.5 * math.pi / ell) * bump  # dp / d beta_0
+    k = np.arange(1, m + 1)
+    c1, c2 = np.cos(np.outer(k, y1)), np.cos(np.outer(k, y2))
+    beta = (2.0 / math.pi) * (c1 @ (w1 * h1) + c2 @ (w2 * p0))
+    dbeta = (2.0 / math.pi) * (c2 @ (w2 * dp))
+    return {"x_star": x_star, "zeta": zeta, "beta": beta, "dbeta": dbeta, "real": real}
+
+
+def _continuation_series(profile: dict, beta0: complex) -> tuple[float | complex, np.ndarray, np.ndarray]:
+    """``(a0, ak, bk)`` of the continuation with closure mean *beta0*."""
+    zeta, x_star = profile["zeta"], profile["x_star"]
+    beta = profile["beta"] + beta0 * profile["dbeta"]
+    k = np.arange(1, beta.size + 1)
+    return _scalar(zeta * beta0), zeta * beta * np.sin(k * x_star), zeta * beta * np.cos(k * x_star)
+
+
+def _optimal_closure_mean(profile: dict, val: list) -> float | complex:
+    """The closure mean minimising sum_k |c_k| without raising the error of beta_0 = 0.
+
+    With eps_0 the largest error on the validation grid at beta_0 = 0, solve
+
+        min_{beta_0}  |beta_0| + sum_{k>=1} |beta_k(beta_0)|
+        subject to    |g_m(x; beta_0) - g(x)| <= eps_0  on the grid,
+
+    which is sum_k |c_k| up to the common factor |zeta|.  Both sides are
+    affine in beta_0, so the problem is convex: for a real profile a
+    weighted median on an interval, solved exactly; for a complex one a
+    weighted Fermat-Weber problem on an intersection of discs, solved by
+    nested golden-section search.
+    """
+    zeta, x_star, beta, dbeta = profile["zeta"], profile["x_star"], profile["beta"], profile["dbeta"]
+    k = np.arange(1, beta.size + 1)
+    a0, ak, bk = _continuation_series(profile, 0.0)
+    da0, dak, dbk = 1.0, dbeta * np.sin(k * x_star), dbeta * np.cos(k * x_star)  # per unit zeta * beta_0
+    c0 = _pack_coefficients(a0, ak, bk, "full")
+    dc = _pack_coefficients(da0, dak, dbk, "full")
+    # Residual e(x) + beta_0 D(x), rotated by conj(zeta): |conj(zeta) e + beta_0 D| <= eps_0.
+    e = np.concatenate([np.conj(zeta) * (A @ c0 - y) for _, A, y, _ in val])
+    D = np.concatenate([A @ dc for _, A, _, _ in val])
+    eps0 = float(np.max(np.abs(e)))
+    # Points and weights of the objective: |beta_0 - 0| and |dbeta_k| |beta_0 + beta_k / dbeta_k|.
+    active = dbeta != 0
+    points = np.concatenate([[0.0], -beta[active] / dbeta[active]])
+    weights = np.concatenate([[1.0], np.abs(dbeta[active])])
+    constant = np.sum(np.abs(beta[~active]))
+
+    def objective(b):
+        return constant + np.sum(weights * np.abs(b - points))
+
+    # Each grid point with D != 0 confines beta_0 to a disc (an interval when real).
+    big = np.abs(D) > 1e-14 * max(np.max(np.abs(D)), 1e-300)
+    centres, radii = -e[big] / D[big], eps0 / np.abs(D[big])
+    if profile["real"]:
+        lo = float(np.max(centres.real - radii, initial=-np.inf))
+        hi = float(np.min(centres.real + radii, initial=np.inf))
+        lo, hi = min(lo, 0.0), max(hi, 0.0)  # beta_0 = 0 is feasible by construction
+        candidates = np.concatenate([[0.0], np.clip(points.real, lo, hi)])
+        values = np.array([objective(b) for b in candidates])
+        best = values.min()
+        tie = values <= best * (1 + 1e-14) + 1e-300
+        return float(candidates[tie][np.argmin(np.abs(candidates[tie]))])
+
+    # Complex profile: minimise over the real part u, each step minimising over
+    # the feasible interval of the imaginary part v.
+    span = float(np.max(np.abs(points))) + 1.0
+    u_lo = max(float(np.max(centres.real - radii, initial=-np.inf)), -2.0 * span)
+    u_hi = min(float(np.min(centres.real + radii, initial=np.inf)), 2.0 * span)
+    u_lo, u_hi = min(u_lo, 0.0), max(u_hi, 0.0)
+
+    def v_range(u):
+        half = np.sqrt(np.maximum(radii**2 - (u - centres.real) ** 2, 0.0))
+        lo = float(np.max(centres.imag - half, initial=-2.0 * span))
+        hi = float(np.min(centres.imag + half, initial=2.0 * span))
+        return (lo, hi) if lo <= hi else (0.5 * (lo + hi),) * 2
+
+    def best_v(u):
+        lo, hi = v_range(u)
+        v = _golden_minimum(lambda v: objective(u + 1j * v), max(lo, -2.0 * span), min(hi, 2.0 * span))
+        return v, objective(u + 1j * v)
+
+    u = _golden_minimum(lambda u: best_v(u)[1], u_lo, u_hi)
+    v, value = best_v(u)
+    if objective(0.0) <= value:  # keep beta_0 = 0 unless strictly better
+        return 0.0
+    return complex(u, v)
+
+
+def _golden_minimum(fun, lo: float, hi: float) -> float:
+    """The minimiser of a convex *fun* on [lo, hi], by golden-section search."""
+    if hi - lo <= 0.0:
+        return lo
+    ratio = (math.sqrt(5.0) - 1.0) / 2.0
+    tol = 1e-13 * max(1.0, abs(lo), abs(hi))
+    a, b = lo, hi
+    c, d = b - ratio * (b - a), a + ratio * (b - a)
+    fc, fd = fun(c), fun(d)
+    while b - a > tol:
+        if fc <= fd:
+            b, d, fd = d, c, fc
+            c = b - ratio * (b - a)
+            fc = fun(c)
+        else:
+            a, c, fc = c, d, fd
+            d = a + ratio * (b - a)
+            fd = fun(d)
+    candidates = [lo, hi, 0.5 * (a + b)]
+    return min(candidates, key=fun)
+
+
+def _continuation_coefficients(
+    spec: dict, m: int, val: list
+) -> tuple[float | complex, np.ndarray, np.ndarray, float | complex]:
+    """The quadratic continuation of order *m*, and the closure mean it used."""
+    profile = _continuation_profile(spec, m)
+    beta0 = spec.get("closure_mean")
+    if beta0 is None:
+        beta0 = _optimal_closure_mean(profile, val)
+    a0, ak, bk = _continuation_series(profile, beta0)
+    return a0, ak, bk, beta0
+
+
+# ---------------------------------------------------------------------------
 # Arcsine-Taylor (Sec. IV)
 # ---------------------------------------------------------------------------
 #
@@ -180,8 +357,19 @@ _COEFFICIENTS = {
 
 def _explicit_candidate(spec: dict, m: int, target: float, metric: str, val_n: int) -> dict:
     """The closed-form series of order *m* for ``spec['method']``, in the format of ``_candidate_for_m``."""
-    a0, ak, bk = _COEFFICIENTS[spec["method"]](spec, m)
+    val = _validation_data(spec, m, val_n)
+    closure_mean = None
+    if spec["method"] == "reflected" and spec["eta"] > 2.0:
+        a0, ak, bk, closure_mean = _continuation_coefficients(spec, m, val)
+    else:
+        a0, ak, bk = _COEFFICIENTS[spec["method"]](spec, m)
     # Packing drops the modes the basis excludes, which vanish by symmetry.
     coeffs = _pack_coefficients(a0, ak, bk, spec["basis"])
-    solve = _summarise(coeffs, _validation_data(spec, m, val_n), spec["basis"], m)
-    return {"m": m, "lambda": None, "solve": solve, "feasible": _meets_target(solve, metric, target)}
+    solve = _summarise(coeffs, val, spec["basis"], m)
+    return {
+        "m": m,
+        "lambda": None,
+        "solve": solve,
+        "feasible": _meets_target(solve, metric, target),
+        "closure_mean": closure_mean,
+    }

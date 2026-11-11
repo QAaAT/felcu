@@ -201,13 +201,6 @@ class TestReflected:
         assert alphas == sorted(alphas)
         assert alphas[-1] < 1.1
 
-    def test_larger_eta_moves_the_endpoint_inside(self):
-        kw = dict(method="reflected", sigma_min=0.1, sigma_max=2.0, m=64)
-        r2 = solve_fe_coefficients("exponentiation", **kw)
-        r3 = solve_fe_coefficients("exponentiation", eta=3.0, **kw)
-        assert r3.achieved_linf_error < r2.achieved_linf_error / 2
-        assert r3.alpha > r2.alpha
-
 
 # ---------------------------------------------------------------------------
 # Arcsine-Taylor

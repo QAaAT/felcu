@@ -110,6 +110,9 @@ class FourierExtensionResult:
     polynomial_basis : str or None
         For ``problem='polynomial'``, ``'monomial'``, ``'chebyshev'`` or
         ``'legendre'``; ``None`` otherwise.
+    closure_mean : float, complex or None
+        For ``method='reflected'`` with ``eta > 2``, the mean ``beta_0`` of
+        the quadratic continuation used for this order; ``None`` otherwise.
     all_results : tuple of FourierExtensionResult
         Every candidate tried, sorted by ``m``.  Empty on the candidates
         themselves.
@@ -147,6 +150,7 @@ class FourierExtensionResult:
     matrix_is_hermitian: bool | None
     polynomial_coefficients: np.ndarray | None = None
     polynomial_basis: str | None = None
+    closure_mean: float | complex | None = None
     all_results: tuple[FourierExtensionResult, ...] = ()
 
     @property

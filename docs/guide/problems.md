@@ -209,13 +209,13 @@ The explicit methods use their own defaults and ranges (see
 
 | `method` | Default \(\eta\) | Allowed |
 |---|---|---|
-| `"reflected"` | \(2\) | \(\eta \ge 2\) |
+| `"reflected"` | \(2\) | \(\eta \ge 2\); \(\eta > 2\) uses a [quadratic continuation](method.md#quadratic-continuations-eta-2) |
 | `"arcsine_taylor"`, identity, exponentiation and polynomial | \(3\) | \(\eta > 2\) |
 | `"arcsine_taylor"`, inversion and square root | \(\min\{3,\ 1 + \lvert\mu\rvert/\delta\}\) | \(2 < \eta < 2\lvert\mu\rvert/\delta\) |
 
-Both explicit methods require \(\eta < 2|\mu|/\delta\) for inversion and
-square root, and neither supports the two-interval fit of indefinite or
-singular-value inversion.
+Arcsine-Taylor requires \(\eta < 2|\mu|/\delta\) for inversion and square
+root, and neither explicit method supports the two-interval fit of
+indefinite or singular-value inversion.
 
 ## Problem name aliases
 
