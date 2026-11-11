@@ -210,6 +210,7 @@ The explicit methods use their own defaults and ranges (see
 | `method` | Default \(\eta\) | Allowed |
 |---|---|---|
 | `"reflected"` | \(2\) | \(\eta \ge 2\); \(\eta > 2\) uses a [quadratic continuation](method.md#quadratic-continuations-eta-2) |
+| `"reflected"`, `reflection_order` \(\ge 1\) | \(3\) | \(\eta > 2\) ([derivative reflections](method.md#derivative-reflections-reflection_order)) |
 | `"arcsine_taylor"`, identity, exponentiation and polynomial | \(3\) | \(\eta > 2\) |
 | `"arcsine_taylor"`, inversion and square root | \(\min\{3,\ 1 + \lvert\mu\rvert/\delta\}\) | \(2 < \eta < 2\lvert\mu\rvert/\delta\) |
 

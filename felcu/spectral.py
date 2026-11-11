@@ -214,10 +214,15 @@ def _centre_and_halfwidth(spectral: dict) -> tuple[float, float]:
     return 0.5 * (lo + hi), 0.5 * (hi - lo)
 
 
-def _default_eta(problem: str, method: str, spectral: dict | None) -> float:
+# Default eta of a derivative reflection (reflection_order >= 1), which needs
+# the quadratic continuation and so eta > 2.
+DERIVATIVE_REFLECTION_ETA = 3.0
+
+
+def _default_eta(problem: str, method: str, spectral: dict | None, reflection_order: int = 0) -> float:
     """The default eta; *spectral* is only read, and may only be omitted, for an entire f."""
     if method == "reflected":
-        return 2.0
+        return DERIVATIVE_REFLECTION_ETA if reflection_order >= 1 else 2.0
     if problem in ENTIRE_PROBLEMS:
         return ARCSINE_TAYLOR_ETA if method == "arcsine_taylor" else 2.0
 
@@ -248,6 +253,7 @@ def default_eta(
     gap: tuple[float, float] | None = None,
     spectral_kind: str = "auto",
     hermitian_tol: float = 1e-12,
+    reflection_order: int = 0,
 ) -> float:
     """Return the default extension parameter eta for the given problem and method.
 
@@ -265,9 +271,10 @@ def default_eta(
       which leaves the gap and the free part of the period equally wide.
       For singular values (or a symmetric gap) this is ``1 + 1/kappa``.
 
-    The reflected extension always defaults to ``2``, which maps the
-    spectral endpoints onto the reflection points and gives the optimal
-    subnormalisation.  Arcsine-Taylor needs ``eta > 2``: it defaults to
+    The reflected extension defaults to ``2``, which maps the spectral
+    endpoints onto the reflection points and gives the optimal
+    subnormalisation; with ``reflection_order >= 1`` it needs ``eta > 2``
+    and defaults to ``3``.  Arcsine-Taylor needs ``eta > 2``: it defaults to
     ``3`` for identity, exponentiation and polynomial, and to
     ``min(3, 1 + |mu|/delta)`` for definite inversion and square root, the
     midpoint of the admissible range ``2 < eta < 2 |mu|/delta``.
@@ -292,6 +299,9 @@ def default_eta(
         ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.
     hermitian_tol:
         Tolerance for the Hermitian test.
+    reflection_order:
+        For ``method='reflected'``, the derivative order of the reflection;
+        see :func:`~felcu.solve_fe_coefficients`.
 
     Returns
     -------
@@ -313,10 +323,10 @@ def default_eta(
     problem = canonical_problem_name(problem)
     method = canonical_method_name(method)
     if problem in ENTIRE_PROBLEMS:
-        return _default_eta(problem, method, None)
+        return _default_eta(problem, method, None, reflection_order)
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
     _check_method(method, spectral)
-    return _default_eta(problem, method, spectral)
+    return _default_eta(problem, method, spectral, reflection_order)
 
 
 # ---------------------------------------------------------------------------
@@ -417,6 +427,7 @@ def _make_spec(
     eta: float | None,
     method: str = "sobolev",
     polynomial: tuple[np.ndarray, str] | None = None,
+    reflection_order: int = 0,
 ) -> dict:
     """The fit of *problem* on *spectral*: ``g(x) = f(mu + x / tau)`` on ``tau (spectrum - mu)``.
 
@@ -428,10 +439,15 @@ def _make_spec(
     """
     _check_method(method, spectral)
     if eta is None:
-        eta = _default_eta(problem, method, spectral)
+        eta = _default_eta(problem, method, spectral, reflection_order)
     eta = float(eta)
     if eta <= 1.0:
         raise ValueError("eta must exceed 1.")
+    if reflection_order >= 1 and eta <= 2.0:
+        raise ValueError(
+            f"reflection_order={reflection_order} closes the reflection with the quadratic continuation, "
+            "which needs eta > 2."
+        )
 
     mu, delta = _centre_and_halfwidth(spectral)
     tau = math.inf if delta == 0 else PI / (eta * delta)
@@ -467,6 +483,7 @@ def _make_spec(
         "basis": basis,
         "baseline": baseline,
         "polynomial": polynomial,
+        "reflection_order": reflection_order,
     }
     if method != "sobolev":
         _check_explicit_eta(spec)

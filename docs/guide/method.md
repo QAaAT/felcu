@@ -352,6 +352,40 @@ series.
     `felcu` does not check this.  In particular it cannot be inferred from
     the endpoint derivatives alone for a general polynomial.
 
+### Derivative reflections (`reflection_order`)
+
+The even extension has a corner at \(x^\star\), which limits the
+reflected method to \(O(m^{-1})\).  With `reflection_order=d` \(\ge 1\)
+(which needs \(\eta > 2\), default \(3\)), `felcu` continues the
+\(d\)-th derivative instead and integrates the result \(d\) times.  The
+endpoint \(x^\star\) is the one where \(|g^{(d)}|\) is larger,
+\(\zeta = g^{(d)}(x^\star)/|g^{(d)}(x^\star)|\), and
+\(h(y) = \overline{\zeta}\, g^{(d)}(x^\star + qy)\) is closed with the
+same quadratic at \(\beta_0 = 0\): a periodic function's derivative has
+mean zero, so `closure_mean` must be `None` or `0`.  Integrating term by
+term,
+
+\[
+c_{\pm k} = \frac{\zeta\beta_k}{2(\pm ik)^d}\, e^{\mp ikx^\star}\quad(k \ge 1),
+\qquad
+c_0 = g(x^\star) - \sum_{k \ne 0} c_k e^{ikx^\star},
+\]
+
+so \(g_m(x^\star) = g(x^\star)\) exactly and \(g_m^{(d)}\) is the
+order-0 continuation of \(g^{(d)}\).
+
+**\(d = 1\)** gives a continuous \(g_m'\), so the corner moves to the
+first derivative and the error falls as \(O(m^{-2})\).
+
+**\(d \ge 2\) is experimental.**  Periodic integration recovers \(g\)
+only up to a polynomial of degree \(d - 1\): the lost terms are the means
+of \(g', \dots, g^{(d-1)}\) over the period, which the continuation of
+\(g^{(d)}\) does not control.  For \(e^{t}\) on \([0.1, 2]\) the error is
+about \(10\) for every \(m\) at \(d = 2\) and \(d = 3\), and nearly all of
+it is that polynomial.  `felcu` reports the error honestly, so such fits
+do not converge.  `reflection_order` is separate from `sobolev_w`, which
+only applies to the Sobolev method.
+
 ## Arcsine-Taylor
 
 The arcsine-Taylor construction (Sec. IV of the paper) changes variable to

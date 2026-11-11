@@ -23,6 +23,14 @@ defaults suit most problems; this page explains when to change them.
     \(\beta_0 = 0\); the value used is `result.closure_mean`.  Fix it to
     compare orders of one continuation.
 
+`reflection_order` (default `0`)
+:   For `method="reflected"` only: the derivative order \(d\) that is
+    [reflected and integrated back](method.md#derivative-reflections-reflection_order).
+    \(d = 1\) needs \(\eta > 2\) (the default becomes \(3\)), forces
+    `closure_mean` to \(0\), and converges as \(O(m^{-2})\).  \(d \ge 2\)
+    is experimental and generally does not converge.
+    `result.reflection_order` records it.
+
 ## Accuracy
 
 `target_error` (default `1e-12`)

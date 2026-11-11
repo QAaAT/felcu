@@ -35,7 +35,7 @@ The coefficients come from one of the paper's three strategies, chosen with
 | Method | Convergence | Subnormalisation $\alpha_m = \sum_k \lvert c_k\rvert$ |
 |---|---|---|
 | `sobolev` (default) | near-exponential, down to the target | $O(\lVert f(\mathcal H)\rVert)$ |
-| `reflected` | algebraic, $O(m^{-1})$ | $\lVert f(\mathcal H)\rVert$ (optimal) for convex $f$ |
+| `reflected` | algebraic, $O(m^{-1})$; $O(m^{-2})$ with `reflection_order=1` | $\lVert f(\mathcal H)\rVert$ (optimal) for convex $f$ |
 | `arcsine_taylor` | exponential, $O(\sin^m(\pi/\eta))$ | bounded, larger than optimal |
 
 ## Installation

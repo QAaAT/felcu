@@ -71,6 +71,7 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         polynomial_coefficients=None if spec["polynomial"] is None else spec["polynomial"][0].copy(),
         polynomial_basis=None if spec["polynomial"] is None else spec["polynomial"][1],
         closure_mean=None if cand.get("closure_mean") is None else _scalar(cand["closure_mean"]),
+        reflection_order=int(spec["reflection_order"]) if spec["method"] == "reflected" else None,
     )
 
 
@@ -200,6 +201,7 @@ def solve_fe_coefficients(
     polynomial_coefficients: Sequence[complex] | None = None,
     polynomial_basis: str | None = None,
     closure_mean: complex | None = None,
+    reflection_order: int | None = None,
 ) -> FourierExtensionResult:
     """Compute Fourier-extension LCU block-encoding coefficients.
 
@@ -323,7 +325,18 @@ def solve_fe_coefficients(
         ``None`` (default) chooses it for each order m to minimise
         ``sum_k |c_k|`` without raising the maximum error above that of
         ``beta_0 = 0``.  To compare orders of one continuation, pass the
-        value from ``result.closure_mean`` so that it stays fixed.
+        value from ``result.closure_mean`` so that it stays fixed.  With
+        ``reflection_order >= 1`` the mean is 0: leave it ``None`` (or
+        pass 0).
+    reflection_order:
+        For ``method='reflected'`` only: the derivative order ``d >= 0``
+        of the reflection, independent of *sobolev_w*.  ``0`` (default)
+        reflects g itself.  ``d >= 1`` continues ``g^(d)`` with the
+        quadratic continuation (so needs ``eta > 2``, default ``3``) and
+        integrates the series back d times, matching g at the reflection
+        endpoint.  Orders ``d >= 2`` are experimental: the periodic
+        integral need not recover the lower derivatives of g, so check the
+        achieved error, which is always measured against g itself.
 
     Returns
     -------
@@ -334,6 +347,14 @@ def solve_fe_coefficients(
     method = canonical_method_name(method)
     metric = canonical_error_metric(error_metric)
     polynomial = _polynomial(problem, polynomial_coefficients, polynomial_basis)
+    if reflection_order is not None:
+        if method != "reflected":
+            raise ValueError(f"reflection_order only applies to method='reflected', not method='{method}'.")
+        if isinstance(reflection_order, bool) or not isinstance(reflection_order, (int, np.integer)):
+            raise ValueError("reflection_order must be a non-negative integer.")
+        if reflection_order < 0:
+            raise ValueError("reflection_order must be a non-negative integer.")
+    reflection_order = 0 if reflection_order is None else int(reflection_order)
     if closure_mean is not None:
         if method != "reflected":
             raise ValueError(f"closure_mean only applies to method='reflected', not method='{method}'.")
@@ -363,8 +384,13 @@ def solve_fe_coefficients(
         raise ValueError("selection must be 'smallest_m' or 'smallest_alpha'.")
 
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
-    spec = _make_spec(problem, spectral, eta, method, polynomial)
+    spec = _make_spec(problem, spectral, eta, method, polynomial, reflection_order)
     if closure_mean is not None:
+        if reflection_order >= 1 and closure_mean != 0:
+            raise ValueError(
+                f"reflection_order={reflection_order} needs closure mean 0 (closure_mean=None or 0), "
+                f"not {closure_mean!r}: the integrated series has no free mean."
+            )
         if spec["eta"] <= 2.0:
             raise ValueError(
                 "closure_mean sets the quadratic continuation, which reflected uses only for eta > 2; "

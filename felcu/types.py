@@ -112,7 +112,11 @@ class FourierExtensionResult:
         ``'legendre'``; ``None`` otherwise.
     closure_mean : float, complex or None
         For ``method='reflected'`` with ``eta > 2``, the mean ``beta_0`` of
-        the quadratic continuation used for this order; ``None`` otherwise.
+        the quadratic continuation used for this order (0 when
+        ``reflection_order >= 1``); ``None`` otherwise.
+    reflection_order : int or None
+        For ``method='reflected'``, the derivative order ``d`` of the
+        reflection; ``None`` for the other methods.
     all_results : tuple of FourierExtensionResult
         Every candidate tried, sorted by ``m``.  Empty on the candidates
         themselves.
@@ -151,6 +155,7 @@ class FourierExtensionResult:
     polynomial_coefficients: np.ndarray | None = None
     polynomial_basis: str | None = None
     closure_mean: float | complex | None = None
+    reflection_order: int | None = None
     all_results: tuple[FourierExtensionResult, ...] = ()
 
     @property

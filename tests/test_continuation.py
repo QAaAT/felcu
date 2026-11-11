@@ -163,3 +163,94 @@ class TestInterface:
         assert FourierExtensionResult.from_json(r.to_json()).closure_mean == r.closure_mean
         real = solve_fe_coefficients("exponentiation", eta=3.0, m=8, **EXP)
         assert FourierExtensionResult.from_json(real.to_json()).closure_mean == real.closure_mean
+
+
+# ---------------------------------------------------------------------------
+# Derivative reflections (reflection_order >= 1)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.convergence
+class TestDerivativeReflections:
+    def test_differentiated_series_is_the_continuation_of_the_derivative(self):
+        # d/dx of the integrated series reproduces the order-0 continuation of g', with mean 0.
+        from felcu._explicit import _continuation_profile, _continuation_series
+        from felcu.spectral import _make_spec, _spectral_data
+
+        m = 24
+        r = solve_fe_coefficients("exponentiation", reflection_order=1, eta=3.0, m=m, **EXP)
+        spectral = _spectral_data("exponentiation", None, 0.1, 2.0, None, "auto", 1e-12)
+        spec = _make_spec("exponentiation", spectral, 3.0, "reflected", reflection_order=1)
+        _, ak, bk = _continuation_series(_continuation_profile(spec, m, 1), 0.0)
+        k = np.arange(1, m + 1)
+        np.testing.assert_allclose(-k * r.bk, ak, atol=1e-13)  # derivative of b_k cos kx is -k b_k sin kx
+        np.testing.assert_allclose(k * r.ak, bk, atol=1e-13)
+
+    @pytest.mark.parametrize("problem, kwargs", [("exponentiation", EXP), ("polynomial", COMPLEX)])
+    def test_matches_g_at_the_reflection_endpoint(self, problem, kwargs):
+        r = solve_fe_coefficients(problem, reflection_order=1, m=16, **kwargs)
+        x = np.array([-r.x_max, r.x_max])
+        from felcu import evaluate_target_function
+
+        g, gm = evaluate_target_function(x, r), evaluate_fourier_series(x, r.a0, r.ak, r.bk)
+        assert np.min(np.abs(gm - g)) < 1e-13  # exact at x*, the endpoint where |g'| is larger
+
+    @pytest.mark.parametrize("problem, kwargs", [("exponentiation", EXP), ("polynomial", COMPLEX)])
+    def test_first_order_converges_quadratically(self, problem, kwargs):
+        errors = [
+            solve_fe_coefficients(problem, reflection_order=1, m=m, **kwargs).achieved_linf_error for m in (32, 128)
+        ]
+        assert 12 < errors[0] / errors[1] < 20  # O(1/m^2)
+
+    def test_second_order_is_checked_against_g(self):
+        # Experimental: periodic integration loses the mean of g', so for exp the error does not fall.
+        r = solve_fe_coefficients("exponentiation", reflection_order=2, m=64, target_error=1e-2, **EXP)
+        x = fitted_domain_segments(r)[0]
+        error = np.max(np.abs(evaluate_fourier_series(x, r.a0, r.ak, r.bk) - np.exp(r.mu + x / r.tau)))
+        assert error == pytest.approx(r.achieved_linf_error, rel=1e-3)
+        assert not r.converged
+
+    def test_real_profile_gives_real_coefficients(self):
+        r = solve_fe_coefficients("exponentiation", reflection_order=1, m=8, **EXP)
+        assert r.ak.dtype == np.float64 and isinstance(r.a0, float)
+
+
+@pytest.mark.interface
+class TestReflectionOrderInterface:
+    def test_recorded(self):
+        r = solve_fe_coefficients("exponentiation", reflection_order=1, m=8, **EXP)
+        assert r.reflection_order == 1 and r.closure_mean == 0.0 and r.eta == 3.0
+        assert solve_fe_coefficients("exponentiation", m=8, **EXP).reflection_order == 0
+        sobolev = solve_fe_coefficients("exponentiation", m=8, sigma_min=0.1, sigma_max=2.0)
+        assert sobolev.reflection_order is None
+        assert FourierExtensionResult.from_json(r.to_json()).reflection_order == 1
+
+    def test_default_eta(self):
+        from felcu import default_eta
+
+        assert default_eta("exponentiation", method="reflected", reflection_order=1) == 3.0
+        assert default_eta("inversion", method="reflected", sigma_min=0.5, sigma_max=1.0, reflection_order=2) == 3.0
+        assert default_eta("exponentiation", method="reflected") == 2.0
+
+    def test_needs_eta_above_two(self):
+        with pytest.raises(ValueError, match="needs eta > 2"):
+            solve_fe_coefficients("exponentiation", reflection_order=1, eta=2.0, m=8, **EXP)
+
+    def test_only_for_reflected(self):
+        with pytest.raises(ValueError, match="reflection_order only applies"):
+            solve_fe_coefficients("exponentiation", reflection_order=1, m=8, sigma_min=0.1, sigma_max=2.0)
+
+    @pytest.mark.parametrize("value", [-1, 1.5, True, "1"])
+    def test_must_be_a_non_negative_integer(self, value):
+        with pytest.raises(ValueError, match="non-negative integer"):
+            solve_fe_coefficients("exponentiation", reflection_order=value, m=8, **EXP)
+
+    def test_closure_mean_must_be_zero(self):
+        with pytest.raises(ValueError, match="needs closure mean 0"):
+            solve_fe_coefficients("exponentiation", reflection_order=1, closure_mean=0.5, m=8, **EXP)
+        r = solve_fe_coefficients("exponentiation", reflection_order=1, closure_mean=0, m=8, **EXP)
+        assert r.closure_mean == 0.0
+
+    def test_independent_of_sobolev_w(self):
+        with pytest.raises(ValueError, match="sobolev_w only apply"):
+            solve_fe_coefficients("exponentiation", reflection_order=1, sobolev_w=2.0, m=8, **EXP)

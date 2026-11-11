@@ -65,18 +65,19 @@ def _reflected_coefficients(spec: dict, m: int) -> tuple[float, np.ndarray, np.n
 # beta_k is affine in beta_0, the closure mean.
 
 
-def _continuation_profile(spec: dict, m: int) -> dict:
+def _continuation_profile(spec: dict, m: int, d: int = 0) -> dict:
     """The parts of the continuation that do not depend on the closure mean.
 
-    Returns ``x_star``, ``zeta``, ``beta`` (beta_1..beta_m at beta_0 = 0) and
-    ``dbeta`` (their derivative with respect to beta_0), and whether the
-    profile is ``real``.
+    The profile is built from g^(d), the d-th derivative of g (g itself for
+    d = 0).  Returns ``x_star``, ``zeta``, ``beta`` (beta_1..beta_m at
+    beta_0 = 0) and ``dbeta`` (their derivative with respect to beta_0), and
+    whether the profile is ``real``.
     """
     eta = spec["eta"]
     x_max = math.pi / eta
     theta = 2.0 * x_max
     ell = math.pi - theta
-    g_left, g_right = (complex(v) for v in _spec_target(np.array([-x_max, x_max]), spec))
+    g_left, g_right = (complex(v) for v in _spec_target(np.array([-x_max, x_max]), spec, d))
     # The endpoint with the larger |g|; q = +1 at the left end, -1 at the right.
     if abs(g_left) >= abs(g_right):
         x_star, q, g_star, g_far = -x_max, 1.0, g_left, g_right
@@ -87,7 +88,7 @@ def _continuation_profile(spec: dict, m: int) -> dict:
     n = max(8 * (m + 1) + 64, 600)
     y1, w1 = _gauss_interval(0.0, theta, n)
     y2, w2 = _gauss_interval(theta, math.pi, n)
-    h1 = np.conj(zeta) * _spec_target(x_star + q * y1, spec)
+    h1 = np.conj(zeta) * _spec_target(x_star + q * y1, spec, d)
     h_theta = np.conj(zeta) * g_far
     real = bool(np.max(np.abs(np.imag(h1)), initial=0.0) <= 1e-14 * max(np.max(np.abs(h1)), 1e-300))
     real = real and abs(np.imag(h_theta)) <= 1e-14 * max(abs(h_theta), 1e-300)
@@ -207,11 +208,39 @@ def _golden_minimum(fun, lo: float, hi: float) -> float:
     return min(candidates, key=fun)
 
 
+def _integrated_series(profile: dict, spec: dict, d: int) -> tuple[float | complex, np.ndarray, np.ndarray]:
+    """``(a0, ak, bk)`` of the d-fold integral of a continued g^(d) profile (with beta_0 = 0).
+
+    The cosine series of g^(d) is integrated mode by mode,
+    ``c_{+-k} = zeta beta_k e^{-+ i k x*} / (2 (+-ik)^d)``, and the constant is
+    fixed so that the truncated series matches g at x*:
+    ``c_0 = g(x*) - sum_{k != 0} c_k e^{i k x*}``.
+    """
+    zeta, x_star, beta = profile["zeta"], profile["x_star"], profile["beta"]
+    k = np.arange(1, beta.size + 1)
+    c_pos = zeta * beta * np.exp(-1j * k * x_star) / (2.0 * (1j * k) ** d)
+    c_neg = zeta * beta * np.exp(1j * k * x_star) / (2.0 * (-1j * k) ** d)
+    ak, bk = 1j * (c_pos - c_neg), c_pos + c_neg
+    if profile["real"]:
+        # A real profile gives real coefficients; drop the rounding in the imaginary parts.
+        ak, bk = ak.real, bk.real
+    g_star = _scalar(_spec_target(np.array([x_star]), spec)[0])
+    a0 = g_star - (np.sum(ak * np.sin(k * x_star)) + np.sum(bk * np.cos(k * x_star)))
+    return _scalar(a0), ak, bk
+
+
 def _continuation_coefficients(
     spec: dict, m: int, val: list
 ) -> tuple[float | complex, np.ndarray, np.ndarray, float | complex]:
-    """The quadratic continuation of order *m*, and the closure mean it used."""
-    profile = _continuation_profile(spec, m)
+    """The quadratic continuation of order *m*, and the closure mean it used.
+
+    For ``reflection_order`` d >= 1 the continuation is of g^(d), with
+    closure mean 0, integrated back d times.
+    """
+    d = spec.get("reflection_order", 0)
+    profile = _continuation_profile(spec, m, d)
+    if d >= 1:
+        return *_integrated_series(profile, spec, d), 0.0
     beta0 = spec.get("closure_mean")
     if beta0 is None:
         beta0 = _optimal_closure_mean(profile, val)

@@ -112,6 +112,15 @@ CASES = {
         target_error=0.45,
         m_values=[16, 32, 64],
     ),
+    "derivative_reflection_exponentiation": dict(
+        problem="exponentiation",
+        method="reflected",
+        reflection_order=1,
+        sigma_min=0.1,
+        sigma_max=2.0,
+        target_error=1e-3,
+        m_values=[32, 64, 128],
+    ),
     "arcsine_taylor_exponentiation": dict(
         problem="exponentiation",
         method="arcsine_taylor",
