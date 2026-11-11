@@ -4,7 +4,7 @@ Each script in `examples/` is short and self-contained, and shows one idea.
 Run any of them from the project root:
 
 ```bash
-python examples/action/01_basic_interval.py
+python examples/identity/01_basic_interval.py
 ```
 
 !!! note
@@ -12,9 +12,9 @@ python examples/action/01_basic_interval.py
     Make sure `felcu` is installed in editable mode (`pip install -e .`) so
     they use your working copy.
 
-## Action
+## Identity
 
-### Action on a symmetric interval
+### Identity on a symmetric interval
 
 Fit \(f(\mathcal H) = \mathcal H\) for a Hermitian \(\mathcal H\) with
 eigenvalues in \([-1, 1]\).
@@ -23,11 +23,11 @@ eigenvalues in \([-1, 1]\).
 fits \(g(x) = x/\tau\).  Because that is odd, every cosine coefficient
 \(b_k\) and the constant term \(a_0\) vanish.
 
-```python title="examples/action/01_basic_interval.py"
---8<-- "examples/action/01_basic_interval.py"
+```python title="examples/identity/01_basic_interval.py"
+--8<-- "examples/identity/01_basic_interval.py"
 ```
 
-### Action on an off-centre interval
+### Identity on an off-centre interval
 
 For eigenvalues in \([2, 5]\), `felcu` centres the fit at \(\mu = 3.5\):
 
@@ -44,22 +44,22 @@ Hermitian dilation instead.  The dilation's spectrum,
 \(g(x) = x/\tau\) covers the whole of \([-5, 5]\), which costs a larger
 \(\alpha_m\).
 
-```python title="examples/action/02_off_centre.py"
---8<-- "examples/action/02_off_centre.py"
+```python title="examples/identity/02_off_centre.py"
+--8<-- "examples/identity/02_off_centre.py"
 ```
 
-### Action from a Hermitian matrix
+### Identity from a Hermitian matrix
 
 Pass the matrix itself: `felcu` reads its eigenvalue range.  We then
 check the block-encoded operator \(g(\tau(\mathcal H - \mu I))\) against
 \(\mathcal H\) using an eigendecomposition, with \(\mu\) the centre of the
 eigenvalue range.
 
-```python title="examples/action/03_hermitian_matrix.py"
---8<-- "examples/action/03_hermitian_matrix.py"
+```python title="examples/identity/03_hermitian_matrix.py"
+--8<-- "examples/identity/03_hermitian_matrix.py"
 ```
 
-### Action on a non-Hermitian matrix
+### Identity on a non-Hermitian matrix
 
 For a non-Hermitian \(A\), `felcu` switches to the singular values
 automatically.  The odd sine series acts on the singular values (as in
@@ -69,8 +69,8 @@ QSVT): with \(A = U\Sigma V^\dagger\),
 U g(\tau\Sigma) V^\dagger \approx A .
 \]
 
-```python title="examples/action/04_non_hermitian_matrix.py"
---8<-- "examples/action/04_non_hermitian_matrix.py"
+```python title="examples/identity/04_non_hermitian_matrix.py"
+--8<-- "examples/identity/04_non_hermitian_matrix.py"
 ```
 
 ## Inversion

@@ -26,9 +26,9 @@ pytestmark = pytest.mark.unit
 
 class TestCanonicalProblemName:
     def test_aliases_resolve(self):
-        assert canonical_problem_name("action") == "action"
-        assert canonical_problem_name("identity") == "action"
-        assert canonical_problem_name("matrix-action") == "action"
+        assert canonical_problem_name("identity") == "identity"
+        assert canonical_problem_name("action") == "identity"
+        assert canonical_problem_name("matrix-action") == "identity"
         assert canonical_problem_name("inversion") == "inversion"
         assert canonical_problem_name("inverse") == "inversion"
         assert canonical_problem_name("exp") == "exponentiation"
@@ -38,7 +38,7 @@ class TestCanonicalProblemName:
         assert canonical_problem_name("square-root") == "square_root"
 
     def test_case_and_whitespace_insensitive(self):
-        assert canonical_problem_name("  ACTION  ") == "action"
+        assert canonical_problem_name("  IDENTITY  ") == "identity"
         assert canonical_problem_name("Inversion") == "inversion"
 
     def test_unknown_raises(self):
@@ -212,7 +212,7 @@ class TestDefaultEta:
         assert default_eta("inversion", method="refl", sigma_min=0.1, sigma_max=1.0) == 2.0
 
     def test_arcsine_taylor(self):
-        assert default_eta("action", method="arcsine_taylor") == 3.0
+        assert default_eta("identity", method="arcsine_taylor") == 3.0
         # Midpoint of 2 < eta < 2 mu / delta, capped at 3.
         assert default_eta("inversion", method="asin", sigma_min=0.1, sigma_max=1.0) == pytest.approx(1 + 1.1 / 0.9)
         assert default_eta("square_root", method="asin", sigma_min=0.5, sigma_max=1.0) == 3.0
@@ -249,8 +249,8 @@ class TestDefaultSobolevR:
     @pytest.mark.parametrize(
         "problem, kwargs",
         [
-            ("action", {}),
-            ("action", dict(sigma_min=-1.0, sigma_max=2.0)),
+            ("identity", {}),
+            ("identity", dict(sigma_min=-1.0, sigma_max=2.0)),
             ("inversion", dict(sigma_min=0.5, sigma_max=3.0)),
             ("inversion", dict(sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4))),
             ("exponentiation", dict(sigma_min=1.0, sigma_max=3.0)),

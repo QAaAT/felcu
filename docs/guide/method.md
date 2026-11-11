@@ -114,7 +114,7 @@ The defaults are the scale-adapted choices of Sec. VI:
 
 | Problem | Default \(r\) |
 |---|---|
-| action | \(r_{\rm id} = 1\) |
+| identity | \(r_{\rm id} = 1\) |
 | exponentiation | \(r_{\exp} = (1 + 1/\tau)^{-1}\), i.e. \((1 + \eta\delta/\pi)^{-1}\) |
 | inversion | \(\min\{1,\ \tau \min_{\lambda \in \operatorname{spec}} \lvert\lambda\rvert\}\), the distance from the fitted set to the pole |
 | square root | \(r_{\rm sqrt} = \kappa^{-(2w-1)/(2w)}\), i.e. \(\kappa^{-1/2}\) for \(w = 1\) |
@@ -230,7 +230,7 @@ odd sine and even cosine modes survive, and `felcu` computes each from
 Gauss–Legendre quadrature of \(g\) over \([-\pi/2, \pi/2]\).
 
 When \(f\) is convex and maximised in magnitude at a spectral endpoint
-(the paper's convex endpoint-reflection condition: action, exponentiation
+(the paper's convex endpoint-reflection condition: identity, exponentiation
 and definite inversion),
 every Fourier mode is phase-aligned at that endpoint, so the
 subnormalisation is optimal,
@@ -282,7 +282,7 @@ faster but costs subnormalisation.
 
 `felcu` computes \(d_0, \dots, d_m\) exactly (up to rounding) by truncated
 power-series arithmetic on \(u(z) = \mu + \arcsin(z)/\tau\): \(u\) itself
-for action, and the series exponential, reciprocal or square root for the
+for identity, and the series exponential, reciprocal or square root for the
 other problems.  It then evaluates \(\sum_k d_k \sin^k x\) by Horner's rule
 on \(2m + 2\) equispaced points, and reads off the Fourier coefficients with
 an FFT, which is exact for a trigonometric polynomial of degree \(m\).
@@ -308,7 +308,7 @@ an FFT, which is exact for a trigonometric polynomial of degree \(m\).
     often slightly more so, and it needs no binomial table.
 
 - **\(\eta\).**  The method requires \(\eta > 2\).  The default is \(3\)
-  (\(\rho_3 \approx 0.866\)) for action and exponentiation, as in the
+  (\(\rho_3 \approx 0.866\)) for identity and exponentiation, as in the
   paper.  For inversion and square root, \(f\) must be analytic on
   \([\mu - \eta\delta/2, \mu + \eta\delta/2]\), so
   \(2 < \eta < 2\mu/\delta = 2(\kappa+1)/(\kappa-1)\); the default is the

@@ -26,10 +26,10 @@ from felcu import solve_fe_coefficients
 
 TARGET = 1e-5
 M_VALUES = range(4, 129, 4)
-# Vertical label nudges (points) for the action and square-root lines, which end close together.
-LABEL_DY = {"action": -5, "square_root": 5}
+# Vertical label nudges (points) for the identity and square-root lines, which end close together.
+LABEL_DY = {"identity": -5, "square_root": 5}
 PROBLEMS = [
-    ("action", dict(sigma_min=-1.0, sigma_max=1.0)),
+    ("identity", dict(sigma_min=-1.0, sigma_max=1.0)),
     ("inversion", dict(sigma_min=0.5, sigma_max=3.0)),
     ("exponentiation", dict(sigma_min=0.1, sigma_max=2.0)),
     ("square_root", dict(sigma_min=0.15, sigma_max=1.0)),

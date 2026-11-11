@@ -1,6 +1,6 @@
 """
-Action on an off-centre interval
-================================
+Identity on an off-centre interval
+==================================
 
 For eigenvalues in [2, 5], felcu centres the fit at mu = 3.5:
 
@@ -15,7 +15,7 @@ dilation instead.  The dilation's spectrum, [-5, -2] U [2, 5], is centred at
 costs a larger alpha.
 
 Run with:
-    python examples/action/02_off_centre.py
+    python examples/identity/02_off_centre.py
 """
 
 from felcu import solve_fe_coefficients
@@ -23,7 +23,7 @@ from felcu import solve_fe_coefficients
 kwargs = dict(sigma_min=2.0, sigma_max=5.0, target_error=1e-8, m_values=range(4, 33, 2))
 
 for kind in ("eigenvalues", "singular_values"):
-    r = solve_fe_coefficients("action", spectral_kind=kind, **kwargs)
+    r = solve_fe_coefficients("identity", spectral_kind=kind, **kwargs)
     print(
         f"{kind:<15}  mu={r.mu:<4}  basis={r.basis_used:<16}  m={r.m:<4}  "
         f"a0={r.a0:.4f}  alpha={r.alpha:.4f}  Linf={r.achieved_linf_error:.1e}"

@@ -24,8 +24,8 @@ DATA_DIR = Path(__file__).parent / "data" / "regression"
 M_VALUES = [16, 24, 32]
 
 CASES = {
-    "action": dict(problem="action", sigma_min=-1.0, sigma_max=2.0, target_error=1e-6),
-    "action_singular_values": dict(problem="action", matrix=[[1.0, 0.5], [-0.2, 0.8]], target_error=1e-6),
+    "identity": dict(problem="identity", sigma_min=-1.0, sigma_max=2.0, target_error=1e-6),
+    "identity_singular_values": dict(problem="identity", matrix=[[1.0, 0.5], [-0.2, 0.8]], target_error=1e-6),
     "inversion": dict(problem="inversion", sigma_min=0.5, sigma_max=2.0, target_error=1e-4),
     "inversion_indefinite": dict(
         problem="inversion", sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4), target_error=1e-4, m_values=[32, 48, 64]
@@ -39,8 +39,8 @@ CASES = {
     ),
     "exponentiation_matrix": dict(problem="exponentiation", matrix=[[1.0, 0.2], [0.2, 0.5]], target_error=1e-8),
     "square_root": dict(problem="square_root", sigma_min=0.2, sigma_max=1.0, target_error=1e-4),
-    "reflected_action": dict(
-        problem="action", method="reflected", sigma_min=-1.0, sigma_max=1.0, target_error=1e-2, m_values=[32, 64, 128]
+    "reflected_identity": dict(
+        problem="identity", method="reflected", sigma_min=-1.0, sigma_max=1.0, target_error=1e-2, m_values=[32, 64, 128]
     ),
     "reflected_exponentiation": dict(
         problem="exponentiation",

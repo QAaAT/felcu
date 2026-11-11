@@ -33,7 +33,7 @@ AXIS = "#c3c2b7"
 PROBLEM_LABELS = {"square_root": "square root"}  # display names where the API name has an underscore
 
 PROBLEM_COLORS = {
-    "action": "#2a78d6",
+    "identity": "#2a78d6",
     "inversion": "#eb6834",
     "exponentiation": "#1baf7a",
     "square_root": "#eda100",  # low contrast on SURFACE: always direct-label it

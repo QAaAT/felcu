@@ -21,13 +21,13 @@ computes eigenvalues or singular values itself.
 
 | Problem | `spectral_kind='auto'` (default) | Also available |
 |---|---|---|
-| `action` | eigenvalues; singular values for a non-Hermitian matrix | the other one |
+| `identity` (or `action`) | eigenvalues; singular values for a non-Hermitian matrix | the other one |
 | `inversion` | eigenvalues; singular values for a non-Hermitian matrix | the other one |
 | `exponentiation` | eigenvalues | none |
 | `square_root` | eigenvalues (must be positive definite) | none |
 
 Eigenvalues need a Hermitian matrix (tested to `hermitian_tol`).
-Singular values are only available for the odd functions, action and
+Singular values are only available for the odd functions, identity and
 inversion (see [Singular values](#singular-values)).
 
 ## The scaled variable
@@ -59,8 +59,8 @@ from zero, such as \([2, 5]\), it fits \([-1.5, 1.5]\) rather than
 
 | Problem | Spectrum | Fitted \(g(x)\) | Basis | Fitted set |
 |---|---|---|---|---|
-| action | eigenvalues | \(\mu + x/\tau\) | constant + sine | \(\Omega_\eta\) |
-| action | singular values | \(x/\tau\) | odd sine | \(\Omega_\eta\) |
+| identity | eigenvalues | \(\mu + x/\tau\) | constant + sine | \(\Omega_\eta\) |
+| identity | singular values | \(x/\tau\) | odd sine | \(\Omega_\eta\) |
 | inversion | definite eigenvalues | \((\mu + x/\tau)^{-1}\) | full | \(\Omega_\eta\) |
 | inversion | indefinite eigenvalues | \((\mu + x/\tau)^{-1}\) | full | \(\Omega_\eta\) less the gap |
 | inversion | singular values | \(\tau/x\) | odd sine | \(\Omega_\eta\) less the gap |
@@ -157,7 +157,7 @@ smaller interval.  For `method="sobolev"` the defaults are:
 
 | Problem | Default \(\eta\) | Reason |
 |---|---|---|
-| action, exponentiation | \(2\) | entire \(f\); optimal for reflected extensions |
+| identity, exponentiation | \(2\) | entire \(f\); optimal for reflected extensions |
 | inversion (definite), square root | \(\eta_{\rm def} = \lvert\mu\rvert/\delta = (\kappa + 1)/(\kappa - 1)\) | puts the pole or branch point \(x = -\tau\mu\) at the periodic boundary |
 | inversion (indefinite or singular values) | \(1 + (b - a)/(2\delta)\) | the gap around the pole and the free part of the period are equally wide |
 
@@ -173,7 +173,7 @@ The explicit methods use their own defaults and ranges (see
 | `method` | Default \(\eta\) | Allowed |
 |---|---|---|
 | `"reflected"` | \(2\) | \(\eta \ge 2\) |
-| `"arcsine_taylor"`, action and exponentiation | \(3\) | \(\eta > 2\) |
+| `"arcsine_taylor"`, identity and exponentiation | \(3\) | \(\eta > 2\) |
 | `"arcsine_taylor"`, inversion and square root | \(\min\{3,\ 1 + \lvert\mu\rvert/\delta\}\) | \(2 < \eta < 2\lvert\mu\rvert/\delta\) |
 
 Both explicit methods require \(\eta < 2|\mu|/\delta\) for inversion and
@@ -184,9 +184,11 @@ singular-value inversion.
 
 | Canonical | Also accepted |
 |---|---|
-| `action` | `identity`, `matrix-action` |
+| `identity` | `action`, `matrix-action` |
 | `inversion` | `inverse` |
 | `exponentiation` | `exp`, `exponential` |
 | `square_root` | `sqrt`, `square-root` |
 
-Names are case-insensitive.
+Names are case-insensitive.  `identity` and `action` are interchangeable
+names for \(f(\mathcal H) = \mathcal H\); results always record the
+canonical name, `result.problem == "identity"`.
