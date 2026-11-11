@@ -1,5 +1,13 @@
 # felcu
 
+[![CI](https://github.com/QAaAT/felcu/actions/workflows/ci.yml/badge.svg)](https://github.com/QAaAT/felcu/actions/workflows/ci.yml)
+[![Docs](https://github.com/QAaAT/felcu/actions/workflows/docs.yml/badge.svg)](https://qaaat.github.io/felcu/)
+[![arXiv](https://img.shields.io/badge/arXiv-2601.18024-b31b1b.svg)](https://arxiv.org/abs/2601.18024)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FQAaAT%2Ffelcu%2Fmain%2Fpyproject.toml)](pyproject.toml)
+[![SPEC 0](https://img.shields.io/badge/SPEC-0-green?labelColor=%23004811&color=%235CA038)](https://scientific-python.org/specs/spec-0000/)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 **Fourier-extension coefficients for LCU block encodings of matrix functions.**
 
 `felcu` computes coefficients for representing matrix functions via Linear
