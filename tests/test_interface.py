@@ -329,3 +329,11 @@ class TestComputeFECoefficients:
         assert isinstance(ak, np.ndarray)
         assert isinstance(bk, np.ndarray)
         assert len(ak) == len(bk)
+
+
+@pytest.mark.parametrize("name", ["action", "Action", "matrix-action"])
+def test_action_is_an_equivalent_name_for_identity(name):
+    common = dict(sigma_min=-1.0, sigma_max=1.0, m=16)
+    r, expected = solve_fe_coefficients(name, **common), solve_fe_coefficients("identity", **common)
+    assert r.problem == "identity"
+    np.testing.assert_array_equal(r.ak, expected.ak)

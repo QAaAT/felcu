@@ -21,7 +21,7 @@ computes eigenvalues or singular values itself.
 
 | Problem | `spectral_kind='auto'` (default) | Also available |
 |---|---|---|
-| `identity` | eigenvalues; singular values for a non-Hermitian matrix | the other one |
+| `identity` (or `action`) | eigenvalues; singular values for a non-Hermitian matrix | the other one |
 | `inversion` | eigenvalues; singular values for a non-Hermitian matrix | the other one |
 | `exponentiation` | eigenvalues | none |
 | `square_root` | eigenvalues (must be positive definite) | none |
@@ -184,9 +184,11 @@ singular-value inversion.
 
 | Canonical | Also accepted |
 |---|---|
-| `identity` | `action` (its former name), `matrix-action` |
+| `identity` | `action`, `matrix-action` |
 | `inversion` | `inverse` |
 | `exponentiation` | `exp`, `exponential` |
 | `square_root` | `sqrt`, `square-root` |
 
-Names are case-insensitive.
+Names are case-insensitive.  `identity` and `action` are interchangeable
+names for \(f(\mathcal H) = \mathcal H\); results always record the
+canonical name, `result.problem == "identity"`.

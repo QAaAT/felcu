@@ -9,7 +9,7 @@ It supports four problems:
 
 | Problem | Function |
 |---|---|
-| `identity` | $f(\mathcal H) = \mathcal H$ |
+| `identity` (or `action`) | $f(\mathcal H) = \mathcal H$ |
 | `inversion` | $f(\mathcal H) = \mathcal H^{-1}$ |
 | `exponentiation` | $f(\mathcal H) = e^{\mathcal H}$ |
 | `square_root` | $f(\mathcal H) = \sqrt{\mathcal H}$ ($\mathcal H$ positive definite) |

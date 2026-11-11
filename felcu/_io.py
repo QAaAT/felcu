@@ -94,7 +94,7 @@ def _fields_from_dict(cls: type[FourierExtensionResult], data: dict[str, Any]) -
         elif isinstance(value, str) and field.type in ("float", "float | None"):
             value = _decode_float(value)
         elif name == "problem":
-            # Files written before the rename say 'action' for 'identity'.
+            # Older files say 'action', an equivalent name for 'identity'.
             value = canonical_problem_name(value)
         kwargs[name] = value
     c = data["complex_coefficients"]

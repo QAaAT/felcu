@@ -34,7 +34,7 @@ Four problems are supported:
 
 | Problem | Function | Spectral data |
 |---|---|---|
-| `identity` | \(f(\mathcal H) = \mathcal H\) | eigenvalues (Hermitian) or singular values |
+| `identity` (or `action`) | \(f(\mathcal H) = \mathcal H\) | eigenvalues (Hermitian) or singular values |
 | `inversion` | \(f(\mathcal H) = \mathcal H^{-1}\) | eigenvalues (definite or indefinite) or singular values |
 | `exponentiation` | \(f(\mathcal H) = e^{\mathcal H}\) | eigenvalues |
 | `square_root` | \(f(\mathcal H) = \sqrt{\mathcal H}\) | positive-definite eigenvalue interval |

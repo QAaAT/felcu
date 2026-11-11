@@ -18,7 +18,7 @@ def canonical_problem_name(name: str) -> str:
     Parameters
     ----------
     name:
-        Problem name.  Accepted aliases are ``'action'`` (its former
+        Problem name.  Accepted aliases are ``'action'`` (an equivalent
         name) and ``'matrix-action'`` for ``'identity'``; ``'inverse'`` for
         ``'inversion'``; ``'exp'`` and ``'exponential'`` for
         ``'exponentiation'``; and ``'sqrt'`` and ``'square-root'`` for

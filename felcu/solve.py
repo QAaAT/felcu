@@ -185,7 +185,7 @@ def solve_fe_coefficients(
     Parameters
     ----------
     problem:
-        One of ``'identity'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``
+        One of ``'identity'`` (or ``'action'``), ``'inversion'``, ``'exponentiation'``, or ``'square_root'``
         (several aliases accepted; see :func:`~felcu.utils.canonical_problem_name`).
     method:
         Coefficient-selection strategy (see
