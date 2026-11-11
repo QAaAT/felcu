@@ -44,7 +44,7 @@ Every candidate it tried is kept in `result.all_results`.
 
 !!! tip "Choosing the range of m"
     By default the solver sweeps \(m\) up to 256.  Because \(\alpha\) usually
-    keeps falling as \(m\) grows, the default `smallest_alpha` selection
+    keeps falling as \(m\) grows, the default `smallest_norm` selection
     often picks the top of the range.  If circuit depth matters, cap the
     range, e.g. `m_values=range(4, 41, 2)`.  See
     [Tuning the solver](guide/parameters.md#truncation-order).

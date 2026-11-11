@@ -261,7 +261,7 @@ class TestExplicitMethodResults:
 class TestSelection:
     common = dict(sigma_min=0.1, sigma_max=2.0, target_error=1e-8, m_values=range(8, 41, 4))
 
-    def test_smallest_alpha_is_default(self):
+    def test_smallest_norm_is_default(self):
         result = solve_fe_coefficients("exponentiation", **self.common)
         feasible = [c for c in result.all_results if c.converged]
         assert result.alpha == min(c.alpha for c in feasible)

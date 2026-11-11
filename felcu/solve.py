@@ -9,6 +9,7 @@ import numpy as np
 
 from felcu._coefficients import _coefficient_dtype, _scalar, _value
 from felcu._explicit import _explicit_candidate
+from felcu._linalg import _coefficient_norm
 from felcu._logging import logger
 from felcu._solver import _candidate_for_m, _meets_target
 from felcu.spectral import _make_spec, _spectral_data, default_sobolev_r
@@ -26,6 +27,20 @@ from felcu.utils import (
 # ---------------------------------------------------------------------------
 # Internal result construction
 # ---------------------------------------------------------------------------
+
+
+def _selection_order(spec: dict) -> float:
+    """p of the selection score J_p: max(w - 1, 0) for Sobolev, d for reflected, 0 otherwise."""
+    if spec["method"] == "sobolev":
+        return max(float(spec["sobolev_w"]) - 1.0, 0.0)
+    if spec["method"] == "reflected":
+        return float(spec["reflection_order"])
+    return 0.0
+
+
+def _score(spec: dict, cand: dict) -> float:
+    s = cand["solve"]
+    return _coefficient_norm(s["a0"], np.asarray(s["ak"]), np.asarray(s["bk"]), _selection_order(spec))
 
 
 def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierExtensionResult:
@@ -72,6 +87,9 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         polynomial_basis=None if spec["polynomial"] is None else spec["polynomial"][1],
         closure_mean=None if cand.get("closure_mean") is None else _scalar(cand["closure_mean"]),
         reflection_order=int(spec["reflection_order"]) if spec["method"] == "reflected" else None,
+        selection_order=_selection_order(spec),
+        selection_score=_score(spec, cand),
+        readout_norm=float(spec["tau"]) * _coefficient_norm(a0, ak, bk, 1.0) if ak.size else 0.0,
     )
 
 
@@ -155,12 +173,14 @@ def _m_grid(m: int | None, m_values: Sequence[int] | int | None) -> np.ndarray:
     return grid
 
 
-def _select(candidates: list[dict], metric: str, target: float, selection: str) -> tuple[dict, bool]:
+def _select(spec: dict, candidates: list[dict], metric: str, target: float, selection: str) -> tuple[dict, bool]:
     """Pick the candidate to return, and whether it meets *target*.
 
-    Among feasible candidates, ``'smallest_m'`` prefers the lowest order and
-    ``'smallest_alpha'`` the lowest subnormalisation alpha (ties broken by the
-    other, then by error).  With none feasible, the lowest error wins.
+    Among feasible candidates, ``'smallest_norm'`` prefers the lowest
+    selection score J_p (see :func:`_selection_order`), ``'smallest_alpha'``
+    the lowest subnormalisation alpha = J_0 and ``'smallest_m'`` the lowest
+    order, each with ties broken by order, alpha and error.  With none
+    feasible, the lowest error wins.
     """
     feasible = [c for c in candidates if _meets_target(c["solve"], metric, target)]
     logger.info("%d/%d candidates are feasible", len(feasible), len(candidates))
@@ -168,6 +188,8 @@ def _select(candidates: list[dict], metric: str, target: float, selection: str) 
         return min(candidates, key=lambda c: (c["solve"][metric], c["m"], c["solve"]["alpha"])), False
     if selection == "smallest_m":
         return min(feasible, key=lambda c: (c["m"], c["solve"]["alpha"], c["solve"][metric])), True
+    if selection == "smallest_norm" and _selection_order(spec) > 0:
+        return min(feasible, key=lambda c: (_score(spec, c), c["m"], c["solve"]["alpha"], c["solve"][metric])), True
     return min(feasible, key=lambda c: (c["solve"]["alpha"], c["m"], c["solve"][metric])), True
 
 
@@ -196,7 +218,7 @@ def solve_fe_coefficients(
     order_fit: int | None = None,
     fit_oversample: int | None = None,
     val_n: int = 4001,
-    selection: str = "smallest_alpha",
+    selection: str = "smallest_norm",
     hermitian_tol: float = 1e-12,
     polynomial_coefficients: Sequence[complex] | None = None,
     polynomial_basis: str | None = None,
@@ -300,9 +322,13 @@ def solve_fe_coefficients(
     val_n:
         Number of validation points.
     selection:
-        ``'smallest_alpha'`` (default) picks the feasible order with the
-        smallest subnormalisation alpha, which requires solving every order in
-        the sweep.  ``'smallest_m'`` picks the shortest feasible series and
+        ``'smallest_norm'`` (default) picks the feasible order with the
+        smallest selection score ``J_p``, with ``p = max(sobolev_w - 1, 0)``
+        for Sobolev fits, ``p = reflection_order`` for reflected fits and
+        ``p = 0`` for arcsine-Taylor.  ``J_0`` is alpha, and for ``p > 0``
+        ``J_p = sum_{k != 0} |k|^p |c_k|``.  ``'smallest_alpha'`` uses alpha
+        whatever ``p``.  Both require solving every order in the sweep.
+        ``'smallest_m'`` picks the shortest feasible series and
         stops the sweep there, so ``result.all_results`` only holds the
         orders up to it.
     hermitian_tol:
@@ -380,8 +406,8 @@ def solve_fe_coefficients(
         raise ValueError("Require order_fit >= 0, fit_oversample > 0, and val_n >= 3.")
     if not sobolev_w > 0.5:
         raise ValueError("sobolev_w must exceed 0.5.")
-    if selection not in {"smallest_m", "smallest_alpha"}:
-        raise ValueError("selection must be 'smallest_m' or 'smallest_alpha'.")
+    if selection not in {"smallest_norm", "smallest_alpha", "smallest_m"}:
+        raise ValueError("selection must be 'smallest_norm', 'smallest_alpha' or 'smallest_m'.")
 
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
     spec = _make_spec(problem, spectral, eta, method, polynomial, reflection_order)
@@ -475,7 +501,7 @@ def solve_fe_coefficients(
             logger.info("smallest feasible m found, stopping sweep")
             break
 
-    best, converged = _select(candidates, metric, target, selection)
+    best, converged = _select(spec, candidates, metric, target, selection)
     logger.info("selected: m=%d  error=%.3e  converged=%s", best["m"], best["solve"][metric], converged)
 
     all_results = tuple(_make_result(spec, target, metric, c) for c in sorted(candidates, key=lambda c: c["m"]))

@@ -12,7 +12,7 @@ Sweep m for each problem at the same target and plot, per m:
 - the regularisation strength lambda = sqrt(2 pi gamma) chosen for it.
 
 The ringed point is the order picked by the default selection
-('smallest_alpha').  Needs matplotlib.
+('smallest_norm', which is the smallest alpha for this w = 1 fit).  Needs matplotlib.
 
 Run with:
     python examples/plots/01_error_alpha_vs_m.py [OUTPUT_DIR]

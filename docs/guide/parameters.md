@@ -59,17 +59,19 @@ defaults suit most problems; this page explains when to change them.
     [`default_m_grid()`](../api.md#felcu.default_m_grid): 31 values from 4 to
     256.
 
-`selection` (default `"smallest_alpha"`)
-:   `"smallest_alpha"` or `"smallest_m"`; see
-    [Choosing m](method.md#choosing-m).  `"smallest_m"` stops the sweep at
+`selection` (default `"smallest_norm"`)
+:   `"smallest_norm"`, `"smallest_alpha"` or `"smallest_m"`; see
+    [Choosing m](method.md#choosing-m).  `"smallest_norm"` minimises the
+    order-aware score \(J_p\), which is \(\alpha\) unless
+    `sobolev_w > 1` or `reflection_order >= 1`.  `"smallest_m"` stops the sweep at
     the first feasible order, so it is usually faster.
 
 !!! tip "The sweep sets both the cost and the answer"
-    With `smallest_alpha`, every order in `m_values` is solved; the default
+    With `smallest_norm` or `smallest_alpha`, every order in `m_values` is solved; the default
     sweep takes a few seconds.  `smallest_m` stops at the first feasible
     order and usually takes well under a second.  Because \(\alpha\) tends
     to keep falling as \(m\) grows, the upper end of `m_values` often decides
-    which order `smallest_alpha` returns, so cap it if circuit depth
+    which order the default returns, so cap it if circuit depth
     matters.
 
 ## Regularisation

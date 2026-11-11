@@ -117,6 +117,18 @@ class FourierExtensionResult:
     reflection_order : int or None
         For ``method='reflected'``, the derivative order ``d`` of the
         reflection; ``None`` for the other methods.
+    selection_order : float or None
+        The order ``p`` of the selection score: ``max(sobolev_w - 1, 0)``
+        for Sobolev fits, ``reflection_order`` for reflected fits and ``0``
+        for arcsine-Taylor.
+    selection_score : float or None
+        ``J_p`` of the coefficients: *alpha* when ``p = 0``, otherwise
+        ``sum_{k != 0} |k|^p |c_k|``.  The default
+        ``selection='smallest_norm'`` returns the feasible order that
+        minimises it.
+    readout_norm : float or None
+        ``sum_{k != 0} |t_k c_k| = tau J_1`` for the physical evolution
+        times ``t_k = tau k``.
     all_results : tuple of FourierExtensionResult
         Every candidate tried, sorted by ``m``.  Empty on the candidates
         themselves.
@@ -156,6 +168,9 @@ class FourierExtensionResult:
     polynomial_basis: str | None = None
     closure_mean: float | complex | None = None
     reflection_order: int | None = None
+    selection_order: float | None = None
+    selection_score: float | None = None
+    readout_norm: float | None = None
     all_results: tuple[FourierExtensionResult, ...] = ()
 
     @property

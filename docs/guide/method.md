@@ -223,14 +223,32 @@ The solver repeats the above for the orders in `m_values` (by default a
 quadratically spaced grid from 4 to 256), in increasing order, and selects
 among those that meet the target:
 
-- `selection="smallest_alpha"` (default): the smallest \(\alpha_m\); ties
-  broken by \(m\).  Every order in the grid is solved.  This is the paper's
-  "lowest-\(\alpha\) feasible solution obtained up to each \(m\)".
+- `selection="smallest_norm"` (default): the smallest order-aware score
+  \(J_p\) below; ties broken by \(m\).  Every order in the grid is solved.
+- `selection="smallest_alpha"`: the smallest \(\alpha_m = J_0\), whatever
+  \(p\).  This is the paper's "lowest-\(\alpha\) feasible solution
+  obtained up to each \(m\)".
 - `selection="smallest_m"`: the shortest series.  The sweep stops at the
   first order that meets the target, so `result.all_results` only holds the
   orders up to it.
 
-\(\alpha_m\) often keeps falling slowly as \(m\) grows, so `smallest_alpha`
+The score matches the smoothness the fit was asked for:
+
+\[
+J_0 = \sum_{k=-m}^{m} |c_k| = \alpha_m, \qquad
+J_p = \sum_{k \ne 0} |k|^p |c_k| \quad (p > 0),
+\]
+
+with \(p = \max\{w - 1, 0\}\) for Sobolev fits, \(p = d\) (the
+[`reflection_order`](#derivative-reflections-reflection_order)) for
+reflected fits and \(p = 0\) for arcsine-Taylor.  The default fits have
+\(p = 0\), so for them `smallest_norm` and `smallest_alpha` agree.
+`result.selection_order` and `result.selection_score` report \(p\) and
+\(J_p\); `result.alpha` is always reported too.  With physical evolution
+times \(t_k = \tau k\), the readout norm
+\(\sum_{k \ne 0} |t_k c_k| = \tau J_1\) is `result.readout_norm`.
+
+\(\alpha_m\) often keeps falling slowly as \(m\) grows, so the default
 tends to pick a large order from the grid.  Cap `m_values` if circuit depth
 (which grows with \(m\)) matters as well as \(\alpha\).
 

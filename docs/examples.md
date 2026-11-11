@@ -195,11 +195,14 @@ the order \(w\) and the scale \(r\) and see how `lambda_used`
 
 ### Choosing between candidate truncation orders
 
-With the default `selection='smallest_alpha'`, `felcu` solves for every
+With the default `selection='smallest_norm'`, `felcu` solves for every
 \(m\) in `m_values`, keeps all candidates in `result.all_results`, and picks
-the one with the smallest subnormalisation \(\alpha_m\).  `'smallest_m'`
-picks the shortest series that meets the target instead, and stops the
-sweep there.
+the one with the smallest [selection score](guide/method.md#choosing-m)
+\(J_p\), which is the subnormalisation \(\alpha_m\) for the default fit.
+`'smallest_m'` picks the shortest series that meets the target instead,
+and stops the sweep there.  The second part fits \(\sqrt x\) with
+\(w = 2\), where the order-aware score \(J_1\) and `'smallest_alpha'`
+pick different orders.
 
 ```python title="examples/exponentiation/05_selection_and_candidates.py"
 --8<-- "examples/exponentiation/05_selection_and_candidates.py"
@@ -296,7 +299,7 @@ plot, per \(m\):
   for it.
 
 The ringed point is the order picked by the default selection
-('smallest_alpha').
+('smallest_norm', which is the smallest \(\alpha_m\) here).
 
 ![Error, alpha and lambda versus truncation order m](images/plots/01_error_alpha_vs_m.png)
 

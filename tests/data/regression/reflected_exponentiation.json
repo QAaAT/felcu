@@ -621,5 +621,8 @@
       0.0
     ]
   },
-  "reflection_order": 0
+  "reflection_order": 0,
+  "selection_order": 0.0,
+  "selection_score": 7.344899581341835,
+  "readout_norm": 21.04633232851318
 }

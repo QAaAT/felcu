@@ -47,6 +47,8 @@ _COEFFICIENTS = {"a0", "ak", "bk", "complex_coefficients"}
 _SOLVER_RTOL = {
     "alpha": 1e-6,
     "closure_mean": 1e-6,
+    "selection_score": 1e-6,
+    "readout_norm": 1e-6,
     "lambda_used": 1e-4,
     "achieved_error": 1e-4,
     "achieved_l2_error": 1e-4,

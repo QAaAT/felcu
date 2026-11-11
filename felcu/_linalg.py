@@ -47,6 +47,22 @@ def _alpha(a0: float | complex, ak: np.ndarray, bk: np.ndarray) -> float:
     return float(abs(a0) + 0.5 * np.sum(np.abs(bk - 1j * ak) + np.abs(bk + 1j * ak)))
 
 
+def _coefficient_norm(a0: float | complex, ak: np.ndarray, bk: np.ndarray, p: float = 0.0) -> float:
+    """The order-p coefficient norm J_p of the series.
+
+    ``J_0 = sum_{k=-m}^{m} |c_k|`` is alpha; for ``p > 0``,
+    ``J_p = sum_{k != 0} |k|^p |c_k|``, which leaves out c_0.
+    """
+    if p == 0:
+        return _alpha(a0, ak, bk)
+    if not (np.iscomplexobj(ak) or np.iscomplexobj(bk)):
+        pair = np.sqrt(ak**2 + bk**2)
+    else:
+        pair = 0.5 * (np.abs(bk - 1j * ak) + np.abs(bk + 1j * ak))
+    k = np.arange(1, np.size(ak) + 1, dtype=float)
+    return float(np.sum(k**p * pair))
+
+
 def _validation_errors(
     c: np.ndarray,
     val: list[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]],
