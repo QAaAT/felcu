@@ -30,7 +30,7 @@ See [Method](guide/method.md) for how they compare.
 The methods are those of P. Brearley, T. L. Howarth and B. Adcock, [*Fourier extensions for matrix-function block encodings with error-independent subnormalization bounds*](https://arxiv.org/abs/2601.18024), arXiv:2601.18024; these docs follow its
 [notation](guide/notation.md).
 
-Four problems are supported:
+Five problems are supported:
 
 | Problem | Function | Spectral data |
 |---|---|---|
@@ -38,6 +38,7 @@ Four problems are supported:
 | `inversion` | \(f(\mathcal H) = \mathcal H^{-1}\) | eigenvalues (definite or indefinite) or singular values |
 | `exponentiation` | \(f(\mathcal H) = e^{\mathcal H}\) | eigenvalues |
 | `square_root` | \(f(\mathcal H) = \sqrt{\mathcal H}\) | positive-definite eigenvalue interval |
+| `polynomial` | \(f(\mathcal H) = \sum_j \gamma_j B_j(\mathcal H)\), complex \(\gamma_j\) allowed | eigenvalues |
 
 A matrix or spectral bounds are required.  Every fit is centred on the
 spectrum, \(f(\mathcal H) = g(\tau(\mathcal H - \mu I))\).  Singular values,

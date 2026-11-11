@@ -25,6 +25,7 @@ computes eigenvalues or singular values itself.
 | `inversion` | eigenvalues; singular values for a non-Hermitian matrix | the other one |
 | `exponentiation` | eigenvalues | none |
 | `square_root` | eigenvalues (must be positive definite) | none |
+| `polynomial` | eigenvalues | none |
 
 Eigenvalues need a Hermitian matrix (tested to `hermitian_tol`).
 Singular values are only available for the odd functions, identity and
@@ -66,6 +67,7 @@ from zero, such as \([2, 5]\), it fits \([-1.5, 1.5]\) rather than
 | inversion | singular values | \(\tau/x\) | odd sine | \(\Omega_\eta\) less the gap |
 | exponentiation | eigenvalues | \(e^{\mu + x/\tau}\) | full | \(\Omega_\eta\) |
 | square root | positive eigenvalues | \(\sqrt{\mu + x/\tau}\) | full | \(\Omega_\eta\) |
+| polynomial | eigenvalues | \(\sum_j \gamma_j B_j(\mu + x/\tau)\) | full | \(\Omega_\eta\) |
 
 ### Bases
 
@@ -149,6 +151,41 @@ optimal: the paper shows
 \(\alpha_m = O(\kappa^{(2w-1)/(4w)}\sqrt{\lambda_{\max}})\), an extra
 \(O(\kappa^{1/4})\) for \(w = 1\).
 
+## Polynomial
+
+`problem="polynomial"` fits a polynomial given by its coefficients in
+ascending order, in a basis of your choice:
+
+\[
+f(z) = \sum_{j=0}^{n} \gamma_j B_j(z), \qquad \gamma_j \in \mathbb C,
+\qquad B_j(z) = z^j,\ T_j(z)\ \text{or}\ P_j(z),
+\]
+
+```python
+solve_fe_coefficients("polynomial", polynomial_coefficients=[1, 2, 3, 4], sigma_min=-1.0, sigma_max=1.0)
+solve_fe_coefficients(
+    "polynomial",
+    polynomial_coefficients=[1 + 0.5j, -0.3j, 0.25],
+    polynomial_basis="chebyshev",  # or "monomial" (default), "legendre"
+    matrix=H,
+)
+```
+
+The first is \(1 + 2z + 3z^2 + 4z^3\).  The basis acts on the physical
+argument \(z\) itself: `felcu` does not map the spectral interval onto
+\([-1, 1]\), so \(T_j\) and \(P_j\) are the usual polynomials evaluated at
+the eigenvalues.  Complex coefficients give a complex-valued \(f\) and
+complex Fourier coefficients (see
+[Complex-valued functions](method.md#complex-valued-functions)).
+
+A polynomial is entire, so it takes the entire-function defaults:
+\(\eta = 2\) (\(3\) for arcsine-Taylor) and Sobolev scale \(r = 1\).  All
+three methods support it.  For arcsine-Taylor, the Taylor coefficients of
+\(g(\arcsin z)\) come from running the basis's three-term recurrence on
+power series, so Chebyshev and Legendre coefficients are never converted
+to monomials.  The result records `polynomial_coefficients` and
+`polynomial_basis`.
+
 ## The extension parameter \(\eta\)
 
 \(\eta > 1\) sets how much of the period is left free.  Larger \(\eta\)
@@ -157,7 +194,7 @@ smaller interval.  For `method="sobolev"` the defaults are:
 
 | Problem | Default \(\eta\) | Reason |
 |---|---|---|
-| identity, exponentiation | \(2\) | entire \(f\); optimal for reflected extensions |
+| identity, exponentiation, polynomial | \(2\) | entire \(f\); optimal for reflected extensions |
 | inversion (definite), square root | \(\eta_{\rm def} = \lvert\mu\rvert/\delta = (\kappa + 1)/(\kappa - 1)\) | puts the pole or branch point \(x = -\tau\mu\) at the periodic boundary |
 | inversion (indefinite or singular values) | \(1 + (b - a)/(2\delta)\) | the gap around the pole and the free part of the period are equally wide |
 
@@ -173,7 +210,7 @@ The explicit methods use their own defaults and ranges (see
 | `method` | Default \(\eta\) | Allowed |
 |---|---|---|
 | `"reflected"` | \(2\) | \(\eta \ge 2\) |
-| `"arcsine_taylor"`, identity and exponentiation | \(3\) | \(\eta > 2\) |
+| `"arcsine_taylor"`, identity, exponentiation and polynomial | \(3\) | \(\eta > 2\) |
 | `"arcsine_taylor"`, inversion and square root | \(\min\{3,\ 1 + \lvert\mu\rvert/\delta\}\) | \(2 < \eta < 2\lvert\mu\rvert/\delta\) |
 
 Both explicit methods require \(\eta < 2|\mu|/\delta\) for inversion and
@@ -188,6 +225,7 @@ singular-value inversion.
 | `inversion` | `inverse` |
 | `exponentiation` | `exp`, `exponential` |
 | `square_root` | `sqrt`, `square-root` |
+| `polynomial` | `poly` |
 
 Names are case-insensitive.  `identity` and `action` are interchangeable
 names for \(f(\mathcal H) = \mathcal H\); results always record the

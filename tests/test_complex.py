@@ -35,9 +35,9 @@ def f(t):
 def complex_exponential(monkeypatch):
     original = felcu._coefficients._target
 
-    def target(x, problem, tau, mu, d=0):
+    def target(x, problem, tau, mu, d=0, polynomial=None):
         if problem != "exponentiation":
-            return original(x, problem, tau, mu, d)
+            return original(x, problem, tau, mu, d, polynomial)
         x = np.asarray(x, dtype=float)
         t = x / tau + mu
         return (C / tau) ** d * np.exp(C * t)

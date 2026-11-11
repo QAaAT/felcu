@@ -53,17 +53,39 @@ def _basis_matrix(x: np.ndarray, m: int, basis: str, d: int = 0) -> np.ndarray:
 # Target function
 # ---------------------------------------------------------------------------
 
+# Evaluation and differentiation of a polynomial in each supported basis.
+# The basis acts on the physical argument t itself, with no interval mapping.
+_POLYNOMIAL_BASES = {
+    "monomial": (np.polynomial.polynomial.polyval, np.polynomial.polynomial.polyder),
+    "chebyshev": (np.polynomial.chebyshev.chebval, np.polynomial.chebyshev.chebder),
+    "legendre": (np.polynomial.legendre.legval, np.polynomial.legendre.legder),
+}
 
-def _target(x: np.ndarray, problem: str, tau: float, mu: float, d: int = 0) -> np.ndarray:
+
+def _polynomial_values(t: np.ndarray, polynomial: tuple[np.ndarray, str], d: int = 0) -> np.ndarray:
+    """The d-th derivative of ``sum_j gamma_j B_j(t)`` at *t*."""
+    coefficients, basis = polynomial
+    val, der = _POLYNOMIAL_BASES[basis]
+    if d >= coefficients.size:
+        return np.zeros(np.shape(t), dtype=coefficients.dtype)
+    return val(t, der(coefficients, d) if d else coefficients)
+
+
+def _target(
+    x: np.ndarray, problem: str, tau: float, mu: float, d: int = 0, polynomial: tuple[np.ndarray, str] | None = None
+) -> np.ndarray:
     """d-th derivative of the fitted target g(x) = F(x / tau + mu).
 
     F is ``t``, ``1/t``, ``exp(t)`` or ``sqrt(t)`` for identity,
-    inversion, exponentiation and square root.  ``tau = inf`` (a zero-width
-    interval) makes g constant.
+    inversion, exponentiation and square root, and for polynomial the
+    polynomial ``(coefficients, basis)`` given by *polynomial*.
+    ``tau = inf`` (a zero-width interval) makes g constant.
     """
     x = np.asarray(x, dtype=float)
     t = x / tau + mu
-    if problem == "identity":
+    if problem == "polynomial":
+        F_d = _polynomial_values(t, polynomial, d)
+    elif problem == "identity":
         F_d = t if d == 0 else np.full_like(t, 1.0 if d == 1 else 0.0)
     elif problem == "inversion":
         if math.isfinite(tau):
@@ -86,14 +108,14 @@ def _scalar(value) -> float | complex:
     return value.real if value.imag == 0.0 else value
 
 
-def _value(problem: str, t: float) -> float | complex:
+def _value(problem: str, t: float, polynomial: tuple[np.ndarray, str] | None = None) -> float | complex:
     """F(t), which is also the constant g on a zero-width interval centred at t."""
-    return _scalar(_target(0.0, problem, math.inf, t))
+    return _scalar(_target(0.0, problem, math.inf, t, polynomial=polynomial))
 
 
 def _spec_target(x: np.ndarray, spec: dict, d: int = 0) -> np.ndarray:
     """:func:`_target` for a problem spec."""
-    return _target(x, spec["problem"], spec["tau"], spec["mu"], d)
+    return _target(x, spec["problem"], spec["tau"], spec["mu"], d, spec.get("polynomial"))
 
 
 # ---------------------------------------------------------------------------

@@ -24,7 +24,8 @@ class FourierExtensionResult:
     Attributes
     ----------
     problem : str
-        ``'identity'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``.
+        ``'identity'``, ``'inversion'``, ``'exponentiation'``, ``'square_root'``, or
+        ``'polynomial'``.
     method : str
         Coefficient-selection strategy: ``'sobolev'``, ``'reflected'``, or
         ``'arcsine_taylor'``.
@@ -102,6 +103,13 @@ class FourierExtensionResult:
     matrix_is_hermitian : bool or None
         Whether the input matrix passed the Hermitian test, if one was
         given.
+    polynomial_coefficients : numpy.ndarray or None
+        For ``problem='polynomial'``, the coefficients of f in ascending
+        order (float64, or complex128 if any is complex); ``None``
+        otherwise.
+    polynomial_basis : str or None
+        For ``problem='polynomial'``, ``'monomial'``, ``'chebyshev'`` or
+        ``'legendre'``; ``None`` otherwise.
     all_results : tuple of FourierExtensionResult
         Every candidate tried, sorted by ``m``.  Empty on the candidates
         themselves.
@@ -137,6 +145,8 @@ class FourierExtensionResult:
     spectral_kind_used: str
     matrix_shape: tuple[int, int] | None
     matrix_is_hermitian: bool | None
+    polynomial_coefficients: np.ndarray | None = None
+    polynomial_basis: str | None = None
     all_results: tuple[FourierExtensionResult, ...] = ()
 
     @property

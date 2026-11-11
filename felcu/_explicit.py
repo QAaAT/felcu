@@ -92,6 +92,43 @@ def _series_sqrt(u: np.ndarray) -> np.ndarray:
     return y
 
 
+def _series_polynomial(u: np.ndarray, polynomial: tuple[np.ndarray, str]) -> np.ndarray:
+    """sum_j gamma_j B_j(u) as a power series, by the basis's three-term recurrence.
+
+    The recurrence runs on truncated power series, so Chebyshev and Legendre
+    coefficients are never converted to the (badly conditioned) monomial basis.
+    """
+    coefficients, basis = polynomial
+    n = u.size
+    dtype = np.result_type(u, coefficients, float)
+
+    def times_u(a: np.ndarray) -> np.ndarray:
+        return np.convolve(a, u)[:n]
+
+    if basis == "monomial":
+        # Horner's rule.
+        y = np.zeros(n, dtype=dtype)
+        for gamma in coefficients[::-1]:
+            y = times_u(y)
+            y[0] += gamma
+        return y
+
+    one = np.zeros(n, dtype=dtype)
+    one[0] = 1.0
+    previous, current = one, u.astype(dtype)  # B_0 = 1 and B_1 = u in both bases
+    y = coefficients[0] * previous
+    if coefficients.size > 1:
+        y = y + coefficients[1] * current
+    for j in range(1, coefficients.size - 1):
+        if basis == "chebyshev":
+            following = 2.0 * times_u(current) - previous  # T_{j+1} = 2u T_j - T_{j-1}
+        else:
+            following = ((2 * j + 1) * times_u(current) - j * previous) / (j + 1)  # Legendre
+        previous, current = current, following
+        y = y + coefficients[j + 1] * current
+    return y
+
+
 _COMPOSE = {
     "identity": lambda u: u,
     "inversion": _series_reciprocal,
@@ -104,6 +141,8 @@ def _taylor_coefficients(spec: dict, m: int) -> np.ndarray:
     """d_0, ..., d_m: the Taylor coefficients of g(arcsin z)."""
     u = _arcsin_series(m) / spec["tau"]
     u[0] = spec["mu"]
+    if spec["problem"] == "polynomial":
+        return _series_polynomial(u, spec["polynomial"])
     return _COMPOSE[spec["problem"]](u)
 
 

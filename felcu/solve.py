@@ -14,6 +14,7 @@ from felcu._solver import _candidate_for_m, _meets_target
 from felcu.spectral import _make_spec, _spectral_data, default_sobolev_r
 from felcu.types import FourierExtensionResult
 from felcu.utils import (
+    _canonical_polynomial_basis,
     canonical_error_metric,
     canonical_method_name,
     canonical_problem_name,
@@ -67,6 +68,8 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         spectral_kind_used=spectral["kind"],
         matrix_shape=spectral["matrix_shape"],
         matrix_is_hermitian=spectral["matrix_is_hermitian"],
+        polynomial_coefficients=None if spec["polynomial"] is None else spec["polynomial"][0].copy(),
+        polynomial_basis=None if spec["polynomial"] is None else spec["polynomial"][1],
     )
 
 
@@ -101,7 +104,26 @@ def _exact_constant_if_any(
     s = spec["spectral"]
     if s["kind"] != "eigenvalues" or s["sigma_min"] != s["sigma_max"]:
         return None
-    return _constant_result(spec, target, metric, _value(spec["problem"], s["sigma_min"]))
+    return _constant_result(spec, target, metric, _value(spec["problem"], s["sigma_min"], spec["polynomial"]))
+
+
+def _polynomial(
+    problem: str, coefficients: Sequence[complex] | None, basis: str | None
+) -> tuple[np.ndarray, str] | None:
+    """``(coefficients, basis)`` for the polynomial problem, checked; ``None`` for the others."""
+    if problem != "polynomial":
+        if coefficients is not None or basis is not None:
+            raise ValueError("polynomial_coefficients and polynomial_basis only apply to problem='polynomial'.")
+        return None
+    if coefficients is None:
+        raise ValueError("problem='polynomial' needs polynomial_coefficients, in ascending order.")
+    c = np.asarray(coefficients)
+    if c.ndim != 1 or c.size == 0 or not np.issubdtype(c.dtype, np.number):
+        raise ValueError("polynomial_coefficients must be a non-empty sequence of numbers.")
+    c = c.astype(np.complex128 if np.iscomplexobj(c) else float)
+    if not np.all(np.isfinite(c)):
+        raise ValueError("polynomial_coefficients must be finite.")
+    return c, _canonical_polynomial_basis("monomial" if basis is None else basis)
 
 
 def _lambda_grid(lambdas: Sequence[float] | None) -> np.ndarray:
@@ -174,6 +196,8 @@ def solve_fe_coefficients(
     val_n: int = 4001,
     selection: str = "smallest_alpha",
     hermitian_tol: float = 1e-12,
+    polynomial_coefficients: Sequence[complex] | None = None,
+    polynomial_basis: str | None = None,
 ) -> FourierExtensionResult:
     """Compute Fourier-extension LCU block-encoding coefficients.
 
@@ -186,8 +210,11 @@ def solve_fe_coefficients(
     Parameters
     ----------
     problem:
-        One of ``'identity'`` (or ``'action'``), ``'inversion'``, ``'exponentiation'``, or ``'square_root'``
-        (several aliases accepted; see :func:`~felcu.utils.canonical_problem_name`).
+        One of ``'identity'`` (or ``'action'``), ``'inversion'``, ``'exponentiation'``, ``'square_root'``, or
+        ``'polynomial'`` (several aliases accepted; see
+        :func:`~felcu.utils.canonical_problem_name`).  ``'polynomial'``
+        takes its function from *polynomial_coefficients* and
+        *polynomial_basis*.
     method:
         Coefficient-selection strategy (see
         :func:`~felcu.canonical_method_name` for aliases):
@@ -273,6 +300,17 @@ def solve_fe_coefficients(
         orders up to it.
     hermitian_tol:
         Tolerance for the Hermitian test.
+    polynomial_coefficients:
+        For ``problem='polynomial'`` (required there, rejected otherwise):
+        the coefficients ``gamma_0, ..., gamma_n``, in ascending order, of
+        ``f(z) = sum_j gamma_j B_j(z)``.  They may be complex.  For example,
+        ``[1, 2, 3, 4]`` in the monomial basis is ``1 + 2z + 3z^2 + 4z^3``.
+    polynomial_basis:
+        ``'monomial'`` (default; ``B_j(z) = z^j``), ``'chebyshev'``
+        (``T_j(z)``) or ``'legendre'`` (``P_j(z)``).  The basis acts on
+        the physical argument ``z`` itself, with no mapping to
+        ``[-1, 1]``.  A polynomial is entire, so it takes the entire-function
+        default *eta*, and the default Sobolev scale is ``r = 1``.
 
     Returns
     -------
@@ -282,6 +320,7 @@ def solve_fe_coefficients(
     problem = canonical_problem_name(problem)
     method = canonical_method_name(method)
     metric = canonical_error_metric(error_metric)
+    polynomial = _polynomial(problem, polynomial_coefficients, polynomial_basis)
     sobolev_options = {
         "lambdas": lambdas,
         "sobolev_w": sobolev_w,
@@ -306,7 +345,7 @@ def solve_fe_coefficients(
         raise ValueError("selection must be 'smallest_m' or 'smallest_alpha'.")
 
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
-    spec = _make_spec(problem, spectral, eta, method)
+    spec = _make_spec(problem, spectral, eta, method, polynomial)
 
     if method != "sobolev":
         spec = spec | {"sobolev_r": None, "sobolev_w": None}

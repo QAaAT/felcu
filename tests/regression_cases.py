@@ -23,6 +23,8 @@ DATA_DIR = Path(__file__).parent / "data" / "regression"
 # and meet the target.
 M_VALUES = [16, 24, 32]
 
+COMPLEX_POLYNOMIAL = [1.0 + 0.5j, -0.3j, 0.25, 0.4 - 0.1j, -0.2 + 0.3j]
+
 CASES = {
     "identity": dict(problem="identity", sigma_min=-1.0, sigma_max=2.0, target_error=1e-6),
     "identity_singular_values": dict(problem="identity", matrix=[[1.0, 0.5], [-0.2, 0.8]], target_error=1e-6),
@@ -39,6 +41,23 @@ CASES = {
     ),
     "exponentiation_matrix": dict(problem="exponentiation", matrix=[[1.0, 0.2], [0.2, 0.5]], target_error=1e-8),
     "square_root": dict(problem="square_root", sigma_min=0.2, sigma_max=1.0, target_error=1e-4),
+    "polynomial": dict(
+        problem="polynomial",
+        polynomial_coefficients=[1.0, 2.0, 3.0, 4.0],
+        sigma_min=-1.0,
+        sigma_max=1.0,
+        target_error=1e-8,
+        m_values=[8, 12, 16],
+    ),
+    "polynomial_chebyshev_complex": dict(
+        problem="polynomial",
+        polynomial_coefficients=COMPLEX_POLYNOMIAL,
+        polynomial_basis="chebyshev",
+        sigma_min=-0.5,
+        sigma_max=1.5,
+        target_error=1e-6,
+        m_values=[8, 12, 16],
+    ),
     "reflected_identity": dict(
         problem="identity", method="reflected", sigma_min=-1.0, sigma_max=1.0, target_error=1e-2, m_values=[32, 64, 128]
     ),
@@ -52,6 +71,26 @@ CASES = {
     ),
     "reflected_inversion": dict(
         problem="inversion", method="reflected", sigma_min=1.0, sigma_max=2.0, target_error=1e-2
+    ),
+    "reflected_polynomial": dict(
+        problem="polynomial",
+        method="reflected",
+        polynomial_coefficients=[0.5, -1.0, 0.25, 2.0],
+        polynomial_basis="legendre",
+        sigma_min=0.0,
+        sigma_max=1.0,
+        target_error=8e-2,
+        m_values=[16, 32, 64],
+    ),
+    "arcsine_taylor_polynomial": dict(
+        problem="polynomial",
+        method="arcsine_taylor",
+        polynomial_coefficients=COMPLEX_POLYNOMIAL,
+        polynomial_basis="legendre",
+        sigma_min=-0.5,
+        sigma_max=1.5,
+        target_error=1e-6,
+        m_values=[64, 96, 128],
     ),
     "arcsine_taylor_exponentiation": dict(
         problem="exponentiation",

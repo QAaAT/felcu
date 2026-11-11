@@ -309,8 +309,9 @@ faster but costs subnormalisation.
 
 `felcu` computes \(d_0, \dots, d_m\) exactly (up to rounding) by truncated
 power-series arithmetic on \(u(z) = \mu + \arcsin(z)/\tau\): \(u\) itself
-for identity, and the series exponential, reciprocal or square root for the
-other problems.  It then evaluates \(\sum_k d_k \sin^k x\) by Horner's rule
+for identity, the series exponential, reciprocal or square root for the
+other problems, and the basis's three-term recurrence on power series for a
+polynomial.  It then evaluates \(\sum_k d_k \sin^k x\) by Horner's rule
 on \(2m + 2\) equispaced points, and reads off the Fourier coefficients with
 an FFT, which is exact for a trigonometric polynomial of degree \(m\).
 

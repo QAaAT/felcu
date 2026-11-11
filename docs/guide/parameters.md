@@ -125,6 +125,20 @@ The options in this section, and `fit_oversample`, only apply to
 `hermitian_tol` (default `1e-12`)
 :   Tolerance for deciding whether `matrix` is Hermitian.
 
+## Polynomial
+
+These apply to `problem="polynomial"` only; see
+[Polynomial](problems.md#polynomial).
+
+`polynomial_coefficients`
+:   The coefficients \(\gamma_0, \dots, \gamma_n\) of
+    \(f(z) = \sum_j \gamma_j B_j(z)\), in ascending order.  Required; may be
+    complex.
+
+`polynomial_basis` (default `"monomial"`)
+:   `"monomial"` (\(z^j\)), `"chebyshev"` (\(T_j(z)\)) or `"legendre"`
+    (\(P_j(z)\)), acting on \(z\) itself with no interval mapping.
+
 ## Logging
 
 `felcu` logs its progress through the standard `logging` module under the

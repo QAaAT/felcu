@@ -18,7 +18,7 @@ POSITIVE_DEFINITE_PROBLEMS = frozenset({"square_root"})
 
 # Functions analytic on the whole plane.  The others have a pole or branch
 # point at 0 that bounds how far the explicit methods may extend them.
-ENTIRE_PROBLEMS = frozenset({"identity", "exponentiation"})
+ENTIRE_PROBLEMS = frozenset({"identity", "exponentiation", "polynomial"})
 
 # Odd functions.  Only these can act on singular values, through the odd
 # series that the Hermitian dilation of a general matrix needs.
@@ -246,7 +246,7 @@ def default_eta(
     and half-width of the fitted spectrum, the defaults for the
     Sobolev-regularised method are
 
-    - identity and exponentiation: ``2``;
+    - identity, exponentiation and polynomial: ``2``;
     - inversion on a definite interval, and square root:
       ``|mu| / delta = (kappa + 1) / (kappa - 1)``, which puts the pole or
       branch point at 0 on the periodic boundary (``2`` if ``kappa == 1``);
@@ -258,15 +258,15 @@ def default_eta(
     The reflected extension always defaults to ``2``, which maps the
     spectral endpoints onto the reflection points and gives the optimal
     subnormalisation.  Arcsine-Taylor needs ``eta > 2``: it defaults to
-    ``3`` for identity and exponentiation, and to
+    ``3`` for identity, exponentiation and polynomial, and to
     ``min(3, 1 + |mu|/delta)`` for definite inversion and square root, the
     midpoint of the admissible range ``2 < eta < 2 |mu|/delta``.
 
     Parameters
     ----------
     problem:
-        One of ``'identity'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
-        an alias; see :func:`~felcu.canonical_problem_name`).
+        One of ``'identity'``, ``'inversion'``, ``'exponentiation'``, ``'square_root'``, or
+        ``'polynomial'`` (or an alias; see :func:`~felcu.canonical_problem_name`).
     method:
         ``'sobolev'``, ``'reflected'``, or ``'arcsine_taylor'`` (or an
         alias; see :func:`~felcu.canonical_method_name`).
@@ -298,7 +298,7 @@ def default_eta(
     Notes
     -----
     Spectral information is only used for inversion and square root; for
-    identity and exponentiation it is ignored.
+    identity, exponentiation and polynomial it is ignored.
     """
     problem = canonical_problem_name(problem)
     method = canonical_method_name(method)
@@ -334,6 +334,7 @@ def default_sobolev_r(
     Brearley, Howarth and Adcock (Sec. VI):
 
     - identity: ``r_id = 1``, since g is linear;
+    - polynomial: ``1``;
     - exponentiation: ``r_exp = 1 / (1 + 1/tau)``, since ``g' = g / tau``,
       which is ``1 / (1 + eta delta / pi)``;
     - inversion: ``min(1, d)``, with ``d`` the distance from the fitted set
@@ -347,8 +348,8 @@ def default_sobolev_r(
     Parameters
     ----------
     problem:
-        One of ``'identity'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
-        an alias; see :func:`~felcu.canonical_problem_name`).
+        One of ``'identity'``, ``'inversion'``, ``'exponentiation'``, ``'square_root'``, or
+        ``'polynomial'`` (or an alias; see :func:`~felcu.canonical_problem_name`).
     matrix:
         Square matrix to read the spectral interval from.  Mutually
         exclusive with *sigma_min* / *sigma_max* / *gap*.
@@ -375,11 +376,11 @@ def default_sobolev_r(
     Raises
     ------
     ValueError
-        Except for identity, if no spectral information is given or the
+        Except for identity and polynomial, if no spectral information is given or the
         interval is invalid.
     """
     problem = canonical_problem_name(problem)
-    if problem == "identity":
+    if problem in {"identity", "polynomial"}:
         return 1.0
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
     tau = _make_spec(problem, spectral, eta)["tau"]
@@ -400,8 +401,16 @@ def default_sobolev_r(
 # ---------------------------------------------------------------------------
 
 
-def _make_spec(problem: str, spectral: dict, eta: float | None, method: str = "sobolev") -> dict:
+def _make_spec(
+    problem: str,
+    spectral: dict,
+    eta: float | None,
+    method: str = "sobolev",
+    polynomial: tuple[np.ndarray, str] | None = None,
+) -> dict:
     """The fit of *problem* on *spectral*: ``g(x) = f(mu + x / tau)`` on ``tau (spectrum - mu)``.
+
+    *polynomial* is ``(coefficients, basis)`` for the polynomial problem.
 
     Every fit is centred: ``mu`` and ``delta`` are the centre and half-width
     of the fitted set and ``tau = pi / (eta delta)``, so the fitted set
@@ -434,7 +443,7 @@ def _make_spec(problem: str, spectral: dict, eta: float | None, method: str = "s
         basis, baseline = "odd_sine", 0.0
     else:
         basis = "const_plus_sine" if problem == "identity" else "full"
-        baseline = 0.0 if gap is not None else _value(problem, mu)
+        baseline = 0.0 if gap is not None else _value(problem, mu, polynomial)
 
     spec = {
         "problem": problem,
@@ -447,6 +456,7 @@ def _make_spec(problem: str, spectral: dict, eta: float | None, method: str = "s
         "mu": mu,
         "basis": basis,
         "baseline": baseline,
+        "polynomial": polynomial,
     }
     if method != "sobolev":
         _check_explicit_eta(spec)

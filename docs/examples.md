@@ -229,6 +229,23 @@ the block-encoded operator \(g(\tau(\mathcal H - \mu I))\) squares back to
 --8<-- "examples/square_root/02_matrix_square_root.py"
 ```
 
+## Polynomial
+
+### Complex polynomial in the Chebyshev basis
+
+Fit
+\(f(z) = (1 + 0.5i)T_0(z) - 0.3i\,T_1(z) + 0.25\,T_2(z) + (0.4 - 0.1i)T_3(z)\)
+for eigenvalues in \([-0.5, 1.5]\).  The Chebyshev polynomials are evaluated
+at the eigenvalues themselves, with no mapping onto \([-1, 1]\).  The
+complex coefficients make \(f\) complex-valued, so the Fourier coefficients
+are complex too, with \(c_{-k} \ne \overline{c_k}\).  The script checks the
+block-encoded operator against the exact \(f(\mathcal H)\) and compares the
+three methods.
+
+```python title="examples/polynomial/01_complex_chebyshev.py"
+--8<-- "examples/polynomial/01_complex_chebyshev.py"
+```
+
 ## Methods
 
 ### Comparing the three coefficient-selection methods

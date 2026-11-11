@@ -11,7 +11,7 @@ from felcu.types import ArrayLike, FourierExtensionResult
 
 
 def canonical_problem_name(name: str) -> str:
-    """Normalise a problem name to one of 'identity', 'inversion', 'exponentiation', 'square_root'.
+    """Normalise a problem name to 'identity', 'inversion', 'exponentiation', 'square_root' or 'polynomial'.
 
     Matching ignores case and surrounding whitespace.
 
@@ -21,14 +21,14 @@ def canonical_problem_name(name: str) -> str:
         Problem name.  Accepted aliases are ``'action'`` (an equivalent
         name) and ``'matrix-action'`` for ``'identity'``; ``'inverse'`` for
         ``'inversion'``; ``'exp'`` and ``'exponential'`` for
-        ``'exponentiation'``; and ``'sqrt'`` and ``'square-root'`` for
-        ``'square_root'``.
+        ``'exponentiation'``; ``'sqrt'`` and ``'square-root'`` for
+        ``'square_root'``; and ``'poly'`` for ``'polynomial'``.
 
     Returns
     -------
     str
-        ``'identity'``, ``'inversion'``, ``'exponentiation'``, or
-        ``'square_root'``.
+        ``'identity'``, ``'inversion'``, ``'exponentiation'``,
+        ``'square_root'``, or ``'polynomial'``.
 
     Raises
     ------
@@ -47,10 +47,28 @@ def canonical_problem_name(name: str) -> str:
         "square_root": "square_root",
         "square-root": "square_root",
         "sqrt": "square_root",
+        "polynomial": "polynomial",
+        "poly": "polynomial",
     }
     key = name.strip().lower()
     if key not in aliases:
-        raise ValueError("problem must be 'identity', 'inversion', 'exponentiation', or 'square_root'.")
+        raise ValueError("problem must be 'identity', 'inversion', 'exponentiation', 'square_root', or 'polynomial'.")
+    return aliases[key]
+
+
+def _canonical_polynomial_basis(name: str) -> str:
+    """Normalise a polynomial basis to 'monomial', 'chebyshev' or 'legendre' (ignoring case)."""
+    aliases = {
+        "monomial": "monomial",
+        "power": "monomial",
+        "chebyshev": "chebyshev",
+        "cheb": "chebyshev",
+        "legendre": "legendre",
+        "leg": "legendre",
+    }
+    key = name.strip().lower()
+    if key not in aliases:
+        raise ValueError("polynomial_basis must be 'monomial', 'chebyshev', or 'legendre'.")
     return aliases[key]
 
 
@@ -367,7 +385,8 @@ def evaluate_target_function(
     This is the function the series was fitted to, in the scaled variable,
     so it can be compared directly with :func:`evaluate_fourier_series`.
     It is ``g(x) = f(mu + x / tau)``, not ``f`` itself: ``mu + x / tau``,
-    ``1 / (mu + x / tau)``, ``exp(mu + x / tau)`` or ``sqrt(mu + x / tau)``.
+    ``1 / (mu + x / tau)``, ``exp(mu + x / tau)``, ``sqrt(mu + x / tau)``, or
+    the result's polynomial at ``mu + x / tau``.
     If ``tau`` is infinite (a zero-width interval), the target is constant.
 
     Parameters
@@ -387,4 +406,7 @@ def evaluate_target_function(
     ValueError
         If the problem is unknown.
     """
-    return _target(x, result.problem, result.tau, result.mu)
+    polynomial = None
+    if result.problem == "polynomial":
+        polynomial = (np.asarray(result.polynomial_coefficients), result.polynomial_basis)
+    return _target(x, result.problem, result.tau, result.mu, polynomial=polynomial)
