@@ -184,7 +184,7 @@ as `result.complex_coefficients`
 ### Effect of the Sobolev regulariser
 
 At fixed \(m\), felcu regularises with the \(H_r^w\) norm, weighting the
-\(k\)-th Fourier mode by \(1 + (r|k|)^{2w}\), and picks the largest
+\(k\)-th Fourier mode by \(P_w(r|k|) = \sum_{j=0}^{w} (r|k|)^{2j}\), and picks the largest
 regularisation weight \(\gamma\) that still meets `target_error`.  Vary
 the order \(w\) and the scale \(r\) and see how `lambda_used`
 (\(= \sqrt{2\pi\gamma}\)) and the subnormalisation \(\alpha_m\) change.
@@ -308,7 +308,7 @@ bound \(\alpha^\ast\) (dotted).  Repeated for three orders \(m\).
 ### Alpha over the Sobolev parameters r and w
 
 The \(H_r^w\) regulariser weights the \(k\)-th Fourier mode by
-\(1 + (r|k|)^{2w}\).  At fixed \(m\) and target, sweep \(0 < r \le 1\) and
+\(P_w(r|k|) = \sum_{j=0}^{w} (r|k|)^{2j}\).  At fixed \(m\) and target, sweep \(0 < r \le 1\) and
 \(w > 1/2\) and plot the resulting subnormalisation \(\alpha_m\), as a
 heatmap and as slices at four values of \(r\), against the lower bound
 \(\alpha^\ast\) (dotted).  Every fit here meets the target, so only

@@ -71,8 +71,9 @@ The options in this section, and `fit_oversample`, only apply to
 
 `sobolev_w` (default `1`)
 :   Order \(w\) of the \(H_r^w\) regulariser, which weights the \(k\)-th
-    Fourier mode by \(1 + (r|k|)^{2w}\).  Must exceed \(1/2\); need not be
-    an integer.  The paper's bounds cover \(1/2 < w \le 1\).
+    Fourier mode by \(P_w(r|k|) = \sum_{j=0}^{w} (r|k|)^{2j}\) (see
+    [The Sobolev penalty](method.md#the-sobolev-penalty)).  Must exceed
+    \(1/2\); need not be an integer.  The paper's bounds cover \(1/2 < w \le 1\).
 
 `sobolev_r` (default: problem-dependent)
 :   Scale \(r\) of the \(H_r^w\) regulariser, with \(0 < r \le 1\).  When

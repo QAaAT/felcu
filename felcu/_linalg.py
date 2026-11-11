@@ -25,15 +25,39 @@ def _gauss_interval(a: float, b: float, n: int) -> tuple[np.ndarray, np.ndarray]
     return np.concatenate(xs), np.concatenate(ws)
 
 
+def _log_sobolev_weight(z: np.ndarray, w: float) -> np.ndarray:
+    """log P_w(z), the log of the H^w Sobolev weight at ``z = r|k| >= 0``.
+
+    ``P_w(z) = sum_{j=0}^{w} z^(2j)`` for integer w, and in general
+    ``(1 - z^(2(w+1))) / (1 - z^2)``, which agrees with the sum for integer w,
+    with ``P_w(0) = 1`` and ``P_w(1) = w + 1``.  With ``q = 2 ln z`` it is
+    evaluated as ``log(expm1((w+1) q) / expm1(q))`` for ``z < 1`` and
+    ``w q + log(expm1(-(w+1) q) / expm1(-q))`` for ``z > 1``, which stays
+    accurate near ``z = 1`` and does not overflow for large ``z``.
+    """
+    z = np.asarray(z, dtype=float)
+    out = np.zeros(z.shape)
+    out[z == 1.0] = math.log(w + 1.0)
+    below = (z > 0.0) & (z < 1.0)
+    q = 2.0 * np.log(z[below])
+    out[below] = np.log(np.expm1((w + 1.0) * q) / np.expm1(q))
+    above = z > 1.0
+    q = 2.0 * np.log(z[above])
+    out[above] = w * q + np.log(np.expm1(-(w + 1.0) * q) / np.expm1(-q))
+    return out
+
+
 def _penalty(m: int, basis: str, lam: float, r: float, w: float) -> np.ndarray:
     """Diagonal D of the H_r^w penalty, so that ||D c||^2 = lam^2 ||h||_{H_r^w}^2 / (2 pi).
 
-    In the complex basis the norm is 2 pi sum_k (1 + (r|k|)^(2w)) |c_k|^2.  With
-    c_0 = a0 and |c_k|^2 + |c_-k|^2 = (|a_k|^2 + |b_k|^2) / 2, each real sine or
-    cosine coefficient gets weight (1 + (r k)^(2w)) / 2 and the constant weight 1.
+    In the complex basis the norm is 2 pi sum_k P_w(r|k|) |c_k|^2 (see
+    :func:`_log_sobolev_weight`).  With c_0 = a0 and
+    |c_k|^2 + |c_-k|^2 = (|a_k|^2 + |b_k|^2) / 2, which holds for complex
+    coefficients too, each sine or cosine coefficient gets weight
+    P_w(r k) / 2 and the constant weight P_w(0) = 1.
     """
     k = np.arange(1, m + 1, dtype=float)
-    p = lam * np.sqrt(0.5 * (1.0 + (r * k) ** (2.0 * w)))
+    p = lam * np.exp(0.5 * (_log_sobolev_weight(r * k, w) - math.log(2.0)))
     return _assemble(basis, [lam], p, p)
 
 
