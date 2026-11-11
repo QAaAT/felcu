@@ -328,7 +328,8 @@ def default_sobolev_r(
 ) -> float:
     """Return the default scale r of the H_r^w regulariser for the given problem.
 
-    The regulariser weights the k-th Fourier mode by ``1 + (r|k|)^(2w)``, so
+    The regulariser weights the k-th Fourier mode by
+    ``P_w(r|k|) = sum_{j=0}^{w} (r|k|)^(2j)``, so
     *r* should match the shortest length scale the fitted function g has
     to resolve.  The defaults follow the scale-adapted choices of
     Brearley, Howarth and Adcock (Sec. VI):

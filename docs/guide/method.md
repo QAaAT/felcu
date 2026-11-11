@@ -74,22 +74,39 @@ using the analytic derivatives of both \(g\) and the Fourier modes.  The
 
 ### The Sobolev penalty
 
-The regulariser is the paper's weighted fractional Sobolev norm,
+The regulariser is the weighted Sobolev norm
 
 \[
-\|h\|^2_{H^w_r(\mathbb T)} = 2\pi \sum_{k \in \mathbb Z} \bigl(1 + (r|k|)^{2w}\bigr) |\hat h_k|^2 ,
-\qquad 0 < r \le 1,\quad w > \tfrac12 .
+\|h\|^2_{H^w_r(\mathbb T)} = 2\pi \sum_{k \in \mathbb Z} P_w(r|k|)\, |\hat h_k|^2 ,
+\qquad
+P_w(z) = \sum_{j=0}^{w} z^{2j},
+\qquad 0 < r \le 1,\quad w > \tfrac12 ,
 \]
 
-In the augmented least-squares system this is the diagonal
-\(\sqrt{\gamma}\, W_{r,w}\), with
-\(W_{r,w} = \sqrt{2\pi}\operatorname{diag}\bigl(\sqrt{1 + (r|k|)^{2w}}\bigr)\).
-`felcu` works with the real coefficients, for which
-\(|c_k|^2 + |c_{-k}|^2 = (|a_k|^2 + |b_k|^2)/2\), so each sine and cosine
-coefficient is penalised by
+so for integer \(w\) it is
+\(\sum_{j=0}^{w} r^{2j} \|h^{(j)}\|^2_{L^2(\mathbb T)}\), every derivative up
+to order \(w\).  For fractional \(w\) the weight is the same geometric sum
+in closed form,
 
 \[
-p_k = \lambda \sqrt{\tfrac12\bigl(1 + (r k)^{2w}\bigr)},
+P_w(z) = \frac{1 - z^{2(w+1)}}{1 - z^2}, \qquad P_w(0) = 1,\quad P_w(1) = w + 1 .
+\]
+
+`felcu` evaluates \(\log P_w\) with \(q = 2\ln z\) as
+\(\log[\operatorname{expm1}((w+1)q)/\operatorname{expm1}(q)]\) for \(z < 1\)
+and \(wq + \log[\operatorname{expm1}(-(w+1)q)/\operatorname{expm1}(-q)]\) for
+\(z > 1\), which is accurate near \(z = 1\) and cannot overflow, and takes
+\(\exp(\tfrac12 \log P_w)\) for the square-root weight.
+
+In the augmented least-squares system the norm is the diagonal
+\(\sqrt{\gamma}\, W_{r,w}\), with
+\(W_{r,w} = \sqrt{2\pi}\operatorname{diag}\bigl(\sqrt{P_w(r|k|)}\bigr)\).
+`felcu` works with the sine and cosine coefficients, for which
+\(|c_k|^2 + |c_{-k}|^2 = (|a_k|^2 + |b_k|^2)/2\), so each of them is
+penalised by
+
+\[
+p_k = \lambda \sqrt{P_w(rk)/2},
 \qquad \lambda = \sqrt{2\pi\gamma},
 \]
 
@@ -100,10 +117,12 @@ the paper's \(\ell^1\)-boundedness lemma turns it into the bound
 subnormalisation.
 
 - \(w\) (`sobolev_w`, default \(1\), must satisfy \(w > 1/2\)) sets how fast
-  the weight grows with frequency.  \(w = 1\) gives
-  \(\|h\|^2_{H^1_r} = \|h\|^2_{L^2} + r^2\|h'\|^2_{L^2}\).  The paper's
-  bounds cover \(1/2 < w \le 1\); smaller \(w\) weakens the derivative
-  penalty at the cost of a larger constant \(C_w\).
+  the weight grows with frequency, like \((r|k|)^{2w}\) at high frequency.
+  \(w = 1\) gives
+  \(\|h\|^2_{H^1_r} = \|h\|^2_{L^2} + r^2\|h'\|^2_{L^2}\), and \(w = 2\)
+  adds \(r^4\|h''\|^2_{L^2}\).  The paper's bounds cover
+  \(1/2 < w \le 1\); smaller \(w\) weakens the derivative penalty at the
+  cost of a larger constant \(C_w\).
 - \(r\) (`sobolev_r`, must satisfy \(0 < r \le 1\)) should match the
   shortest length scale \(g\) has to resolve, so that the derivative
   contribution sits on the same scale as the function itself.  By default

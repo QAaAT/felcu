@@ -72,7 +72,7 @@ These apply to `method="sobolev"` only; the explicit methods report them as
 
 | Symbol | Meaning | In `felcu` |
 |---|---|---|
-| \(H^w_r(\mathbb T)\) | weighted fractional Sobolev norm, weight \(1 + (r\lvert k\rvert)^{2w}\) | |
+| \(H^w_r(\mathbb T)\) | weighted Sobolev norm, weight \(P_w(r\lvert k\rvert) = \sum_{j=0}^{w} (r\lvert k\rvert)^{2j}\) | |
 | \(0 < r \le 1\) | Sobolev scale | `sobolev_r`, `result.sobolev_r` |
 | \(w > 1/2\) | Sobolev order | `sobolev_w`, `result.sobolev_w` |
 | \(\gamma > 0\) | regularisation weight | `lambdas`, `result.lambda_used` hold \(\sqrt{2\pi\gamma}\) |

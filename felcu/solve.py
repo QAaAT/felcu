@@ -251,8 +251,10 @@ def solve_fe_coefficients(
         used.
     sobolev_w:
         Order *w* of the H_r^w regulariser, which weights the k-th Fourier
-        mode by ``1 + (r|k|)^(2w)``.  Must exceed ``0.5``; the paper's
-        bounds cover ``0.5 < w <= 1``.  Defaults to ``1``.
+        mode by ``P_w(r|k|) = sum_{j=0}^{w} (r|k|)^(2j)``, i.e. penalises
+        every derivative up to order *w*; for fractional *w*,
+        ``P_w(z) = (1 - z^(2(w+1))) / (1 - z^2)``.  Must exceed ``0.5``;
+        the paper's bounds cover ``0.5 < w <= 1``.  Defaults to ``1``.
     sobolev_r:
         Scale *r* of the H_r^w regulariser, with ``0 < r <= 1``.  Chosen by
         :func:`~felcu.default_sobolev_r` when omitted.
