@@ -36,7 +36,7 @@ corresponding argument or result field.
 | \(\Omega\) | the fitted set in general | `fitted_domain_segments(result)` |
 | \(\tau\) | scale, \(\mathcal G = \tau(\mathcal H - \mu I)\) | `result.tau` |
 | \(\mathcal G\) | scaled matrix with \(\operatorname{spec}(\mathcal G) \subseteq \Omega\) | |
-| \(f\) | the matrix function: \(x\), \(x^{-1}\), \(e^x\) or \(\sqrt x\) | `problem=` |
+| \(f\) | the matrix function: \(x\), \(x^{-1}\), \(e^x\), \(\sqrt x\) or \(\log x\) | `problem=` |
 | \(g(x) = f(\mu + x/\tau)\) | fitted (scaled) target, \(f(\mathcal H) = g(\mathcal G)\) | `evaluate_target_function(x, result)` |
 
 For singular values, \(\mathcal H\) is the Hermitian dilation of \(A\), whose

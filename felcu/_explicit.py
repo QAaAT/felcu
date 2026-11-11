@@ -89,11 +89,22 @@ def _series_sqrt(u: np.ndarray) -> np.ndarray:
     return y
 
 
+def _series_log(u: np.ndarray) -> np.ndarray:
+    """log(u) as a power series, from u y' = u'."""
+    y = np.zeros_like(u)
+    y[0] = math.log(u[0])
+    j = np.arange(u.size)
+    for k in range(1, u.size):
+        y[k] = (k * u[k] - (j[1:k] * y[1:k]) @ u[k - 1 : 0 : -1]) / (k * u[0])
+    return y
+
+
 _COMPOSE = {
     "identity": lambda u: u,
     "inversion": _series_reciprocal,
     "exponentiation": _series_exp,
     "square_root": _series_sqrt,
+    "logarithm": _series_log,
 }
 
 

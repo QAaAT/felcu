@@ -148,14 +148,14 @@ class TestSobolevIndefiniteInversion:
 class TestSobolevSquareRoot:
     common = dict(sigma_min=0.15, sigma_max=1.0, target_error=1e-6, m_values=range(8, 65, 8))
 
-    @pytest.mark.parametrize("problem", ["square_root"])
+    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
     def test_converges(self, problem):
         result = solve_fe_coefficients(problem, **self.common)
         assert result.converged
         assert result.basis_used == "full"
         assert max_error(result, n=500) <= 1e-6 * 1.01
 
-    @pytest.mark.parametrize("problem, f", [("sqrt", np.sqrt)])
+    @pytest.mark.parametrize("problem, f", [("sqrt", np.sqrt), ("log", np.log)])
     def test_matrix_function(self, problem, f):
         rng = np.random.default_rng(5)
         Q, _ = np.linalg.qr(rng.standard_normal((6, 6)))
@@ -201,6 +201,12 @@ class TestReflected:
         assert alphas == sorted(alphas)
         assert alphas[-1] < 1.1
 
+    def test_logarithm_converges_algebraically(self):
+        kw = dict(method="reflected", sigma_min=0.5, sigma_max=2.0)
+        e1 = solve_fe_coefficients("logarithm", m=32, **kw).achieved_linf_error
+        e4 = solve_fe_coefficients("logarithm", m=128, **kw).achieved_linf_error
+        assert 0.2 < e4 / e1 < 0.3
+
     def test_larger_eta_moves_the_endpoint_inside(self):
         kw = dict(method="reflected", sigma_min=0.1, sigma_max=2.0, m=64)
         r2 = solve_fe_coefficients("exponentiation", **kw)
@@ -238,6 +244,7 @@ class TestArcsineTaylor:
             ("exponentiation", dict(sigma_min=0.1, sigma_max=2.0), 3.0),
             ("inversion", dict(sigma_min=0.5, sigma_max=1.0), 2.5),
             ("square_root", dict(sigma_min=0.15, sigma_max=1.0), 2.7),
+            ("logarithm", dict(sigma_min=0.15, sigma_max=1.0), 2.7),
         ],
     )
     def test_exponential_convergence(self, problem, kwargs, eta):

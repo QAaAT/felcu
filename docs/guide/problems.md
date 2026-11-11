@@ -24,7 +24,7 @@ computes eigenvalues or singular values itself.
 | `identity` (or `action`) | eigenvalues; singular values for a non-Hermitian matrix | the other one |
 | `inversion` | eigenvalues; singular values for a non-Hermitian matrix | the other one |
 | `exponentiation` | eigenvalues | none |
-| `square_root` | eigenvalues (must be positive definite) | none |
+| `square_root`, `logarithm` | eigenvalues (must be positive definite) | none |
 
 Eigenvalues need a Hermitian matrix (tested to `hermitian_tol`).
 Singular values are only available for the odd functions, identity and
@@ -66,6 +66,7 @@ from zero, such as \([2, 5]\), it fits \([-1.5, 1.5]\) rather than
 | inversion | singular values | \(\tau/x\) | odd sine | \(\Omega_\eta\) less the gap |
 | exponentiation | eigenvalues | \(e^{\mu + x/\tau}\) | full | \(\Omega_\eta\) |
 | square root | positive eigenvalues | \(\sqrt{\mu + x/\tau}\) | full | \(\Omega_\eta\) |
+| logarithm | positive eigenvalues | \(\log(\mu + x/\tau)\) | full | \(\Omega_\eta\) |
 
 ### Bases
 
@@ -149,6 +150,24 @@ optimal: the paper shows
 \(\alpha_m = O(\kappa^{(2w-1)/(4w)}\sqrt{\lambda_{\max}})\), an extra
 \(O(\kappa^{1/4})\) for \(w = 1\).
 
+## Logarithm
+
+\(\log x\) also has a branch point at zero and is treated like the square
+root: \(\mathcal H\) must be positive definite, and the default \(\eta\)
+places the branch point on the periodic boundary.  All three methods
+support it.  The default Sobolev scale is
+
+\[
+r_{\log,w} = \kappa^{-(2w-1)/(2w)} (1 + \ln\kappa)^{-1/w},
+\qquad \kappa = \lambda_{\max}/\lambda_{\min},
+\]
+
+the square-root rule with an extra factor for the logarithm.  When the
+spectrum straddles \(1\), \(\log\mathcal H\) has eigenvalues of both signs
+and \(\|\log\mathcal H\| = \max(|\log\lambda_{\min}|, |\log\lambda_{\max}|)\).
+\(\log x\) is concave, so like the square root it does not satisfy the
+convex endpoint-reflection condition.
+
 ## The extension parameter \(\eta\)
 
 \(\eta > 1\) sets how much of the period is left free.  Larger \(\eta\)
@@ -158,7 +177,7 @@ smaller interval.  For `method="sobolev"` the defaults are:
 | Problem | Default \(\eta\) | Reason |
 |---|---|---|
 | identity, exponentiation | \(2\) | entire \(f\); optimal for reflected extensions |
-| inversion (definite), square root | \(\eta_{\rm def} = \lvert\mu\rvert/\delta = (\kappa + 1)/(\kappa - 1)\) | puts the pole or branch point \(x = -\tau\mu\) at the periodic boundary |
+| inversion (definite), square root, logarithm | \(\eta_{\rm def} = \lvert\mu\rvert/\delta = (\kappa + 1)/(\kappa - 1)\) | puts the pole or branch point \(x = -\tau\mu\) at the periodic boundary |
 | inversion (indefinite or singular values) | \(1 + (b - a)/(2\delta)\) | the gap around the pole and the free part of the period are equally wide |
 
 For singular values (or any symmetric gap) the last rule is the paper's
@@ -174,10 +193,10 @@ The explicit methods use their own defaults and ranges (see
 |---|---|---|
 | `"reflected"` | \(2\) | \(\eta \ge 2\) |
 | `"arcsine_taylor"`, identity and exponentiation | \(3\) | \(\eta > 2\) |
-| `"arcsine_taylor"`, inversion and square root | \(\min\{3,\ 1 + \lvert\mu\rvert/\delta\}\) | \(2 < \eta < 2\lvert\mu\rvert/\delta\) |
+| `"arcsine_taylor"`, inversion, square root and logarithm | \(\min\{3,\ 1 + \lvert\mu\rvert/\delta\}\) | \(2 < \eta < 2\lvert\mu\rvert/\delta\) |
 
-Both explicit methods require \(\eta < 2|\mu|/\delta\) for inversion and
-square root, and neither supports the two-interval fit of indefinite or
+Both explicit methods require \(\eta < 2|\mu|/\delta\) for inversion,
+square root and logarithm, and neither supports the two-interval fit of indefinite or
 singular-value inversion.
 
 ## Problem name aliases
@@ -188,6 +207,7 @@ singular-value inversion.
 | `inversion` | `inverse` |
 | `exponentiation` | `exp`, `exponential` |
 | `square_root` | `sqrt`, `square-root` |
+| `logarithm` | `log`, `ln` |
 
 Names are case-insensitive.  `identity` and `action` are interchangeable
 names for \(f(\mathcal H) = \mathcal H\); results always record the

@@ -229,6 +229,36 @@ the block-encoded operator \(g(\tau(\mathcal H - \mu I))\) squares back to
 --8<-- "examples/square_root/02_matrix_square_root.py"
 ```
 
+## Logarithm
+
+### Logarithm on a positive-definite interval
+
+Fit \(f(\mathcal H) = \log\mathcal H\) for eigenvalues in \([0.2, 5]\).
+Like the square root, \(\log x\) has a branch point at \(0\), and the
+default \(\eta = (\kappa + 1)/(\kappa - 1)\) places it on the periodic
+boundary.  The Sobolev scale defaults to
+\(r = \kappa^{-1/2}/(1 + \ln\kappa)\) for \(w = 1\).  The spectrum
+straddles \(1\), so \(\log\mathcal H\) has eigenvalues of both signs and
+\(\|\log\mathcal H\| = \max(|\log 0.2|, |\log 5|)\).
+
+The script then fits \([0.5, 2]\) with all three methods at \(m = 64\).  On
+\([0.2, 5]\) arcsine-Taylor would converge slowly, since
+\(2 < \eta < 2\mu/\delta \approx 2.17\) leaves \(\eta\) close to \(2\).
+
+```python title="examples/logarithm/01_basic_interval.py"
+--8<-- "examples/logarithm/01_basic_interval.py"
+```
+
+### Matrix logarithm from a positive-definite matrix
+
+Fit \(\log\mathcal H\) from \(\mathcal H\) directly, then compare the
+block-encoded operator \(g(\tau(\mathcal H - \mu I))\) with the exact matrix
+logarithm, and check that its exponential recovers \(\mathcal H\).
+
+```python title="examples/logarithm/02_matrix_logarithm.py"
+--8<-- "examples/logarithm/02_matrix_logarithm.py"
+```
+
 ## Methods
 
 ### Comparing the three coefficient-selection methods

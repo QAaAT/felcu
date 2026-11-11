@@ -14,7 +14,7 @@ PI = float(np.pi)
 
 # Functions with a branch point at 0, fitted on a positive-definite interval
 # only (Sec. VI D of the paper).
-POSITIVE_DEFINITE_PROBLEMS = frozenset({"square_root"})
+POSITIVE_DEFINITE_PROBLEMS = frozenset({"square_root", "logarithm"})
 
 # Functions analytic on the whole plane.  The others have a pole or branch
 # point at 0 that bounds how far the explicit methods may extend them.
@@ -247,7 +247,7 @@ def default_eta(
     Sobolev-regularised method are
 
     - identity and exponentiation: ``2``;
-    - inversion on a definite interval, and square root:
+    - inversion on a definite interval, square root and logarithm:
       ``|mu| / delta = (kappa + 1) / (kappa - 1)``, which puts the pole or
       branch point at 0 on the periodic boundary (``2`` if ``kappa == 1``);
     - inversion on an indefinite interval or on singular values:
@@ -259,14 +259,15 @@ def default_eta(
     spectral endpoints onto the reflection points and gives the optimal
     subnormalisation.  Arcsine-Taylor needs ``eta > 2``: it defaults to
     ``3`` for identity and exponentiation, and to
-    ``min(3, 1 + |mu|/delta)`` for definite inversion and square root, the
+    ``min(3, 1 + |mu|/delta)`` for definite inversion, square root and
+    logarithm, the
     midpoint of the admissible range ``2 < eta < 2 |mu|/delta``.
 
     Parameters
     ----------
     problem:
-        One of ``'identity'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
-        an alias; see :func:`~felcu.canonical_problem_name`).
+        One of ``'identity'``, ``'inversion'``, ``'exponentiation'``, ``'square_root'``, or
+        ``'logarithm'`` (or an alias; see :func:`~felcu.canonical_problem_name`).
     method:
         ``'sobolev'``, ``'reflected'``, or ``'arcsine_taylor'`` (or an
         alias; see :func:`~felcu.canonical_method_name`).
@@ -291,13 +292,14 @@ def default_eta(
     Raises
     ------
     ValueError
-        For inversion and square root, if no spectral information is given
+        For inversion, square root and logarithm, if no spectral information is given
         or the interval is invalid (see :func:`~felcu.solve_fe_coefficients`),
         or for a two-interval inversion with an explicit method.
 
     Notes
     -----
-    Spectral information is only used for inversion and square root; for
+    Spectral information is only used for inversion, square root and
+    logarithm; for
     identity and exponentiation it is ignored.
     """
     problem = canonical_problem_name(problem)
@@ -343,13 +345,16 @@ def default_sobolev_r(
       and ``r_indef = min(1, pi / (kappa + 1))`` for singular values;
     - square root: ``r_sqrt = kappa^(-(2w - 1) / (2w))``, which balances the
       two contributions to the extension's H_r^w norm (``kappa^(-1/2)`` for
-      ``w = 1``).
+      ``w = 1``);
+    - logarithm: ``r_log = kappa^(-(2w - 1) / (2w)) (1 + ln kappa)^(-1/w)``,
+      the square-root rule with a factor for the logarithm's slower growth
+      (``kappa^(-1/2) / (1 + ln kappa)`` for ``w = 1``).
 
     Parameters
     ----------
     problem:
-        One of ``'identity'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'`` (or
-        an alias; see :func:`~felcu.canonical_problem_name`).
+        One of ``'identity'``, ``'inversion'``, ``'exponentiation'``, ``'square_root'``, or
+        ``'logarithm'`` (or an alias; see :func:`~felcu.canonical_problem_name`).
     matrix:
         Square matrix to read the spectral interval from.  Mutually
         exclusive with *sigma_min* / *sigma_max* / *gap*.
@@ -366,7 +371,8 @@ def default_sobolev_r(
         Extension parameter of the fit.  Defaults to
         :func:`~felcu.default_eta` for the same problem.
     sobolev_w:
-        Order *w* of the regulariser; only the square-root rule uses it.
+        Order *w* of the regulariser; only the square-root and logarithm
+        rules use it.
 
     Returns
     -------
@@ -387,9 +393,12 @@ def default_sobolev_r(
     if problem == "exponentiation":
         return 1.0 / (1.0 + 1.0 / tau)
 
-    if problem == "square_root":
+    if problem in POSITIVE_DEFINITE_PROBLEMS:
         kappa = spectral["sigma_max"] / spectral["sigma_min"]
-        return kappa ** (-(2.0 * sobolev_w - 1.0) / (2.0 * sobolev_w))
+        r = kappa ** (-(2.0 * sobolev_w - 1.0) / (2.0 * sobolev_w))
+        if problem == "logarithm":
+            r *= (1.0 + math.log(kappa)) ** (-1.0 / sobolev_w)
+        return r
     # Inversion: the distance from the fitted set to the pole at 0.
     lo, hi, gap = spectral["fit_lo"], spectral["fit_hi"], spectral["fit_gap"]
     nearest = min(abs(lo), abs(hi)) if gap is None else min(-gap[0], gap[1])

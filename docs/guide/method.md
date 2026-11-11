@@ -137,6 +137,7 @@ The defaults are the scale-adapted choices of Sec. VI:
 | exponentiation | \(r_{\exp} = (1 + 1/\tau)^{-1}\), i.e. \((1 + \eta\delta/\pi)^{-1}\) |
 | inversion | \(\min\{1,\ \tau \min_{\lambda \in \operatorname{spec}} \lvert\lambda\rvert\}\), the distance from the fitted set to the pole |
 | square root | \(r_{\rm sqrt} = \kappa^{-(2w-1)/(2w)}\), i.e. \(\kappa^{-1/2}\) for \(w = 1\) |
+| logarithm | \(r_{\log,w} = \kappa^{-(2w-1)/(2w)}(1 + \ln\kappa)^{-1/w}\), i.e. \(\kappa^{-1/2}/(1 + \ln\kappa)\) for \(w = 1\) |
 
 For inversion at the default \(\eta\) this is the paper's
 \(r_{\rm def} = \min\{1,\ 2\pi/(\kappa + 1)\}\) for a definite interval and
@@ -301,8 +302,10 @@ faster but costs subnormalisation.
 
 `felcu` computes \(d_0, \dots, d_m\) exactly (up to rounding) by truncated
 power-series arithmetic on \(u(z) = \mu + \arcsin(z)/\tau\): \(u\) itself
-for identity, and the series exponential, reciprocal or square root for the
-other problems.  It then evaluates \(\sum_k d_k \sin^k x\) by Horner's rule
+for identity, and the series exponential, reciprocal, square root or
+logarithm for the other problems.  The logarithm \(y = \log u\) comes from
+\(u y' = u'\), i.e. \(y_0 = \log u_0\) and
+\(y_k = \bigl(k u_k - \sum_{j=1}^{k-1} j\, y_j u_{k-j}\bigr)/(k u_0)\).  It then evaluates \(\sum_k d_k \sin^k x\) by Horner's rule
 on \(2m + 2\) equispaced points, and reads off the Fourier coefficients with
 an FFT, which is exact for a trigonometric polynomial of degree \(m\).
 
@@ -328,7 +331,7 @@ an FFT, which is exact for a trigonometric polynomial of degree \(m\).
 
 - **\(\eta\).**  The method requires \(\eta > 2\).  The default is \(3\)
   (\(\rho_3 \approx 0.866\)) for identity and exponentiation, as in the
-  paper.  For inversion and square root, \(f\) must be analytic on
+  paper.  For inversion, square root and logarithm, \(f\) must be analytic on
   \([\mu - \eta\delta/2, \mu + \eta\delta/2]\), so
   \(2 < \eta < 2\mu/\delta = 2(\kappa+1)/(\kappa-1)\); the default is the
   midpoint \(1 + \mu/\delta\), capped at \(3\).  Near the upper bound the
@@ -342,8 +345,8 @@ an FFT, which is exact for a trigonometric polynomial of degree \(m\).
   on singular values the pole lies between the fitted intervals, and neither
   extension can pass it.  Use `method="sobolev"`.
 - **The extension must avoid the singularity.**  Both methods evaluate \(f\)
-  on \([\mu - \eta\delta/2, \mu + \eta\delta/2]\), so for inversion and
-  square root `felcu` rejects \(\eta \ge 2|\mu|/\delta\).
+  on \([\mu - \eta\delta/2, \mu + \eta\delta/2]\), so for inversion,
+  square root and logarithm `felcu` rejects \(\eta \ge 2|\mu|/\delta\).
 - **No regularisation options.**  `lambdas`, `sobolev_w`, `sobolev_r`,
   `order_fit` and `fit_oversample` only apply to the Sobolev method, and
   passing them with an explicit method raises an error.  The result's

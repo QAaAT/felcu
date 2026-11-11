@@ -39,6 +39,7 @@ CASES = {
     ),
     "exponentiation_matrix": dict(problem="exponentiation", matrix=[[1.0, 0.2], [0.2, 0.5]], target_error=1e-8),
     "square_root": dict(problem="square_root", sigma_min=0.2, sigma_max=1.0, target_error=1e-4),
+    "logarithm": dict(problem="logarithm", sigma_min=0.2, sigma_max=5.0, target_error=1e-4, m_values=[32, 48, 64]),
     "reflected_identity": dict(
         problem="identity", method="reflected", sigma_min=-1.0, sigma_max=1.0, target_error=1e-2, m_values=[32, 64, 128]
     ),
@@ -66,6 +67,17 @@ CASES = {
         method="arcsine_taylor",
         sigma_min=1.0,
         sigma_max=2.0,
+        target_error=1e-6,
+        m_values=[32, 48, 64],
+    ),
+    "reflected_logarithm": dict(
+        problem="logarithm", method="reflected", sigma_min=0.5, sigma_max=2.0, target_error=2e-2, m_values=[16, 32, 64]
+    ),
+    "arcsine_taylor_logarithm": dict(
+        problem="logarithm",
+        method="arcsine_taylor",
+        sigma_min=0.5,
+        sigma_max=1.0,
         target_error=1e-6,
         m_values=[32, 48, 64],
     ),

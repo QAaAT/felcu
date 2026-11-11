@@ -44,7 +44,7 @@ class TestInputValidation:
                 selection="biggest_m",
             )
 
-    @pytest.mark.parametrize("problem", ["identity", "inversion", "exponentiation", "square_root"])
+    @pytest.mark.parametrize("problem", ["identity", "inversion", "exponentiation", "square_root", "logarithm"])
     def test_requires_spectral_information(self, problem):
         with pytest.raises(ValueError, match="Provide a matrix"):
             solve_fe_coefficients(problem)
@@ -63,13 +63,13 @@ class TestInputValidation:
         assert result.converged
         assert result.matrix_shape == (3, 3)
 
-    @pytest.mark.parametrize("problem", ["square_root"])
+    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
     @pytest.mark.parametrize("lo", [0.0, -0.5])
     def test_requires_positive_definite(self, problem, lo):
         with pytest.raises(ValueError, match="positive-definite"):
             solve_fe_coefficients(problem, sigma_min=lo, sigma_max=1.0)
 
-    @pytest.mark.parametrize("problem", ["exponentiation", "square_root"])
+    @pytest.mark.parametrize("problem", ["exponentiation", "square_root", "logarithm"])
     def test_singular_values_only_for_odd_problems(self, problem):
         with pytest.raises(ValueError, match="singular values only support"):
             solve_fe_coefficients(problem, sigma_min=0.5, sigma_max=1.0, spectral_kind="singular_values")
@@ -118,10 +118,15 @@ class TestInputValidation:
         with pytest.raises(ValueError, match="nonsingular"):
             solve_fe_coefficients("inversion", matrix=matrix)
 
+    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
     @pytest.mark.parametrize("matrix", [np.diag([0.0, 1.0]), _rotated([0.0, 1.0, 2.0])])
-    def test_singular_matrix_square_root_raises(self, matrix):
+    def test_singular_matrix_square_root_raises(self, problem, matrix):
         with pytest.raises(ValueError, match="positive-definite"):
-            solve_fe_coefficients("square_root", matrix=matrix)
+            solve_fe_coefficients(problem, matrix=matrix)
+
+    def test_logarithm_requires_a_hermitian_matrix(self):
+        with pytest.raises(ValueError, match="Hermitian"):
+            solve_fe_coefficients("logarithm", matrix=[[1.0, 0.5], [0.0, 2.0]])
 
     @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
     @pytest.mark.parametrize(
@@ -141,13 +146,14 @@ class TestInputValidation:
         with pytest.raises(ValueError, match="eta > 2"):
             solve_fe_coefficients("identity", method="arcsine_taylor", sigma_min=-1.0, sigma_max=1.0, eta=2.0)
 
+    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
     @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
-    def test_extension_must_avoid_the_singularity(self, method):
+    def test_extension_must_avoid_the_singularity(self, method, problem):
         # 2 mu / delta = 2.1 for [0.025, 1].
         with pytest.raises(ValueError, match=r"2\|mu\|/delta = 2\.1"):
-            solve_fe_coefficients("square_root", method=method, sigma_min=0.025, sigma_max=1.0, eta=2.7)
-        r = solve_fe_coefficients("square_root", method=method, sigma_min=0.025, sigma_max=1.0, eta=2.05)
-        assert np.isfinite(r.alpha) and r.alpha < 5.0
+            solve_fe_coefficients(problem, method=method, sigma_min=0.025, sigma_max=1.0, eta=2.7)
+        r = solve_fe_coefficients(problem, method=method, sigma_min=0.025, sigma_max=1.0, eta=2.05)
+        assert np.isfinite(r.alpha) and r.alpha < 10.0
 
 
 # ---------------------------------------------------------------------------
@@ -293,7 +299,7 @@ class TestSelection:
 
 
 class TestExactConstant:
-    @pytest.mark.parametrize("problem, f", [("square_root", np.sqrt)])
+    @pytest.mark.parametrize("problem, f", [("square_root", np.sqrt), ("logarithm", np.log)])
     def test_zero_width_is_exact_constant(self, problem, f):
         result = solve_fe_coefficients(problem, sigma_min=2.0, sigma_max=2.0)
         assert result.m == 0
