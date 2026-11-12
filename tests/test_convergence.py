@@ -172,6 +172,8 @@ class TestSobolevSquareRoot:
 # ---------------------------------------------------------------------------
 
 
+# Fixed m, checking rates and bounds well short of the default target_error.
+@pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
 class TestReflected:
     @pytest.mark.parametrize("problem, kwargs, norm", SATURATING)
     def test_saturates_the_norm_bound(self, problem, kwargs, norm):
@@ -220,6 +222,8 @@ class TestReflected:
 # ---------------------------------------------------------------------------
 
 
+# Fixed m, checking rates and bounds well short of the default target_error.
+@pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
 class TestArcsineTaylor:
     def test_identity_coefficients_match_the_paper(self):
         # Eq. (arcsin_lcu_coefficients) with m = 2T + 1, scaled by 1/tau.

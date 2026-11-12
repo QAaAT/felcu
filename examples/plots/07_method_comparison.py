@@ -22,11 +22,17 @@ Run with:
     python examples/plots/07_method_comparison.py [OUTPUT_DIR]
 """
 
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 
 import _style
-from felcu import evaluate_fourier_series, solve_fe_coefficients
+from felcu import ConvergenceWarning, evaluate_fourier_series, solve_fe_coefficients
+
+# The reflected method converges only like O(1/m), so it never reaches TARGET;
+# the plot is there to show that.
+warnings.simplefilter("ignore", ConvergenceWarning)
 
 TARGET = 1e-10
 M_VALUES = range(8, 257, 8)

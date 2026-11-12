@@ -40,6 +40,7 @@ def result():
         ("square_root", dict(sigma_min=0.2, sigma_max=1.0)),
     ],
 )
+@pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
 def test_round_trip_is_exact(tmp_path, problem, kwargs):
     original = solve_fe_coefficients(problem, target_error=1e-6, m_values=[16, 24], **kwargs)
     path = tmp_path / "result.json"
@@ -110,6 +111,7 @@ def test_rejects_future_version(result):
         FourierExtensionResult.from_dict(data)
 
 
+@pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
 @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
 def test_explicit_method_round_trip(method):
     original = solve_fe_coefficients("exponentiation", method=method, sigma_min=0.1, sigma_max=2.0, m_values=[8, 16])
@@ -126,6 +128,7 @@ def test_rejects_missing_field(result):
         FourierExtensionResult.from_dict(data)
 
 
+@pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
 @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
 def test_json_round_trip(method):
     r = solve_fe_coefficients("inversion", method=method, sigma_min=0.5, sigma_max=1.0, m=12)
