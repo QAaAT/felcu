@@ -133,7 +133,6 @@ class TestApply:
             ("inversion", dict(sigma_min=1e-10, sigma_max=1.0), 0.0),
             ("inversion", dict(sigma_min=1e-10, sigma_max=1.0), -1e-11),
             ("inversion", dict(sigma_min=-1.0, sigma_max=-1e-10), 1e-11),
-            ("inversion", dict(sigma_min=-2.0, sigma_max=2.0, gap=(-1e-10, 1e-10)), 0.0),
             ("logarithm", dict(sigma_min=1e-10, sigma_max=1.0), 0.0),
             ("logarithm", dict(sigma_min=1e-10, sigma_max=1.0), -1e-11),
             ("square_root", dict(sigma_min=1e-10, sigma_max=1.0), 0.0),
@@ -146,6 +145,25 @@ class TestApply:
         assert not r._outside_fitted_spectrum(np.array([eigenvalue]), 1e-8)[0]  # the interval check alone admits it
         with pytest.raises(ValueError, match="outside the domain"):
             r.apply([[eigenvalue]])
+
+    @pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")  # only the domain check matters here
+    @pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
+    def test_tiny_gap_rejects_a_rank_one_matrix(self):
+        # The zero eigenvalues of this rank-one matrix compute as ~1e-16, not
+        # 0, so only the gap check can reject them: its edges must keep slack
+        # relative to their distance from 0, not the half-width (3e-8 here,
+        # 200 times the gap).
+        r = _fit("inversion", m=4, sigma_min=-2.0, sigma_max=2.0, gap=(-1e-10, 1e-10))
+        with pytest.raises(ValueError, match="outside the fitted spectrum"):
+            r.apply(np.full((4, 4), 0.5))
+        r.apply(np.diag([-1e-10 * (1 + 1e-12), 1e-10 * (1 + 1e-12), 2.0]))  # the gap edges, up to rounding
+
+    def test_gap_edge_slack_is_relative_to_the_pole(self):
+        # Off-centre indefinite fit, so the pole is not at x = 0.
+        r = _fit("inversion", m=48, sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.5))
+        r.apply(np.diag([-2.0, -0.5 * (1 + 1e-12), 0.5 * (1 + 1e-12), 3.0]))
+        with pytest.raises(ValueError, match="outside the fitted spectrum"):
+            r.apply(np.diag([-2.0, 0.5 * (1 - 1e-6), 3.0]))
 
     @pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")  # only the domain check matters here
     def test_singular_value_inversion_rejects_a_singular_matrix(self):

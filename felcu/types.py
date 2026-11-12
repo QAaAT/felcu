@@ -202,6 +202,13 @@ class FourierExtensionResult:
         with the sign of the fitted spectrum when that is definite.  For a
         singular-value fit, pass the Hermitian dilation of the matrix.
 
+        Both checks use the eigenvalues as computed in floating point, so a
+        matrix is accepted exactly when its computed eigenvalues lie in the
+        fitted spectrum and the domain of ``f``.  A matrix that is singular
+        in exact arithmetic, but whose computed eigenvalues pass both checks,
+        is nonsingular to working precision, and the result is
+        ``g(tau (H - mu I))`` for those computed eigenvalues.
+
         Parameters
         ----------
         matrix:
@@ -210,9 +217,10 @@ class FourierExtensionResult:
             Relative tolerance for the Hermitian test.
         interval_tol:
             How far, relative to the half-width of the fitted spectrum, an
-            eigenvalue may stray outside it before it is rejected.  For a
-            zero-width spectrum ``[mu, mu]`` it is relative to ``|mu|``
-            instead (absolute when ``mu = 0``).
+            eigenvalue may stray outside it before it is rejected.  At the
+            edges of an inversion gap it is relative to the edge's distance
+            from 0 instead, and for a zero-width spectrum ``[mu, mu]`` to
+            ``|mu|`` (absolute when ``mu = 0``).
 
         Returns
         -------
@@ -244,8 +252,9 @@ class FourierExtensionResult:
         if outside.any():
             raise ValueError(
                 f"matrix has eigenvalues outside the fitted spectrum, e.g. {w[outside][0]:.6g}; "
-                f"refit for its spectrum (the fit covers [{self.sigma_min:.6g}, {self.sigma_max:.6g}] "
-                f"in {self.spectral_kind_used.replace('_', ' ')})."
+                f"refit for its spectrum (the fit covers [{self.sigma_min:.6g}, {self.sigma_max:.6g}]"
+                + (f" less the gap ({self.gap[0]:.6g}, {self.gap[1]:.6g})" if self.gap is not None else "")
+                + f" in {self.spectral_kind_used.replace('_', ' ')})."
             )
         return (V * self.evaluate(w)) @ V.conj().T
 
@@ -286,7 +295,12 @@ class FourierExtensionResult:
         slack = tol * self.x_max
         outside = np.abs(x) > self.x_max + slack
         if self.x_gap is not None:
-            outside |= (x > self.x_gap[0] + slack) & (x < self.x_gap[1] - slack)
+            # The gap edges get slack relative to their distance from the pole
+            # at x = -tau mu, not to the half-width: a gap narrower than the
+            # half-width slack would otherwise be shut entirely.
+            pole = -self.tau * self.mu
+            lo, hi = self.x_gap
+            outside |= (x > lo + tol * abs(lo - pole)) & (x < hi - tol * abs(hi - pole))
         return outside
 
     @property
