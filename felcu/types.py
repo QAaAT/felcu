@@ -195,8 +195,12 @@ class FourierExtensionResult:
         Computed classically by eigendecomposition, to check a fit against
         an exact ``f(H)``.  The eigenvalues of *matrix* must lie in the
         fitted spectrum: outside it the series is a periodic extension that
-        bears no relation to ``f``.  For a singular-value fit, pass the
-        Hermitian dilation of the matrix.
+        bears no relation to ``f``.  They must also lie in the domain of
+        ``f``, which is checked separately, so the interval slack can never
+        admit an eigenvalue where ``f`` is undefined: they must be positive
+        for the square root and the logarithm, and nonzero for inversion,
+        with the sign of the fitted spectrum when that is definite.  For a
+        singular-value fit, pass the Hermitian dilation of the matrix.
 
         Parameters
         ----------
@@ -219,7 +223,7 @@ class FourierExtensionResult:
         ------
         ValueError
             If *matrix* is not square, not Hermitian, or has an eigenvalue
-            outside the fitted spectrum.
+            outside the domain of ``f`` or outside the fitted spectrum.
         """
         from felcu.spectral import _as_double, _is_hermitian
 
@@ -229,6 +233,13 @@ class FourierExtensionResult:
         if not _is_hermitian(H, hermitian_tol):
             raise ValueError("matrix must be Hermitian; apply the result to its Hermitian dilation instead.")
         w, V = np.linalg.eigh(H)
+        bad = self._outside_domain(w)
+        if bad.any():
+            raise ValueError(
+                f"matrix has eigenvalues outside the domain of "
+                f"{ {'inversion': '1/x', 'square_root': 'sqrt(x)', 'logarithm': 'log(x)'}[self.problem] }, "
+                f"e.g. {w[bad][0]:.6g}; {self._domain_description()}."
+            )
         outside = self._outside_fitted_spectrum(w, interval_tol)
         if outside.any():
             raise ValueError(
@@ -238,12 +249,37 @@ class FourierExtensionResult:
             )
         return (V * self.evaluate(w)) @ V.conj().T
 
+    def _outside_domain(self, w: np.ndarray) -> np.ndarray:
+        """Mask of the eigenvalues *w* where f is undefined, or across its singularity from the fit.
+
+        Independent of the interval slack, which can reach past 0 when the
+        fitted spectrum ends close to it.
+        """
+        if self.problem in ("square_root", "logarithm"):
+            return w <= 0
+        if self.problem == "inversion":
+            if self.spectral_kind_used == "eigenvalues" and self.sigma_min > 0:
+                return w <= 0
+            if self.spectral_kind_used == "eigenvalues" and self.sigma_max < 0:
+                return w >= 0
+            return w == 0
+        return np.zeros(w.shape, dtype=bool)
+
+    def _domain_description(self) -> str:
+        """What :meth:`_outside_domain` requires, for its error message."""
+        if self.problem in ("square_root", "logarithm"):
+            return "the matrix must be positive definite"
+        if self.spectral_kind_used == "eigenvalues" and self.sigma_min > 0:
+            return "the fit is positive definite, so the matrix must be too"
+        if self.spectral_kind_used == "eigenvalues" and self.sigma_max < 0:
+            return "the fit is negative definite, so the matrix must be too"
+        return "the matrix must be nonsingular"
+
     def _outside_fitted_spectrum(self, w: np.ndarray, tol: float) -> np.ndarray:
         """Mask of the eigenvalues *w* that lie outside the fitted set, with relative slack *tol*."""
         if not np.isfinite(self.tau):
-            # A zero-width interval: only mu itself is fitted.  The slack is
-            # relative to mu: an absolute floor would let 0 through for a tiny
-            # mu, where inversion and the logarithm are singular.
+            # A zero-width interval: only mu itself is fitted, with slack
+            # relative to mu (an absolute floor would dwarf a tiny mu).
             return np.abs(w - self.mu) > tol * (abs(self.mu) if self.mu != 0 else 1.0)
         # In the scaled variable the fitted set is [-x_max, x_max] less x_gap.
         x = self.tau * (w - self.mu)

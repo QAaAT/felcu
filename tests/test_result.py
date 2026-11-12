@@ -112,12 +112,48 @@ class TestApply:
 
     @pytest.mark.parametrize("problem", ["inversion", "logarithm", "square_root"])
     def test_zero_width_interval_near_zero_rejects_zero(self, problem):
-        # The slack is relative to mu, so a tiny mu does not admit the
-        # eigenvalue 0, where inversion and the logarithm are singular.
         r = solve_fe_coefficients(problem, sigma_min=1e-10, sigma_max=1e-10)
-        with pytest.raises(ValueError, match="outside the fitted spectrum"):
+        with pytest.raises(ValueError, match="outside the domain"):
             r.apply([[0.0]])
         np.testing.assert_allclose(r.apply([[1e-10 * (1 + 1e-12)]]), [[r.a0]])
+
+    def test_zero_width_interval_slack_is_relative_to_mu(self):
+        # Rounding relative to mu is admitted, but 1e-10 + 1e-9, which an
+        # absolute 1e-8 slack would also have admitted, is not.
+        r = solve_fe_coefficients("exponentiation", sigma_min=1e-10, sigma_max=1e-10)
+        r.apply([[1e-10 * (1 + 1e-12)]])
+        with pytest.raises(ValueError, match="outside the fitted spectrum"):
+            r.apply([[1e-10 + 1e-9]])
+
+    # The interval slack (1e-8 of the half-width) reaches past 0 for each of
+    # these fits, so only the domain check rejects these eigenvalues.
+    @pytest.mark.parametrize(
+        ("problem", "kwargs", "eigenvalue"),
+        [
+            ("inversion", dict(sigma_min=1e-10, sigma_max=1.0), 0.0),
+            ("inversion", dict(sigma_min=1e-10, sigma_max=1.0), -1e-11),
+            ("inversion", dict(sigma_min=-1.0, sigma_max=-1e-10), 1e-11),
+            ("inversion", dict(sigma_min=-2.0, sigma_max=2.0, gap=(-1e-10, 1e-10)), 0.0),
+            ("logarithm", dict(sigma_min=1e-10, sigma_max=1.0), 0.0),
+            ("logarithm", dict(sigma_min=1e-10, sigma_max=1.0), -1e-11),
+            ("square_root", dict(sigma_min=1e-10, sigma_max=1.0), 0.0),
+            ("square_root", dict(sigma_min=1e-10, sigma_max=1.0), -1e-11),
+        ],
+    )
+    @pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
+    def test_rejects_eigenvalues_outside_the_domain(self, problem, kwargs, eigenvalue):
+        r = _fit(problem, **kwargs)
+        assert not r._outside_fitted_spectrum(np.array([eigenvalue]), 1e-8)[0]  # the interval check alone admits it
+        with pytest.raises(ValueError, match="outside the domain"):
+            r.apply([[eigenvalue]])
+
+    @pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")  # only the domain check matters here
+    def test_singular_value_inversion_rejects_a_singular_matrix(self):
+        A = np.random.default_rng(3).standard_normal((3, 3))
+        r = _fit("inversion", m=24, matrix=A)
+        assert r.spectral_kind_used == "singular_values"
+        with pytest.raises(ValueError, match="outside the domain"):
+            r.apply(np.zeros((6, 6)))
 
     @pytest.mark.parametrize("problem", ["identity", "inversion", "exponentiation", "square_root", "logarithm"])
     def test_accepts_the_float32_matrix_it_was_fitted_to(self, problem):
