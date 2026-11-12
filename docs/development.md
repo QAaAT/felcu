@@ -88,7 +88,7 @@ request.  A new push to a branch cancels its still-running checks.
 | `lint` | `ruff check` and `ruff format --check` |
 | `test` | Each test category as its own step, with a combined coverage report, on Ubuntu, macOS and Windows with every supported Python |
 | `test-min-deps` | Each test category as its own step, on the oldest supported Python with the oldest supported NumPy |
-| `install` | The whole suite against a regular (not editable) install, run from outside the checkout, so a package that builds incomplete fails |
+| `install` | Builds the sdist and wheel, installs the wheel, and runs the sdist's test suite against it from outside the checkout, so a file missing from either archive fails |
 | `examples` | Every script in `examples/`, including the plots (headless, from a scratch directory) |
 
 The jobs run in stages: `lint` first, then `test`, `test-min-deps` and
@@ -197,11 +197,72 @@ Actions tab.  In the repository settings, under
 **Pages → Build and deployment**, the source must be set to
 **GitHub Actions**.
 
+## Releasing
+
+`felcu` follows [semantic versioning](https://semver.org/): from 1.0.0 on,
+everything in `felcu.__all__` and the JSON result format change
+incompatibly only in a new major version.  Changes are recorded in
+`CHANGELOG.md` as they are merged, under `## [Unreleased]`.
+
+`.github/workflows/release.yml` runs when a tag `v*` is pushed:
+
+| Job | What it does |
+|---|---|
+| `check` | Refuses the tag unless it is `v` plus the `pyproject.toml` version, and, for a final release, `CITATION.cff` has that `version` and a `date-released`, and `CHANGELOG.md` has a dated entry for it |
+| `build` | Builds the sdist and wheel once; every later job uses these files |
+| `test-dist` | Installs the wheel and runs the sdist's test suite against it |
+| `testpypi` | Publishes to [TestPyPI](https://test.pypi.org/project/felcu/) |
+| `pypi` | Publishes to [PyPI](https://pypi.org/project/felcu/); skipped for pre-releases (`a`, `b`, `rc`) |
+| `github-release` | Creates the GitHub release, with the changelog entry as its notes and the built files attached |
+
+### One-off setup
+
+Publishing uses [trusted publishing](https://docs.pypi.org/trusted-publishers/),
+so no API token is stored in the repository.  Before the first release:
+
+1. On [PyPI](https://pypi.org/manage/account/publishing/) and
+   [TestPyPI](https://test.pypi.org/manage/account/publishing/), add a
+   pending trusted publisher for project `felcu`: owner `QAaAT`,
+   repository `felcu`, workflow `release.yml`, and environment `pypi` or
+   `testpypi` respectively.
+2. In the repository settings, under **Environments**, create `testpypi`
+   and `pypi`.  Adding required reviewers to `pypi` makes every release
+   wait for a manual approval before it reaches PyPI.
+
+### Checklist
+
+1. Try a pre-release first: set `version = "1.0.0rc1"` in
+   `pyproject.toml`, merge, then tag and push it:
+
+    ```bash
+    git tag v1.0.0rc1 && git push origin v1.0.0rc1
+    ```
+
+    It stops at TestPyPI.  Check it installs from there:
+
+    ```bash
+    pip install --index-url https://test.pypi.org/simple/ \
+        --extra-index-url https://pypi.org/simple/ felcu==1.0.0rc1
+    ```
+
+2. For the release itself, in one pull request: set the final `version`
+   in `pyproject.toml` and `CITATION.cff`, set `date-released` in
+   `CITATION.cff`, and in `CHANGELOG.md` rename `## [Unreleased]` to
+   `## [X.Y.Z] - YYYY-MM-DD`, add a fresh empty `## [Unreleased]` above
+   it, and update the comparison links at the bottom.
+3. Once it is merged, tag `main` and push the tag:
+
+    ```bash
+    git switch main && git pull
+    git tag vX.Y.Z && git push origin vX.Y.Z
+    ```
+
 ## Package layout
 
 ```
 felcu/
-├── __init__.py        # Public API
+├── __init__.py        # Public API and __version__
+├── py.typed           # Marks the package as typed (PEP 561)
 ├── types.py           # FourierExtensionResult dataclass
 ├── _io.py             # Internal: JSON serialisation of results
 ├── utils.py           # Public utility functions

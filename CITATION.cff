@@ -1,8 +1,12 @@
 cff-version: 1.2.0
 message: "If you use felcu, please cite the paper below."
 title: felcu
-abstract: Sobolev-regularised Fourier-extension coefficients for LCU block encodings.
+abstract: >-
+  Fourier-extension coefficients for linear-combination-of-unitaries (LCU)
+  block encodings of matrix functions, by Sobolev-regularised least squares,
+  reflected extensions or arcsine-Taylor expansions.
 type: software
+version: 1.0.0
 license: MIT
 repository-code: https://github.com/QAaAT/felcu
 url: https://qaaat.github.io/felcu/

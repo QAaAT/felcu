@@ -354,3 +354,17 @@ def test_action_is_an_equivalent_name_for_identity(name):
     r, expected = solve_fe_coefficients(name, **common), solve_fe_coefficients("identity", **common)
     assert r.problem == "identity"
     np.testing.assert_array_equal(r.ak, expected.ak)
+
+
+# ---------------------------------------------------------------------------
+# Package metadata
+# ---------------------------------------------------------------------------
+
+
+def test_version_matches_installed_metadata():
+    from importlib.metadata import version
+
+    import felcu
+
+    assert felcu.__version__ == version("felcu")
+    assert "__version__" in felcu.__all__

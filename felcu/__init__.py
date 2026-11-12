@@ -24,6 +24,8 @@ Typical usage
 >>> result.a0, result.ak, result.bk
 """
 
+from importlib.metadata import PackageNotFoundError, version
+
 from felcu.solve import compute_fe_coefficients, solve_fe_coefficients
 from felcu.spectral import default_eta, default_sobolev_r
 from felcu.types import ConvergenceWarning, FourierExtensionResult
@@ -40,7 +42,13 @@ from felcu.utils import (
     to_complex_coefficients,
 )
 
+try:
+    __version__ = version("felcu")
+except PackageNotFoundError:  # running from a source tree that was never installed
+    __version__ = "unknown"
+
 __all__ = [
+    "__version__",
     # Types
     "FourierExtensionResult",
     "ArrayLike",
