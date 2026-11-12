@@ -28,6 +28,7 @@ from felcu.solve import compute_fe_coefficients, solve_fe_coefficients
 from felcu.spectral import default_eta, default_sobolev_r
 from felcu.types import ConvergenceWarning, FourierExtensionResult
 from felcu.utils import (
+    CIRCUIT_ORDER_NOTE,
     ArrayLike,
     canonical_error_metric,
     canonical_method_name,
@@ -37,6 +38,8 @@ from felcu.utils import (
     evaluate_fourier_series,
     evaluate_target_function,
     fitted_domain_segments,
+    format_circuit_coefficients,
+    to_circuit_coefficients,
     to_complex_coefficients,
 )
 
@@ -60,4 +63,7 @@ __all__ = [
     "evaluate_target_function",
     "fitted_domain_segments",
     "to_complex_coefficients",
+    "to_circuit_coefficients",
+    "format_circuit_coefficients",
+    "CIRCUIT_ORDER_NOTE",
 ]

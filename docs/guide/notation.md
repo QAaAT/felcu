@@ -50,7 +50,7 @@ spectrum \(\pm\operatorname{sv}(A)\) is centred at \(\mu = 0\), so
 | \(m\) | truncation order | `m`, `m_values`, `result.m` |
 | \(g_m(x) = \sum_{k=-m}^{m} c_k e^{ikx}\) | the Fourier extension | `evaluate_fourier_series(x, result.a0, result.ak, result.bk)` |
 | \(a_0, a_k, b_k\) | real coefficients, \(g_m = a_0 + \sum_k [a_k \sin kx + b_k \cos kx]\) | `result.a0`, `result.ak`, `result.bk` |
-| \(c_k\), with \(c_0 = a_0\), \(c_{\pm k} = (b_k \mp i a_k)/2\) | complex (LCU) coefficients | `result.complex_coefficients` \(= [c_{-m}, \dots, c_m]\) |
+| \(c_k\), with \(c_0 = a_0\), \(c_{\pm k} = (b_k \mp i a_k)/2\) | complex (LCU) coefficients | `result.complex_coefficients` \(= [c_{-m}, \dots, c_m]\); `result.circuit_coefficients` \(= [c_0, 0, c_1, c_{-1}, \dots, c_m, c_{-m}]\) |
 | \(\alpha_m = \sum_k \lvert c_k\rvert\) | subnormalisation | `result.alpha` |
 | \(\epsilon_m = \|g - g_m\|_{L^\infty(\Omega)}\) | approximation (and spectral) error | `result.achieved_linf_error` |
 | \(\epsilon_{\rm t}\) | target tolerance | `target_error` |

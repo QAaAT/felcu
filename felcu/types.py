@@ -85,7 +85,8 @@ class FourierExtensionResult:
         bases).
     complex_coefficients : numpy.ndarray
         The same series as ``[c_{-m}, ..., c_m]``; see
-        :func:`~felcu.to_complex_coefficients`.
+        :func:`~felcu.to_complex_coefficients`.  For the order a circuit
+        consumes them in, see :attr:`circuit_coefficients`.
     k : numpy.ndarray
         Harmonic indices ``1, ..., m`` matching *ak* and *bk*.
     x_max : float
@@ -247,6 +248,27 @@ class FourierExtensionResult:
         if self.x_gap is not None:
             outside |= (x > self.x_gap[0] + slack) & (x < self.x_gap[1] - slack)
         return outside
+
+    @property
+    def circuit_coefficients(self) -> np.ndarray:
+        """Complex coefficients in circuit order, ``[c_0, 0, c_1, c_{-1}, ..., c_m, c_{-m}]``.
+
+        Length ``2m + 2``: the zero after ``c_0`` is required by the
+        compressed circuit.  See :func:`~felcu.to_circuit_coefficients`.
+        """
+        from felcu.utils import to_circuit_coefficients
+
+        return to_circuit_coefficients(self)
+
+    def format_circuit_coefficients(self) -> str:
+        """:attr:`circuit_coefficients` as a bare Python list literal, for pasting by hand.
+
+        See :func:`~felcu.format_circuit_coefficients`; print
+        :data:`~felcu.CIRCUIT_ORDER_NOTE` with it.
+        """
+        from felcu.utils import format_circuit_coefficients
+
+        return format_circuit_coefficients(self)
 
     @property
     def achieved_inf_error(self) -> float:

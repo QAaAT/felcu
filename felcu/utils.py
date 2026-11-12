@@ -317,6 +317,86 @@ def to_complex_coefficients(
     return np.concatenate([c_neg, c0, c_pos])
 
 
+#: Explains the circuit order; print it alongside :func:`format_circuit_coefficients`.
+CIRCUIT_ORDER_NOTE = (
+    "Circuit order [c_0, 0, c_1, c_-1, ..., c_m, c_-m]: the extra zero after c_0 "
+    "is required by the compressed circuit, which uses 2m + 2 coefficients."
+)
+
+
+def to_circuit_coefficients(
+    a0_or_result: FourierExtensionResult | float | complex,
+    ak: Sequence | None = None,
+    bk: Sequence | None = None,
+) -> np.ndarray:
+    r"""Convert a0, ak, bk to the circuit order [c_0, 0, c_1, c_{-1}, ..., c_m, c_{-m}].
+
+    This is the order the compressed LCU circuit consumes the coefficients
+    in: ``c_0``, then a zero, then the pairs ``c_k, c_{-k}`` for
+    ``k = 1, ..., m``.  The zero pads the ``2m + 1`` coefficients of
+    :func:`to_complex_coefficients` to the ``2m + 2`` the compressed circuit
+    requires; it must be kept.
+
+    Parameters
+    ----------
+    a0_or_result, ak, bk:
+        As for :func:`to_complex_coefficients`.
+
+    Returns
+    -------
+    numpy.ndarray
+        Complex array of length ``2m + 2``.
+
+    Raises
+    ------
+    ValueError
+        As for :func:`to_complex_coefficients`.
+    """
+    c = to_complex_coefficients(a0_or_result, ak, bk)
+    m = (c.size - 1) // 2
+    out = np.zeros(2 * m + 2, dtype=np.complex128)
+    out[0] = c[m]
+    out[2::2] = c[m + 1 :]  # c_1, ..., c_m
+    out[3::2] = c[m - 1 :: -1] if m else c[:0]  # c_-1, ..., c_-m
+    return out
+
+
+def format_circuit_coefficients(
+    a0_or_result: FourierExtensionResult | float | complex,
+    ak: Sequence | None = None,
+    bk: Sequence | None = None,
+) -> str:
+    """Format the circuit-order coefficients as a bare Python list literal.
+
+    For pasting the coefficients somewhere by hand.  Code that imports
+    felcu should use :func:`to_circuit_coefficients` (or
+    :attr:`FourierExtensionResult.circuit_coefficients`) directly instead.
+    Each entry is written with :func:`repr`, so the list reproduces
+    :func:`to_circuit_coefficients` exactly.  When printing it, also print
+    :data:`CIRCUIT_ORDER_NOTE`, which explains the order and the padding
+    zero.
+
+    Parameters
+    ----------
+    a0_or_result, ak, bk:
+        As for :func:`to_complex_coefficients`.
+
+    Returns
+    -------
+    str
+        A Python list literal, ``[c_0, 0j, c_1, c_-1, ..., c_m, c_-m]``.
+
+    Examples
+    --------
+    >>> print(CIRCUIT_ORDER_NOTE)
+    Circuit order [c_0, 0, c_1, c_-1, ..., c_m, c_-m]: the extra zero ...
+    >>> print(format_circuit_coefficients(result))
+    [(2.718...+0j), 0j, (0.5-0.1j), (0.5+0.1j), ...]
+    """
+    c = to_circuit_coefficients(a0_or_result, ak, bk)
+    return "[" + ", ".join(repr(complex(ck)) for ck in c) + "]"
+
+
 def fitted_domain_segments(
     result: FourierExtensionResult,
     num: int = 2001,
