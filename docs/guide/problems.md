@@ -165,8 +165,14 @@ r_{\log,w} = \kappa^{-(2w-1)/(2w)} (1 + \ln\kappa)^{-1/w},
 the square-root rule with an extra factor for the logarithm.  When the
 spectrum straddles \(1\), \(\log\mathcal H\) has eigenvalues of both signs
 and \(\|\log\mathcal H\| = \max(|\log\lambda_{\min}|, |\log\lambda_{\max}|)\).
-\(\log x\) is concave, so like the square root it does not satisfy the
-convex endpoint-reflection condition.
+\(\log x\) is concave, but on \(0 < \lambda_{\min} < \lambda_{\max} \le 1\)
+the sign-adjusted profile \(-\log x\) is convex, non-negative and maximised
+at \(\lambda_{\min}\), so it satisfies the convex endpoint-reflection
+condition.  Flipping the sign of \(f\) only flips the sign of every
+coefficient, so there the reflected extension's subnormalisation is optimal,
+\(\alpha_m = \lvert\log\lambda_{\min}\rvert - \epsilon_m\).  When the
+spectrum reaches past \(1\), \(\log x\) is positive and concave on that part
+of it, and, as for the square root, \(\alpha_m\) is bounded but not optimal.
 
 ## The extension parameter \(\eta\)
 

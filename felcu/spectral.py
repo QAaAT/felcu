@@ -190,12 +190,13 @@ def _check_explicit_eta(spec: dict) -> None:
         raise ValueError("The arcsine-Taylor construction requires eta > 2.")
     if spec["problem"] in ENTIRE_PROBLEMS or not math.isfinite(spec["tau"]):
         return
-    delta = PI / (eta * spec["tau"])
-    bound = 2.0 * abs(spec["mu"]) / delta
-    if eta >= bound:
+    # Compare eta delta with 2 |mu| directly: recovering delta from tau, or
+    # dividing by it, rounds and can admit eta = 2 |mu| / delta itself.
+    mu, delta = _centre_and_halfwidth(spec["spectral"])
+    if eta * delta >= 2.0 * abs(mu):
         raise ValueError(
             f"method='{method}' with eta={eta:.6g} extends {spec['problem']} past its singularity at 0; "
-            f"eta must be below 2|mu|/delta = {bound:.6g}."
+            f"eta must be below 2|mu|/delta = {2.0 * abs(mu) / delta:.6g}."
         )
 
 

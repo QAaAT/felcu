@@ -251,7 +251,8 @@ Gauss–Legendre quadrature of \(g\) over \([-\pi/2, \pi/2]\).
 
 When \(f\) is convex and maximised in magnitude at a spectral endpoint
 (the paper's convex endpoint-reflection condition: identity, exponentiation
-and definite inversion),
+and definite inversion, and, up to sign, the logarithm on
+\(0 < \lambda_{\min} < \lambda_{\max} \le 1\), where \(-\log x\) is convex),
 every Fourier mode is phase-aligned at that endpoint, so the
 subnormalisation is optimal,
 

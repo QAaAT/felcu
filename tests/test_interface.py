@@ -155,6 +155,14 @@ class TestInputValidation:
         r = solve_fe_coefficients(problem, method=method, sigma_min=0.025, sigma_max=1.0, eta=2.05)
         assert np.isfinite(r.alpha) and r.alpha < 10.0
 
+    @pytest.mark.parametrize("problem", ["inversion", "square_root", "logarithm"])
+    @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
+    def test_singularity_bound_is_excluded(self, method, problem):
+        # 2 mu / delta = 198 / 96 = 2.0625 exactly for [3, 195]; recovering
+        # delta from tau rounds the bound up and used to admit it.
+        with pytest.raises(ValueError, match="past its singularity"):
+            solve_fe_coefficients(problem, method=method, sigma_min=3.0, sigma_max=195.0, eta=2.0625, m=16)
+
 
 # ---------------------------------------------------------------------------
 # Sobolev options
