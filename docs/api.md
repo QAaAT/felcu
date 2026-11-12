@@ -30,8 +30,6 @@ Everything below is importable from the top-level `felcu` package.
 
 ::: felcu.format_circuit_coefficients
 
-::: felcu.CIRCUIT_ORDER_NOTE
-
 ## Defaults
 
 ::: felcu.default_eta

@@ -126,18 +126,14 @@ coefficients = solve_fe_coefficients("exponentiation", sigma_min=0.1, sigma_max=
 ```
 
 To paste the coefficients somewhere by hand,
-`result.format_circuit_coefficients()` gives them as a bare Python list.
-Print `CIRCUIT_ORDER_NOTE` with it, so the order and the zero are explained:
+`result.format_circuit_coefficients()` gives them as a bare Python list,
+zero included:
 
 ```python
-from felcu import CIRCUIT_ORDER_NOTE
-
-print(CIRCUIT_ORDER_NOTE)
 print(result.format_circuit_coefficients())
 ```
 
 ```text
-Circuit order [c_0, 0, c_1, c_-1, ..., c_m, c_-m]: the extra zero after c_0 is required by the compressed circuit, which uses 2m + 2 coefficients.
 [(3.3903633881883226+0j), 0j, (-0.06034330806667995-1.1020475420922582j), (-0.06034330806667995+1.1020475420922582j), ...]
 ```
 

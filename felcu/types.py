@@ -263,8 +263,7 @@ class FourierExtensionResult:
     def format_circuit_coefficients(self) -> str:
         """:attr:`circuit_coefficients` as a bare Python list literal, for pasting by hand.
 
-        See :func:`~felcu.format_circuit_coefficients`; print
-        :data:`~felcu.CIRCUIT_ORDER_NOTE` with it.
+        See :func:`~felcu.format_circuit_coefficients`.
         """
         from felcu.utils import format_circuit_coefficients
 

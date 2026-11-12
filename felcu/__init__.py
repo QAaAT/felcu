@@ -28,7 +28,6 @@ from felcu.solve import compute_fe_coefficients, solve_fe_coefficients
 from felcu.spectral import default_eta, default_sobolev_r
 from felcu.types import ConvergenceWarning, FourierExtensionResult
 from felcu.utils import (
-    CIRCUIT_ORDER_NOTE,
     ArrayLike,
     canonical_error_metric,
     canonical_method_name,
@@ -65,5 +64,4 @@ __all__ = [
     "to_complex_coefficients",
     "to_circuit_coefficients",
     "format_circuit_coefficients",
-    "CIRCUIT_ORDER_NOTE",
 ]

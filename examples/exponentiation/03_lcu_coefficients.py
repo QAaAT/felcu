@@ -16,8 +16,8 @@ two orders:
 
 Circuit code that imports felcu should take result.circuit_coefficients
 directly.  To paste the coefficients by hand, print
-result.format_circuit_coefficients(), a bare Python list, together with
-CIRCUIT_ORDER_NOTE.  The LCU subnormalisation alpha is the sum of the
+result.format_circuit_coefficients(), a bare Python list that keeps the
+zero after c_0.  The LCU subnormalisation alpha is the sum of the
 magnitudes |c_k|, the same in either order.
 
 Run with:
@@ -26,7 +26,7 @@ Run with:
 
 import numpy as np
 
-from felcu import CIRCUIT_ORDER_NOTE, solve_fe_coefficients
+from felcu import solve_fe_coefficients
 
 result = solve_fe_coefficients(
     "exponentiation",
@@ -56,6 +56,7 @@ cc = result.circuit_coefficients
 print(f"\nlen(circuit_coefficients) = {len(cc)}  (= 2m + 2, with a zero after c_0)")
 print(f"sum |c_k| in circuit order = {np.sum(np.abs(cc)):.6f}  (= alpha)")
 
-# ... and as a bare list to paste by hand
-print(CIRCUIT_ORDER_NOTE)
+# ... and as a bare list to paste by hand.  Keep the zero after c_0: the
+# compressed circuit requires it.
+print("\nCircuit order [c_0, 0, c_1, c_-1, ..., c_m, c_-m]; the zero after c_0 is required by the compressed circuit:")
 print(result.format_circuit_coefficients())

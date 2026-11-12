@@ -317,13 +317,6 @@ def to_complex_coefficients(
     return np.concatenate([c_neg, c0, c_pos])
 
 
-#: Explains the circuit order; print it alongside :func:`format_circuit_coefficients`.
-CIRCUIT_ORDER_NOTE = (
-    "Circuit order [c_0, 0, c_1, c_-1, ..., c_m, c_-m]: the extra zero after c_0 "
-    "is required by the compressed circuit, which uses 2m + 2 coefficients."
-)
-
-
 def to_circuit_coefficients(
     a0_or_result: FourierExtensionResult | float | complex,
     ak: Sequence | None = None,
@@ -372,9 +365,8 @@ def format_circuit_coefficients(
     felcu should use :func:`to_circuit_coefficients` (or
     :attr:`FourierExtensionResult.circuit_coefficients`) directly instead.
     Each entry is written with :func:`repr`, so the list reproduces
-    :func:`to_circuit_coefficients` exactly.  When printing it, also print
-    :data:`CIRCUIT_ORDER_NOTE`, which explains the order and the padding
-    zero.
+    :func:`to_circuit_coefficients` exactly, including the zero after
+    ``c_0`` that the compressed circuit requires.
 
     Parameters
     ----------
@@ -388,8 +380,6 @@ def format_circuit_coefficients(
 
     Examples
     --------
-    >>> print(CIRCUIT_ORDER_NOTE)
-    Circuit order [c_0, 0, c_1, c_-1, ..., c_m, c_-m]: the extra zero ...
     >>> print(format_circuit_coefficients(result))
     [(2.718...+0j), 0j, (0.5-0.1j), (0.5+0.1j), ...]
     """
