@@ -32,7 +32,7 @@ class FourierExtensionResult:
     Attributes
     ----------
     problem : str
-        ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``.
+        ``'identity'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``.
     method : str
         Coefficient-selection strategy: ``'sobolev'``, ``'reflected'``, or
         ``'arcsine_taylor'``.

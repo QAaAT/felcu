@@ -57,13 +57,13 @@ def _basis_matrix(x: np.ndarray, m: int, basis: str, d: int = 0) -> np.ndarray:
 def _target(x: np.ndarray, problem: str, tau: float, mu: float, d: int = 0) -> np.ndarray:
     """d-th derivative of the fitted target g(x) = F(x / tau + mu).
 
-    F is ``t``, ``1/t``, ``exp(t)`` or ``sqrt(t)`` for action,
+    F is ``t``, ``1/t``, ``exp(t)`` or ``sqrt(t)`` for identity,
     inversion, exponentiation and square root.  ``tau = inf`` (a zero-width
     interval) makes g constant.
     """
     x = np.asarray(x, dtype=float)
     t = x / tau + mu
-    if problem == "action":
+    if problem == "identity":
         F_d = t if d == 0 else np.full_like(t, 1.0 if d == 1 else 0.0)
     elif problem == "inversion":
         if math.isfinite(tau):

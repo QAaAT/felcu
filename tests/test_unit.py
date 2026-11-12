@@ -4,6 +4,8 @@ Most of these never run the solver; the linear-solver test checks one
 internal step against an independent reference.
 """
 
+import math
+
 import numpy as np
 import pytest
 
@@ -26,9 +28,9 @@ pytestmark = pytest.mark.unit
 
 class TestCanonicalProblemName:
     def test_aliases_resolve(self):
-        assert canonical_problem_name("action") == "action"
-        assert canonical_problem_name("identity") == "action"
-        assert canonical_problem_name("matrix-action") == "action"
+        assert canonical_problem_name("identity") == "identity"
+        assert canonical_problem_name("action") == "identity"
+        assert canonical_problem_name("matrix-action") == "identity"
         assert canonical_problem_name("inversion") == "inversion"
         assert canonical_problem_name("inverse") == "inversion"
         assert canonical_problem_name("exp") == "exponentiation"
@@ -38,7 +40,7 @@ class TestCanonicalProblemName:
         assert canonical_problem_name("square-root") == "square_root"
 
     def test_case_and_whitespace_insensitive(self):
-        assert canonical_problem_name("  ACTION  ") == "action"
+        assert canonical_problem_name("  IDENTITY  ") == "identity"
         assert canonical_problem_name("Inversion") == "inversion"
 
     def test_unknown_raises(self):
@@ -212,7 +214,7 @@ class TestDefaultEta:
         assert default_eta("inversion", method="refl", sigma_min=0.1, sigma_max=1.0) == 2.0
 
     def test_arcsine_taylor(self):
-        assert default_eta("action", method="arcsine_taylor") == 3.0
+        assert default_eta("identity", method="arcsine_taylor") == 3.0
         # Midpoint of 2 < eta < 2 mu / delta, capped at 3.
         assert default_eta("inversion", method="asin", sigma_min=0.1, sigma_max=1.0) == pytest.approx(1 + 1.1 / 0.9)
         assert default_eta("square_root", method="asin", sigma_min=0.5, sigma_max=1.0) == 3.0
@@ -249,8 +251,8 @@ class TestDefaultSobolevR:
     @pytest.mark.parametrize(
         "problem, kwargs",
         [
-            ("action", {}),
-            ("action", dict(sigma_min=-1.0, sigma_max=2.0)),
+            ("identity", {}),
+            ("identity", dict(sigma_min=-1.0, sigma_max=2.0)),
             ("inversion", dict(sigma_min=0.5, sigma_max=3.0)),
             ("inversion", dict(sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4))),
             ("exponentiation", dict(sigma_min=1.0, sigma_max=3.0)),
@@ -293,6 +295,47 @@ class TestDefaultSobolevR:
 # ---------------------------------------------------------------------------
 # Linear solver
 # ---------------------------------------------------------------------------
+
+
+class TestSobolevWeight:
+    @pytest.mark.parametrize("w", [1, 2, 3, 5])
+    def test_integer_order_is_the_finite_sum(self, w):
+        from felcu._linalg import _log_sobolev_weight
+
+        z = np.array([0.0, 0.1, 0.5, 0.9, 1.0, 1.1, 2.0, 7.0])
+        exact = sum(z ** (2 * j) for j in range(w + 1))
+        np.testing.assert_allclose(np.exp(_log_sobolev_weight(z, w)), exact, rtol=1e-13)
+
+    @pytest.mark.parametrize("w", [0.6, 0.75, 1.5, 2.25])
+    def test_fractional_order_is_the_geometric_formula(self, w):
+        from felcu._linalg import _log_sobolev_weight
+
+        z = np.array([0.1, 0.5, 0.9, 1.1, 2.0, 7.0])
+        exact = (1 - z ** (2 * (w + 1))) / (1 - z**2)
+        np.testing.assert_allclose(np.exp(_log_sobolev_weight(z, w)), exact, rtol=1e-13)
+        np.testing.assert_allclose(np.exp(_log_sobolev_weight(np.array([0.0, 1.0]), w)), [1.0, w + 1.0])
+
+    @pytest.mark.parametrize("w", [0.75, 2.0])
+    def test_continuous_through_one(self, w):
+        from felcu._linalg import _log_sobolev_weight
+
+        z = 1.0 + np.array([-1e-9, 0.0, 1e-9])
+        values = _log_sobolev_weight(z, w)
+        np.testing.assert_allclose(values, np.log(w + 1.0), rtol=1e-8)
+
+    def test_no_overflow_at_high_frequency(self):
+        from felcu._linalg import _log_sobolev_weight
+
+        value = _log_sobolev_weight(np.array([1e200]), 3.0)[0]
+        assert value == pytest.approx(6 * math.log(1e200), rel=1e-15)
+
+    def test_penalty_entries(self):
+        from felcu._linalg import _penalty
+
+        lam, r, w, m = 0.3, 0.5, 2.0, 4
+        k = np.arange(1, m + 1)
+        p = lam * np.sqrt((1 + (r * k) ** 2 + (r * k) ** 4) / 2)
+        np.testing.assert_allclose(_penalty(m, "full", lam, r, w), np.concatenate([[lam], p, p]), rtol=1e-14)
 
 
 class TestLinearSolver:

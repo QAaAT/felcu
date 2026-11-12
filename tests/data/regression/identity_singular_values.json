@@ -2,7 +2,7 @@
   "format": "felcu.FourierExtensionResult",
   "format_version": 1,
   "felcu_version": "0.1.0",
-  "problem": "action",
+  "problem": "identity",
   "method": "sobolev",
   "basis_used": "odd_sine",
   "m": 32,

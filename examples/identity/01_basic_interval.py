@@ -1,6 +1,6 @@
 """
-Action on a symmetric interval
-==============================
+Identity on a symmetric interval
+================================
 
 Fit f(H) = H for a Hermitian H with eigenvalues in [-1, 1].
 
@@ -9,7 +9,7 @@ g(x) = x / tau.  Because that is odd, every cosine coefficient (bk) and
 the constant term (a0) vanish.
 
 Run with:
-    python examples/action/01_basic_interval.py
+    python examples/identity/01_basic_interval.py
 """
 
 import numpy as np
@@ -17,7 +17,7 @@ import numpy as np
 from felcu import solve_fe_coefficients
 
 result = solve_fe_coefficients(
-    "action",
+    "identity",
     sigma_min=-1.0,
     sigma_max=1.0,
     target_error=1e-8,

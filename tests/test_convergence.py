@@ -17,8 +17,8 @@ pytestmark = pytest.mark.convergence
 
 # (problem, kwargs, ||f(H)||) for convex endpoint-maximising f, where reflection is norm-saturating.
 SATURATING = [
-    ("action", dict(sigma_min=-1.0, sigma_max=3.0), 3.0),
-    ("action", dict(sigma_min=-2.0, sigma_max=1.0), 2.0),
+    ("identity", dict(sigma_min=-1.0, sigma_max=3.0), 3.0),
+    ("identity", dict(sigma_min=-2.0, sigma_max=1.0), 2.0),
     ("exponentiation", dict(sigma_min=0.1, sigma_max=2.0), math.exp(2.0)),
     ("exponentiation", dict(sigma_min=-0.5, sigma_max=1.5), math.exp(1.5)),
     ("inversion", dict(sigma_min=0.5, sigma_max=1.0), 2.0),
@@ -43,9 +43,9 @@ class TestSobolev:
         assert result.converged
         assert result.achieved_l2_error <= 1e-3 * 1.01
 
-    def test_action_converges(self):
+    def test_identity_converges(self):
         result = solve_fe_coefficients(
-            "action",
+            "identity",
             sigma_min=-1.0,
             sigma_max=1.0,
             target_error=1e-3,
@@ -191,7 +191,7 @@ class TestReflected:
 
     def test_identity_is_the_triangle_wave(self):
         # Sec. III A: a_k = (4 / (pi k^2)) sin(k pi / 2) / tau, with the constant mu exact.
-        r = solve_fe_coefficients("action", method="reflected", sigma_min=1.0, sigma_max=4.0, m=9)
+        r = solve_fe_coefficients("identity", method="reflected", sigma_min=1.0, sigma_max=4.0, m=9)
         k = np.arange(1, 10)
         np.testing.assert_allclose(r.ak, 4 / (np.pi * k**2) * np.sin(k * np.pi / 2) / r.tau, atol=1e-14)
         assert r.a0 == pytest.approx(2.5, abs=1e-14)
@@ -222,7 +222,7 @@ class TestArcsineTaylor:
     def test_identity_coefficients_match_the_paper(self):
         # Eq. (arcsin_lcu_coefficients) with m = 2T + 1, scaled by 1/tau.
         T = 6
-        r = solve_fe_coefficients("action", method="arcsine_taylor", sigma_min=-1.0, sigma_max=3.0, m=2 * T + 1)
+        r = solve_fe_coefficients("identity", method="arcsine_taylor", sigma_min=-1.0, sigma_max=3.0, m=2 * T + 1)
         c = [
             (-1) ** k
             * sum(math.comb(2 * j, j) * math.comb(2 * j + 1, j - k) / (16**j * (2 * j + 1)) for j in range(k, T + 1))
@@ -238,7 +238,7 @@ class TestArcsineTaylor:
     @pytest.mark.parametrize(
         "problem, kwargs, eta",
         [
-            ("action", dict(sigma_min=-1.0, sigma_max=3.0), 3.0),
+            ("identity", dict(sigma_min=-1.0, sigma_max=3.0), 3.0),
             ("exponentiation", dict(sigma_min=0.1, sigma_max=2.0), 3.0),
             ("inversion", dict(sigma_min=0.5, sigma_max=1.0), 2.5),
             ("square_root", dict(sigma_min=0.15, sigma_max=1.0), 2.7),
@@ -257,7 +257,7 @@ class TestArcsineTaylor:
         eta = 2.5
         lo, hi = kwargs["sigma_min"], kwargs["sigma_max"]
         mu, delta = (lo + hi) / 2, (hi - lo) / 2
-        f = {"action": lambda t: t, "exponentiation": math.exp, "inversion": lambda t: 1 / t}[problem]
+        f = {"identity": lambda t: t, "exponentiation": math.exp, "inversion": lambda t: 1 / t}[problem]
         limit = max(abs(f(mu - eta * delta / 2)), abs(f(mu + eta * delta / 2)))
         kw = dict(method="arcsine_taylor", eta=eta, **kwargs)
         alphas = [solve_fe_coefficients(problem, m=m, **kw).alpha for m in (64, 256)]

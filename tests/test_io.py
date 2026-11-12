@@ -31,8 +31,8 @@ def result():
 @pytest.mark.parametrize(
     "problem, kwargs",
     [
-        ("action", dict(sigma_min=-1.0, sigma_max=2.0)),
-        ("action", dict(matrix=[[1.0, 2.0], [0.0, 1.0]])),
+        ("identity", dict(sigma_min=-1.0, sigma_max=2.0)),
+        ("identity", dict(matrix=[[1.0, 2.0], [0.0, 1.0]])),
         ("inversion", dict(sigma_min=0.5, sigma_max=2.0)),
         ("inversion", dict(sigma_min=0.5, sigma_max=2.0, spectral_kind="singular_values")),
         ("inversion", dict(sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4))),
@@ -96,6 +96,12 @@ def test_dict_round_trip(result):
 def test_rejects_other_json():
     with pytest.raises(ValueError, match="Not a saved felcu result"):
         FourierExtensionResult.from_json('{"a": 1}')
+
+
+def test_reads_the_former_problem_name(result):
+    data = result.to_dict()
+    data["problem"] = "action"
+    assert FourierExtensionResult.from_dict(data).problem == "identity"
 
 
 def test_rejects_future_version(result):

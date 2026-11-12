@@ -186,7 +186,7 @@ def solve_fe_coefficients(
     Parameters
     ----------
     problem:
-        One of ``'action'``, ``'inversion'``, ``'exponentiation'``, or ``'square_root'``
+        One of ``'identity'`` (or ``'action'``), ``'inversion'``, ``'exponentiation'``, or ``'square_root'``
         (several aliases accepted; see :func:`~felcu.utils.canonical_problem_name`).
     method:
         Coefficient-selection strategy (see
@@ -198,7 +198,7 @@ def solve_fe_coefficients(
         - ``'reflected'``: the Fourier series of g reflected about
           ``x = +-pi/2``.  Optimal subnormalisation
           ``alpha_m = ||f(H)|| - epsilon_m`` for convex endpoint-maximising f
-          (action, exponentiation, definite inversion) at the default
+          (identity, exponentiation, definite inversion) at the default
           ``eta = 2``, but only ``O(1/m)`` convergence, so the default
           *target_error* is out of reach.
         - ``'arcsine_taylor'``: the Taylor series of ``g(arcsin z)`` with
@@ -231,8 +231,8 @@ def solve_fe_coefficients(
         Which spectral data the bounds (or *matrix*) describe.
         ``'eigenvalues'`` needs a Hermitian matrix.  ``'singular_values'``
         acts on a general matrix through its Hermitian dilation, with an odd
-        series, so it is available for action and inversion only.
-        ``'auto'`` (default) uses singular values for action and inversion
+        series, so it is available for identity and inversion only.
+        ``'auto'`` (default) uses singular values for identity and inversion
         of a non-Hermitian matrix, and eigenvalues otherwise.
     eta:
         Fourier-extension parameter (must exceed 1).  Computed automatically
@@ -252,8 +252,10 @@ def solve_fe_coefficients(
         used.
     sobolev_w:
         Order *w* of the H_r^w regulariser, which weights the k-th Fourier
-        mode by ``1 + (r|k|)^(2w)``.  Must exceed ``0.5``; the paper's
-        bounds cover ``0.5 < w <= 1``.  Defaults to ``1``.
+        mode by ``P_w(r|k|) = sum_{j=0}^{w} (r|k|)^(2j)``, i.e. penalises
+        every derivative up to order *w*; for fractional *w*,
+        ``P_w(z) = (1 - z^(2(w+1))) / (1 - z^2)``.  Must exceed ``0.5``;
+        the paper's bounds cover ``0.5 < w <= 1``.  Defaults to ``1``.
     sobolev_r:
         Scale *r* of the H_r^w regulariser, with ``0 < r <= 1``.  Chosen by
         :func:`~felcu.default_sobolev_r` when omitted.
