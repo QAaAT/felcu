@@ -84,8 +84,9 @@ The options in this section, and `fit_oversample`, only apply to
     the distance from the fitted set to the pole, capped at \(1\), for
     inversion (at the default \(\eta\), \(r_{\rm def} = \min\{1, 2\pi/(\kappa+1)\}\)
     for a definite interval and \(r_{\rm indef} = \min\{1, \pi/(\kappa+1)\}\)
-    for singular values), and \(r_{\rm sqrt} = \kappa^{-(2w-1)/(2w)}\) for the square
-    root (see
+    for singular values), \(r_{\rm sqrt} = \kappa^{-(2w-1)/(2w)}\) for the square
+    root, and \(r_{\log,w} = \kappa^{-(2w-1)/(2w)}(1 + \ln\kappa)^{-1/w}\) for
+    the logarithm (see
     [The Sobolev penalty](method.md#the-sobolev-penalty)).
     The value used is reported as `result.sobolev_r`.
 

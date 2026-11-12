@@ -13,7 +13,7 @@
 `felcu` computes coefficients for representing matrix functions via Linear
 Combination of Unitaries (LCU), using the Fourier extensions of
 P. Brearley, T. L. Howarth and B. Adcock, [*Fourier extensions for matrix-function block encodings with error-independent subnormalization bounds*](https://arxiv.org/abs/2601.18024), arXiv:2601.18024.
-It supports four problems:
+It supports five problems:
 
 | Problem | Function |
 |---|---|
@@ -21,6 +21,7 @@ It supports four problems:
 | `inversion` | $f(\mathcal H) = \mathcal H^{-1}$ |
 | `exponentiation` | $f(\mathcal H) = e^{\mathcal H}$ |
 | `square_root` | $f(\mathcal H) = \sqrt{\mathcal H}$ ($\mathcal H$ positive definite) |
+| `logarithm` | $f(\mathcal H) = \log \mathcal H$ ($\mathcal H$ positive definite) |
 
 A matrix or spectral bounds are required.  Every fit is centred on the
 spectrum,

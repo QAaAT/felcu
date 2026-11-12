@@ -11,7 +11,7 @@ from felcu.types import ArrayLike, FourierExtensionResult
 
 
 def canonical_problem_name(name: str) -> str:
-    """Normalise a problem name to one of 'identity', 'inversion', 'exponentiation', 'square_root'.
+    """Normalise a problem name to 'identity', 'inversion', 'exponentiation', 'square_root' or 'logarithm'.
 
     Matching ignores case and surrounding whitespace.
 
@@ -21,14 +21,14 @@ def canonical_problem_name(name: str) -> str:
         Problem name.  Accepted aliases are ``'action'`` (an equivalent
         name) and ``'matrix-action'`` for ``'identity'``; ``'inverse'`` for
         ``'inversion'``; ``'exp'`` and ``'exponential'`` for
-        ``'exponentiation'``; and ``'sqrt'`` and ``'square-root'`` for
-        ``'square_root'``.
+        ``'exponentiation'``; ``'sqrt'`` and ``'square-root'`` for
+        ``'square_root'``; and ``'log'`` and ``'ln'`` for ``'logarithm'``.
 
     Returns
     -------
     str
-        ``'identity'``, ``'inversion'``, ``'exponentiation'``, or
-        ``'square_root'``.
+        ``'identity'``, ``'inversion'``, ``'exponentiation'``,
+        ``'square_root'``, or ``'logarithm'``.
 
     Raises
     ------
@@ -47,10 +47,13 @@ def canonical_problem_name(name: str) -> str:
         "square_root": "square_root",
         "square-root": "square_root",
         "sqrt": "square_root",
+        "logarithm": "logarithm",
+        "log": "logarithm",
+        "ln": "logarithm",
     }
     key = name.strip().lower()
     if key not in aliases:
-        raise ValueError("problem must be 'identity', 'inversion', 'exponentiation', or 'square_root'.")
+        raise ValueError("problem must be 'identity', 'inversion', 'exponentiation', 'square_root', or 'logarithm'.")
     return aliases[key]
 
 
@@ -367,7 +370,8 @@ def evaluate_target_function(
     This is the function the series was fitted to, in the scaled variable,
     so it can be compared directly with :func:`evaluate_fourier_series`.
     It is ``g(x) = f(mu + x / tau)``, not ``f`` itself: ``mu + x / tau``,
-    ``1 / (mu + x / tau)``, ``exp(mu + x / tau)`` or ``sqrt(mu + x / tau)``.
+    ``1 / (mu + x / tau)``, ``exp(mu + x / tau)``, ``sqrt(mu + x / tau)`` or
+    ``log(mu + x / tau)``.
     If ``tau`` is infinite (a zero-width interval), the target is constant.
 
     Parameters

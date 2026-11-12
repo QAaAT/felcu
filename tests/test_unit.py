@@ -38,6 +38,9 @@ class TestCanonicalProblemName:
         assert canonical_problem_name("exponential") == "exponentiation"
         assert canonical_problem_name("sqrt") == "square_root"
         assert canonical_problem_name("square-root") == "square_root"
+        assert canonical_problem_name("log") == "logarithm"
+        assert canonical_problem_name("ln") == "logarithm"
+        assert canonical_problem_name("logarithm") == "logarithm"
 
     def test_case_and_whitespace_insensitive(self):
         assert canonical_problem_name("  IDENTITY  ") == "identity"
@@ -193,7 +196,7 @@ class TestCanonicalMethodName:
 
 
 class TestTargetFunction:
-    @pytest.mark.parametrize("problem", ["square_root"])
+    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
     def test_target_derivatives(self, problem):
         from felcu._coefficients import _target
 
@@ -218,6 +221,7 @@ class TestDefaultEta:
         # Midpoint of 2 < eta < 2 mu / delta, capped at 3.
         assert default_eta("inversion", method="asin", sigma_min=0.1, sigma_max=1.0) == pytest.approx(1 + 1.1 / 0.9)
         assert default_eta("square_root", method="asin", sigma_min=0.5, sigma_max=1.0) == 3.0
+        assert default_eta("logarithm", method="asin", sigma_min=0.1, sigma_max=1.0) == pytest.approx(1 + 1.1 / 0.9)
         assert default_eta("inversion", method="asin", sigma_min=2.0, sigma_max=2.0) == 3.0
 
     def test_sobolev_unchanged(self):
@@ -236,7 +240,7 @@ class TestDefaultEta:
             "inversion", sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4)
         )
 
-    @pytest.mark.parametrize("problem", ["square_root"])
+    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
     def test_default_eta_puts_branch_point_on_boundary(self, problem):
         kappa = 1.0 / 0.15
         assert default_eta(problem, sigma_min=0.15, sigma_max=1.0) == pytest.approx((kappa + 1) / (kappa - 1))
@@ -256,6 +260,7 @@ class TestDefaultSobolevR:
             ("inversion", dict(sigma_min=0.5, sigma_max=3.0)),
             ("inversion", dict(sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4))),
             ("exponentiation", dict(sigma_min=1.0, sigma_max=3.0)),
+            ("logarithm", dict(sigma_min=0.01, sigma_max=3.0)),
         ],
     )
     def test_default_r_in_range(self, problem, kwargs):
@@ -290,6 +295,17 @@ class TestDefaultSobolevR:
         kwargs = dict(sigma_min=0.04, sigma_max=1.0)  # kappa = 25
         assert default_sobolev_r("square_root", **kwargs) == pytest.approx(25**-0.5)
         assert default_sobolev_r("square_root", sobolev_w=0.75, **kwargs) == pytest.approx(25 ** (-1 / 3))
+
+    @pytest.mark.parametrize("w", [0.75, 1.0, 2.0])
+    def test_default_r_logarithm(self, w):
+        # r_log,w = kappa^(-(2w - 1) / (2w)) (1 + ln kappa)^(-1/w)
+        kappa = 25.0
+        expected = kappa ** (-(2 * w - 1) / (2 * w)) * (1 + math.log(kappa)) ** (-1 / w)
+        r = default_sobolev_r("logarithm", sigma_min=0.04, sigma_max=1.0, sobolev_w=w)
+        assert r == pytest.approx(expected, rel=1e-14)
+
+    def test_default_r_logarithm_is_one_for_a_point(self):
+        assert default_sobolev_r("logarithm", sigma_min=2.0, sigma_max=2.0) == 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -336,6 +352,24 @@ class TestSobolevWeight:
         k = np.arange(1, m + 1)
         p = lam * np.sqrt((1 + (r * k) ** 2 + (r * k) ** 4) / 2)
         np.testing.assert_allclose(_penalty(m, "full", lam, r, w), np.concatenate([[lam], p, p]), rtol=1e-14)
+
+
+class TestSeriesComposition:
+    def test_logarithm_matches_the_taylor_series(self):
+        from felcu._explicit import _series_log
+
+        # log(mu + z) = log mu + sum_k (-1)^(k+1) z^k / (k mu^k)
+        mu, n = 1.7, 12
+        u = np.zeros(n + 1)
+        u[:2] = mu, 1.0
+        expected = [math.log(mu)] + [(-1) ** (k + 1) / (k * mu**k) for k in range(1, n + 1)]
+        np.testing.assert_allclose(_series_log(u), expected, rtol=1e-13)
+
+    def test_logarithm_inverts_the_exponential(self):
+        from felcu._explicit import _series_exp, _series_log
+
+        u = np.array([0.3, 0.7, -0.2, 0.05, 0.4, -0.1, 0.0, 0.2])
+        np.testing.assert_allclose(_series_log(_series_exp(u)), u, atol=1e-14)
 
 
 class TestLinearSolver:

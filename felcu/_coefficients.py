@@ -57,8 +57,8 @@ def _basis_matrix(x: np.ndarray, m: int, basis: str, d: int = 0) -> np.ndarray:
 def _target(x: np.ndarray, problem: str, tau: float, mu: float, d: int = 0) -> np.ndarray:
     """d-th derivative of the fitted target g(x) = F(x / tau + mu).
 
-    F is ``t``, ``1/t``, ``exp(t)`` or ``sqrt(t)`` for identity,
-    inversion, exponentiation and square root.  ``tau = inf`` (a zero-width
+    F is ``t``, ``1/t``, ``exp(t)``, ``sqrt(t)`` or ``log(t)`` for identity,
+    inversion, exponentiation, square root and logarithm.  ``tau = inf`` (a zero-width
     interval) makes g constant.
     """
     x = np.asarray(x, dtype=float)
@@ -75,6 +75,9 @@ def _target(x: np.ndarray, problem: str, tau: float, mu: float, d: int = 0) -> n
     elif problem == "square_root":
         # d-th derivative of t^(1/2) is (1/2)(1/2 - 1)...(1/2 - d + 1) t^(1/2 - d)
         F_d = math.prod(0.5 - j for j in range(d)) * t ** (0.5 - d)
+    elif problem == "logarithm":
+        # d-th derivative of log t is (-1)^(d-1) (d-1)! t^(-d) for d >= 1
+        F_d = np.log(t) if d == 0 else (-1.0) ** (d - 1) * math.factorial(d - 1) / t**d
     else:
         raise ValueError(f"Unknown problem '{problem}'.")
     return (1.0 / tau**d) * F_d
