@@ -33,6 +33,16 @@ ARCSINE_TAYLOR_ETA = 3.0
 # ---------------------------------------------------------------------------
 
 
+def _as_double(A: np.ndarray) -> np.ndarray:
+    """*A* as float64, or complex128 if complex.
+
+    The fit and :meth:`~felcu.FourierExtensionResult.apply` both convert
+    with this, so they see the same eigenvalues whatever the input dtype
+    (float32 eigenvalues are only good to about 1e-7).
+    """
+    return A.astype(np.complex128 if np.iscomplexobj(A) else np.float64)
+
+
 def _is_hermitian(A: np.ndarray, tol: float) -> bool:
     return bool(np.allclose(A, A.conj().T, rtol=tol, atol=tol))
 
@@ -126,7 +136,7 @@ def _spectral_data(
         A = np.asarray(matrix)
         if A.ndim != 2 or A.shape[0] != A.shape[1] or A.shape[0] == 0:
             raise ValueError("matrix must be a non-empty square array.")
-        A = A.astype(np.complex128 if np.iscomplexobj(A) else float)
+        A = _as_double(A)
         hermitian = _is_hermitian(A, hermitian_tol)
 
     kind = _resolve_spectral_kind(problem, spectral_kind, hermitian)
