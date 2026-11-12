@@ -444,3 +444,17 @@ def test_docstrings_name_every_problem_and_method():
         assert name in named(solve_fe_coefficients.__doc__) and name in named(default_eta.__doc__), name
     sobolev_only = re.search(r"Sobolev-only options\s*\(([^)]*)\)", solve_fe_coefficients.__doc__).group(1)
     assert set(re.findall(r"\*(\w+)\*", sobolev_only)) == set(OPTION_NAMES)
+
+
+# ---------------------------------------------------------------------------
+# Package metadata
+# ---------------------------------------------------------------------------
+
+
+def test_version_matches_installed_metadata():
+    from importlib.metadata import version
+
+    import felcu
+
+    assert felcu.__version__ == version("felcu")
+    assert "__version__" in felcu.__all__

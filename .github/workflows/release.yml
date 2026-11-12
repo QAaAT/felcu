@@ -1,0 +1,166 @@
+name: Release
+
+# Pushing a tag vX.Y.Z (or a pre-release such as vX.Y.Zrc1) builds the
+# package once, tests what was built, publishes it to TestPyPI and then, for
+# a final release, to PyPI and as a GitHub release.  Publishing uses PyPI
+# trusted publishing, so no API token is stored: see "Releasing" in
+# docs/development.md for the one-off setup and the release checklist.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  # Refuse a tag that disagrees with the files it is meant to release.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Check the tag against pyproject.toml, CITATION.cff and CHANGELOG.md
+        env:
+          TAG: ${{ github.ref_name }}
+        shell: python
+        run: |
+          import os, re, sys, tomllib
+
+          tag = os.environ["TAG"]
+          version = tomllib.load(open("pyproject.toml", "rb"))["project"]["version"]
+          errors = []
+          if tag != f"v{version}":
+              errors.append(f"tag {tag} does not match pyproject.toml version {version}")
+          final = re.fullmatch(r"\d+\.\d+\.\d+", version) is not None
+          if final:
+              cff = open("CITATION.cff").read()
+              if not re.search(rf"^version: {re.escape(version)}$", cff, re.M):
+                  errors.append(f"CITATION.cff version is not {version}")
+              if not re.search(r"^date-released: \d{4}-\d{2}-\d{2}$", cff, re.M):
+                  errors.append("CITATION.cff has no date-released")
+              changelog = open("CHANGELOG.md").read()
+              if not re.search(rf"^## \[{re.escape(version)}\] - \d{{4}}-\d{{2}}-\d{{2}}$", changelog, re.M):
+                  errors.append(f"CHANGELOG.md has no dated entry '## [{version}] - YYYY-MM-DD'")
+          for e in errors:
+              print(f"::error::{e}")
+          sys.exit(1 if errors else 0)
+
+  build:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Build sdist and wheel
+        run: |
+          pip install build twine
+          python -m build
+          twine check --strict dist/*
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  # Install the wheel that will be published and run the test suite shipped
+  # in the sdist against it, from outside any checkout.
+  test-dist:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - name: Test the built wheel with the sdist's tests
+        run: |
+          pip install dist/*.whl pytest
+          mkdir sdist run && tar -xzf dist/*.tar.gz -C sdist --strip-components=1
+          # Only the tests and pytest config: the sdist's own felcu/ must not
+          # shadow the installed wheel.
+          cp -r sdist/tests sdist/pyproject.toml run/
+          cd run
+          python -c "import felcu; print(felcu.__version__, felcu.__file__)" | grep site-packages
+          python -m pytest tests/ -q -p no:cacheprovider
+
+  testpypi:
+    needs: test-dist
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/felcu/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  # Final releases only; a pre-release tag stops at TestPyPI.
+  pypi:
+    needs: testpypi
+    if: ${{ !contains(github.ref_name, 'a') && !contains(github.ref_name, 'b') && !contains(github.ref_name, 'rc') }}
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/felcu/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # The GitHub release carries the changelog entry and the built files.  It is
+  # also what Zenodo archives, if the repository is connected to it.
+  github-release:
+    needs: pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          # This version's changelog entry, without its heading or the link
+          # definitions at the end of the file.
+          awk -v v="$version" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && (/^## \[/ || /^\[[^]]*\]: /) { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          gh release create "$TAG" dist/* --title "felcu $version" --notes-file notes.md --verify-tag
