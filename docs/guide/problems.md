@@ -165,14 +165,26 @@ r_{\log,w} = \kappa^{-(2w-1)/(2w)} (1 + \ln\kappa)^{-1/w},
 the square-root rule with an extra factor for the logarithm.  When the
 spectrum straddles \(1\), \(\log\mathcal H\) has eigenvalues of both signs
 and \(\|\log\mathcal H\| = \max(|\log\lambda_{\min}|, |\log\lambda_{\max}|)\).
-\(\log x\) is concave, but on \(0 < \lambda_{\min} < \lambda_{\max} \le 1\)
-the sign-adjusted profile \(-\log x\) is convex, non-negative and maximised
-at \(\lambda_{\min}\), so it satisfies the convex endpoint-reflection
-condition.  Flipping the sign of \(f\) only flips the sign of every
-coefficient, so there the reflected extension's subnormalisation is optimal,
-\(\alpha_m = \lvert\log\lambda_{\min}\rvert - \epsilon_m\).  When the
-spectrum reaches past \(1\), \(\log x\) is positive and concave on that part
-of it, and, as for the square root, \(\alpha_m\) is bounded but not optimal.
+\(\log x\) is concave, but the sign-adjusted profile \(-\log x\) is convex
+and decreasing, so it is largest at \(\lambda_{\min}\).  Flipping the sign of
+\(f\) only flips the sign of every coefficient.  With endpoint reflection at
+\(\eta = 2\), convexity phase-aligns every non-constant Fourier mode at
+\(\lambda_{\min}\), and the constant term \(c_0\) is the mean of \(-\log x\)
+over the fitted interval.  So the subnormalisation is optimal,
+\(\alpha_m = \lvert\log\lambda_{\min}\rvert - \epsilon_m\), whenever that
+mean is non-negative:
+
+\[
+\frac{1}{\lambda_{\max} - \lambda_{\min}} \int_{\lambda_{\min}}^{\lambda_{\max}} (-\log x)\,dx
+= 1 - \frac{\lambda_{\max}\log\lambda_{\max} - \lambda_{\min}\log\lambda_{\min}}{\lambda_{\max} - \lambda_{\min}}
+\ge 0 .
+\]
+
+This always holds when \(\lambda_{\max} \le 1\), where \(-\log x \ge 0\)
+throughout, but it can also hold when \(\lambda_{\max} > 1\), provided
+\(\lambda_{\min}\) is small enough: \([0.1, 1.5]\) and \([0.2, 2]\) both
+qualify.  When the mean is negative, as on \([0.5, 2]\), \(\alpha_m\) is
+bounded but not optimal, as for the square root.
 
 ## The extension parameter \(\eta\)
 
