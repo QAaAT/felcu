@@ -175,7 +175,12 @@ by eigendecomposition.
 An LCU circuit implements \(\sum_k c_k e^{ikx}\).  `felcu` returns these
 as `result.complex_coefficients`
 \(= [c_{-m}, \dots, c_0, \dots, c_m]\).  The LCU subnormalisation
-\(\alpha_m = \sum_k |c_k|\) is the sum of their magnitudes.
+\(\alpha_m = \sum_k |c_k|\) is the sum of their magnitudes.  The example
+ends by printing the same coefficients as `result.circuit_coefficients`
+\(= [c_0, 0, c_1, c_{-1}, \dots, c_m, c_{-m}]\), the order the compressed
+circuit uses (the zero is required by it), then as a bare Python list for pasting by hand:
+`complex_coefficients` is ordered by \(k\) for evaluating the series,
+`circuit_coefficients` is what you pass to the circuit.
 
 ```python title="examples/exponentiation/03_lcu_coefficients.py"
 --8<-- "examples/exponentiation/03_lcu_coefficients.py"

@@ -37,6 +37,8 @@ from felcu.utils import (
     evaluate_fourier_series,
     evaluate_target_function,
     fitted_domain_segments,
+    format_circuit_coefficients,
+    to_circuit_coefficients,
     to_complex_coefficients,
 )
 
@@ -60,4 +62,6 @@ __all__ = [
     "evaluate_target_function",
     "fitted_domain_segments",
     "to_complex_coefficients",
+    "to_circuit_coefficients",
+    "format_circuit_coefficients",
 ]

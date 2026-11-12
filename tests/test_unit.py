@@ -16,6 +16,8 @@ from felcu.utils import (
     default_lambda_grid,
     default_m_grid,
     evaluate_fourier_series,
+    format_circuit_coefficients,
+    to_circuit_coefficients,
     to_complex_coefficients,
 )
 
@@ -174,6 +176,24 @@ class TestToComplexCoefficients:
     def test_missing_bk_raises(self):
         with pytest.raises(ValueError):
             to_complex_coefficients(0.0, ak=[1.0])
+
+
+class TestToCircuitCoefficients:
+    def test_order_and_padding_zero(self):
+        ak = np.array([1.0, 0.5])
+        bk = np.array([0.3, 0.7])
+        c = to_complex_coefficients(2.0, ak=ak, bk=bk)  # [c_-2, c_-1, c_0, c_1, c_2]
+        out = to_circuit_coefficients(2.0, ak=ak, bk=bk)
+        np.testing.assert_array_equal(out, [c[2], 0.0, c[3], c[1], c[4], c[0]])
+
+    def test_constant_only(self):
+        np.testing.assert_array_equal(to_circuit_coefficients(2.0, ak=[], bk=[]), [2.0, 0.0])
+
+    def test_format_is_copyable_python(self):
+        ak, bk = [1.0, 0.5], [0.3, 0.7]
+        text = format_circuit_coefficients(1.5, ak, bk)
+        assert text.startswith("[") and text.endswith("]")
+        np.testing.assert_array_equal(eval(text), to_circuit_coefficients(1.5, ak, bk))
 
 
 # ---------------------------------------------------------------------------

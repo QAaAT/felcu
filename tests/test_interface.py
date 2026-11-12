@@ -229,6 +229,13 @@ class TestResultFields:
     def test_complex_coefficients_length(self):
         assert len(self.result.complex_coefficients) == 2 * self.result.m + 1
 
+    def test_circuit_coefficients(self):
+        c = self.result.circuit_coefficients
+        assert len(c) == 2 * self.result.m + 2
+        assert c[1] == 0
+        assert sum(abs(c)) == pytest.approx(self.result.alpha)
+        np.testing.assert_array_equal(eval(self.result.format_circuit_coefficients()), c)
+
     def test_k_matches_m(self):
         assert len(self.result.k) == self.result.m
         assert self.result.k[0] == 1

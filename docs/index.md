@@ -60,7 +60,8 @@ result = solve_fe_coefficients(
 
 result.m            # truncation order
 result.a0, result.ak, result.bk
-result.complex_coefficients   # [c_{-m}, ..., c_m] for the LCU circuit
+result.complex_coefficients   # [c_{-m}, ..., c_m]
+result.circuit_coefficients   # [c_0, 0, c_1, c_-1, ..., c_m, c_-m] for the compressed circuit
 result.alpha        # subnormalisation alpha_m
 ```
 

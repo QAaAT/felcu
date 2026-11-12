@@ -26,6 +26,10 @@ Everything below is importable from the top-level `felcu` package.
 
 ::: felcu.to_complex_coefficients
 
+::: felcu.to_circuit_coefficients
+
+::: felcu.format_circuit_coefficients
+
 ## Defaults
 
 ::: felcu.default_eta

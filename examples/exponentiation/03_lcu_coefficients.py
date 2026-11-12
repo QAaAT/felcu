@@ -2,9 +2,23 @@
 Complex coefficients for an LCU circuit
 =======================================
 
-An LCU circuit implements sum_k c_k e^{i k x}.  felcu returns these as
-result.complex_coefficients = [c_{-m}, ..., c_0, ..., c_m].  The LCU
-subnormalisation alpha is the sum of the magnitudes |c_k|.
+An LCU circuit implements sum_k c_k e^{i k x}.  felcu gives the same c_k in
+two orders:
+
+    result.complex_coefficients = [c_{-m}, ..., c_0, ..., c_m]
+        ordered by k: use it to evaluate or analyse the series.  This is the
+        order stored by to_json().
+
+    result.circuit_coefficients = [c_0, 0, c_1, c_{-1}, ..., c_m, c_{-m}]
+        the order the compressed circuit consumes them in: pass this one to
+        the circuit.  The extra zero is required by the compressed circuit,
+        so it has 2m + 2 entries.
+
+Circuit code that imports felcu should take result.circuit_coefficients
+directly.  To paste the coefficients by hand, print
+result.format_circuit_coefficients(), a bare Python list that keeps the
+zero after c_0.  The LCU subnormalisation alpha is the sum of the
+magnitudes |c_k|, the same in either order.
 
 Run with:
     python examples/exponentiation/03_lcu_coefficients.py
@@ -36,3 +50,13 @@ g = np.sum(c * np.exp(1j * np.arange(-m, m + 1) * x))
 print(f"\nsum c_k e^(ikx) at x={x}: {g.real:.8f}   (imag {g.imag:.1e})")
 print(f"exp(mu + x / tau):         {np.exp(mu + x / result.tau):.8f}")
 print(f"alpha = {result.alpha:.6f}")
+
+# The same coefficients in circuit order: what circuit code should consume
+cc = result.circuit_coefficients
+print(f"\nlen(circuit_coefficients) = {len(cc)}  (= 2m + 2, with a zero after c_0)")
+print(f"sum |c_k| in circuit order = {np.sum(np.abs(cc)):.6f}  (= alpha)")
+
+# ... and as a bare list to paste by hand.  Keep the zero after c_0: the
+# compressed circuit requires it.
+print("\nCircuit order [c_0, 0, c_1, c_-1, ..., c_m, c_-m]; the zero after c_0 is required by the compressed circuit:")
+print(result.format_circuit_coefficients())

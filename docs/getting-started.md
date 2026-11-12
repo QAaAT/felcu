@@ -106,6 +106,37 @@ which is available as `result.complex_coefficients`, ordered
 `(a0, ak, bk)` triple with
 [`to_complex_coefficients`](api.md#felcu.to_complex_coefficients).
 
+This order, by \(k\), is the one to use for evaluating the series, and
+the one saved by `to_json`.  The compressed circuit takes the same
+coefficients in a different order, with a zero after \(c_0\):
+
+\[
+[c_0,\ 0,\ c_1,\ c_{-1},\ \dots,\ c_m,\ c_{-m}],
+\]
+
+\(2m + 2\) entries in all.  The zero is required by the compressed circuit
+and must be kept.  This order is `result.circuit_coefficients`, and it
+is what to pass to the circuit, not `complex_coefficients`.  Circuit code
+that imports `felcu` can take the array directly:
+
+```python
+from felcu import solve_fe_coefficients
+
+coefficients = solve_fe_coefficients("exponentiation", sigma_min=0.1, sigma_max=2.0).circuit_coefficients
+```
+
+To paste the coefficients somewhere by hand,
+`result.format_circuit_coefficients()` gives them as a bare Python list,
+zero included:
+
+```python
+print(result.format_circuit_coefficients())
+```
+
+```text
+[(3.3903633881883226+0j), 0j, (-0.06034330806667995-1.1020475420922582j), (-0.06034330806667995+1.1020475420922582j), ...]
+```
+
 ## Saving and loading results
 
 A result can be written to JSON and read back exactly:
