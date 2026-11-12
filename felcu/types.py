@@ -206,7 +206,9 @@ class FourierExtensionResult:
             Relative tolerance for the Hermitian test.
         interval_tol:
             How far, relative to the half-width of the fitted spectrum, an
-            eigenvalue may stray outside it before it is rejected.
+            eigenvalue may stray outside it before it is rejected.  For a
+            zero-width spectrum ``[mu, mu]`` it is relative to ``|mu|``
+            instead (absolute when ``mu = 0``).
 
         Returns
         -------
@@ -219,9 +221,9 @@ class FourierExtensionResult:
             If *matrix* is not square, not Hermitian, or has an eigenvalue
             outside the fitted spectrum.
         """
-        from felcu.spectral import _is_hermitian
+        from felcu.spectral import _as_double, _is_hermitian
 
-        H = np.asarray(matrix)
+        H = _as_double(np.asarray(matrix))
         if H.ndim != 2 or H.shape[0] != H.shape[1]:
             raise ValueError("matrix must be square.")
         if not _is_hermitian(H, hermitian_tol):
@@ -239,8 +241,10 @@ class FourierExtensionResult:
     def _outside_fitted_spectrum(self, w: np.ndarray, tol: float) -> np.ndarray:
         """Mask of the eigenvalues *w* that lie outside the fitted set, with relative slack *tol*."""
         if not np.isfinite(self.tau):
-            # A zero-width interval: only mu itself is fitted.
-            return np.abs(w - self.mu) > tol * max(abs(self.mu), 1.0)
+            # A zero-width interval: only mu itself is fitted.  The slack is
+            # relative to mu: an absolute floor would let 0 through for a tiny
+            # mu, where inversion and the logarithm are singular.
+            return np.abs(w - self.mu) > tol * (abs(self.mu) if self.mu != 0 else 1.0)
         # In the scaled variable the fitted set is [-x_max, x_max] less x_gap.
         x = self.tau * (w - self.mu)
         slack = tol * self.x_max

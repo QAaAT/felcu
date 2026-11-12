@@ -110,6 +110,24 @@ class TestApply:
         with pytest.raises(ValueError, match="outside the fitted spectrum"):
             r.apply(np.diag([1.5, 1.6]))
 
+    @pytest.mark.parametrize("problem", ["inversion", "logarithm", "square_root"])
+    def test_zero_width_interval_near_zero_rejects_zero(self, problem):
+        # The slack is relative to mu, so a tiny mu does not admit the
+        # eigenvalue 0, where inversion and the logarithm are singular.
+        r = solve_fe_coefficients(problem, sigma_min=1e-10, sigma_max=1e-10)
+        with pytest.raises(ValueError, match="outside the fitted spectrum"):
+            r.apply([[0.0]])
+        np.testing.assert_allclose(r.apply([[1e-10 * (1 + 1e-12)]]), [[r.a0]])
+
+    @pytest.mark.parametrize("problem", ["identity", "inversion", "exponentiation", "square_root", "logarithm"])
+    def test_accepts_the_float32_matrix_it_was_fitted_to(self, problem):
+        # The fit computes eigenvalues in double precision; apply must too, or
+        # float32 rounding (~1e-7) pushes them outside the 1e-8 slack.
+        H = np.array([[1, 0.1], [0.1, 2]], dtype=np.float32)
+        r = _fit(problem, matrix=H)
+        exact = _fit(problem, matrix=H.astype(np.float64)).apply(H.astype(np.float64))
+        np.testing.assert_allclose(r.apply(H), exact)
+
 
 class TestConvergenceWarning:
     def test_warns_when_the_target_is_missed(self):
