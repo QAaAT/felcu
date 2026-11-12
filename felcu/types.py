@@ -11,6 +11,15 @@ import numpy as np
 ArrayLike = np.ndarray | Sequence[float] | float
 
 
+class ConvergenceWarning(UserWarning):
+    """No candidate order met the requested *target_error*.
+
+    Issued by :func:`~felcu.solve_fe_coefficients`, which still returns the
+    best candidate, with ``converged=False``.  Silence it with
+    ``warnings.simplefilter("ignore", felcu.ConvergenceWarning)``.
+    """
+
+
 @dataclass(frozen=True)
 class FourierExtensionResult:
     """Result of a Fourier-extension coefficient computation.
@@ -146,6 +155,98 @@ class FourierExtensionResult:
         from felcu._coefficients import _pack_coefficients
 
         return _pack_coefficients(self.a0, self.ak, self.bk, self.basis_used)
+
+    def evaluate(self, x: ArrayLike) -> np.ndarray:
+        """Evaluate the approximation to f at points *x* of the original variable.
+
+        Applies the scaling for you: this is ``g(tau (x - mu))``, which
+        approximates ``f(x)`` for *x* in the fitted spectrum.  For singular
+        values ``mu = 0`` and *x* is a singular value (or its negative, an
+        eigenvalue of the dilation).  To evaluate ``g`` itself in the scaled
+        variable, use :func:`~felcu.evaluate_fourier_series`.
+
+        Parameters
+        ----------
+        x:
+            Points, of any shape, at which to approximate ``f``.
+
+        Returns
+        -------
+        numpy.ndarray
+            The approximation, with the same shape as *x*.
+        """
+        from felcu.utils import evaluate_fourier_series
+
+        x = np.asarray(x, dtype=float)
+        if not np.isfinite(self.tau):
+            # A zero-width interval: the series is the constant a0.
+            return np.full(x.shape, self.a0)
+        return evaluate_fourier_series(self.tau * (x - self.mu), self.a0, self.ak, self.bk)
+
+    def apply(
+        self,
+        matrix: np.ndarray | Sequence[Sequence[complex]],
+        hermitian_tol: float = 1e-12,
+        interval_tol: float = 1e-8,
+    ) -> np.ndarray:
+        """Apply the approximation to a Hermitian matrix: ``g(tau (H - mu I)) ~ f(H)``.
+
+        Computed classically by eigendecomposition, to check a fit against
+        an exact ``f(H)``.  The eigenvalues of *matrix* must lie in the
+        fitted spectrum: outside it the series is a periodic extension that
+        bears no relation to ``f``.  For a singular-value fit, pass the
+        Hermitian dilation of the matrix.
+
+        Parameters
+        ----------
+        matrix:
+            Square Hermitian matrix ``H``.
+        hermitian_tol:
+            Relative tolerance for the Hermitian test.
+        interval_tol:
+            How far, relative to the half-width of the fitted spectrum, an
+            eigenvalue may stray outside it before it is rejected.
+
+        Returns
+        -------
+        numpy.ndarray
+            The matrix ``g(tau (H - mu I))``, the same shape as *matrix*.
+
+        Raises
+        ------
+        ValueError
+            If *matrix* is not square, not Hermitian, or has an eigenvalue
+            outside the fitted spectrum.
+        """
+        from felcu.spectral import _is_hermitian
+
+        H = np.asarray(matrix)
+        if H.ndim != 2 or H.shape[0] != H.shape[1]:
+            raise ValueError("matrix must be square.")
+        if not _is_hermitian(H, hermitian_tol):
+            raise ValueError("matrix must be Hermitian; apply the result to its Hermitian dilation instead.")
+        w, V = np.linalg.eigh(H)
+        outside = self._outside_fitted_spectrum(w, interval_tol)
+        if outside.any():
+            raise ValueError(
+                f"matrix has eigenvalues outside the fitted spectrum, e.g. {w[outside][0]:.6g}; "
+                f"refit for its spectrum (the fit covers [{self.sigma_min:.6g}, {self.sigma_max:.6g}] "
+                f"in {self.spectral_kind_used.replace('_', ' ')})."
+            )
+        return (V * self.evaluate(w)) @ V.conj().T
+
+    def _outside_fitted_spectrum(self, w: np.ndarray, tol: float) -> np.ndarray:
+        """Mask of the eigenvalues *w* that lie outside the fitted set, with relative slack *tol*."""
+        if not np.isfinite(self.tau):
+            # A zero-width interval: only mu itself is fitted.
+            return np.abs(w - self.mu) > tol * max(abs(self.mu), 1.0)
+        # In the scaled variable the fitted set is [-x_max, x_max] less x_gap.
+        x = self.tau * (w - self.mu)
+        slack = tol * self.x_max
+        outside = np.abs(x) > self.x_max + slack
+        if self.x_gap is not None:
+            outside |= (x > self.x_gap[0] + slack) & (x < self.x_gap[1] - slack)
+        return outside
 
     @property
     def achieved_inf_error(self) -> float:

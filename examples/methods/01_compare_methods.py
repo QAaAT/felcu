@@ -16,8 +16,13 @@ Run with:
 """
 
 import math
+import warnings
 
-from felcu import solve_fe_coefficients
+from felcu import ConvergenceWarning, solve_fe_coefficients
+
+# At these fixed orders the explicit methods miss the target; the table is
+# there to show by how much.
+warnings.simplefilter("ignore", ConvergenceWarning)
 
 common = dict(sigma_min=0.1, sigma_max=2.0, target_error=1e-10)
 print(f"||f(H)|| = exp(2) = {math.exp(2.0):.6f}\n")

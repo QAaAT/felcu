@@ -18,7 +18,7 @@ Run with:
 
 import numpy as np
 
-from felcu import evaluate_fourier_series, solve_fe_coefficients
+from felcu import solve_fe_coefficients
 
 rng = np.random.default_rng(4)
 Q, _ = np.linalg.qr(rng.standard_normal((6, 6)))
@@ -31,9 +31,7 @@ print(f"fitted on   = [{-r.x_max:.4f}, {r.x_gap[0]:.4f}] U [{r.x_gap[1]:.4f}, {r
 print(f"eta         = {r.eta:.4f}   (default 1 + (b - a) / (2 delta))")
 print(f"m, alpha    = {r.m}, {r.alpha:.4f}")
 
-w, V = np.linalg.eigh(H)
-g = evaluate_fourier_series(r.tau * (w - r.mu), r.a0, r.ak, r.bk)
-print(f"||approx - H^-1||_2 = {np.linalg.norm(V @ np.diag(g) @ V.T - np.linalg.inv(H), 2):.1e}")
+print(f"||approx - H^-1||_2 = {np.linalg.norm(r.apply(H) - np.linalg.inv(H), 2):.1e}")
 
 same = solve_fe_coefficients(
     "inversion", sigma_min=-2.0, sigma_max=3.0, gap=(-0.5, 0.4), target_error=1e-6, m_values=range(8, 129, 8)
