@@ -413,3 +413,34 @@ def test_action_is_an_equivalent_name_for_identity(name):
     r, expected = solve_fe_coefficients(name, **common), solve_fe_coefficients("identity", **common)
     assert r.problem == "identity"
     np.testing.assert_array_equal(r.ak, expected.ak)
+
+
+def test_every_method_option_is_a_keyword_of_solve():
+    import inspect
+
+    from felcu._methods import OPTION_NAMES
+
+    parameters = inspect.signature(solve_fe_coefficients).parameters
+    assert set(OPTION_NAMES) <= set(parameters)
+    assert all(parameters[name].default is None for name in OPTION_NAMES)
+
+
+def test_docstrings_name_every_problem_and_method():
+    # The docs are read statically, so they spell the records out; this keeps them in step.
+    import re
+
+    from felcu import canonical_method_name, canonical_problem_name, default_eta
+    from felcu._methods import METHODS, OPTION_NAMES
+    from felcu._problems import PROBLEMS
+
+    def named(doc):
+        return set(re.findall(r"``'([\w-]+)'``", doc))
+
+    for name, record in PROBLEMS.items():
+        assert {name, *record.aliases} <= named(canonical_problem_name.__doc__), name
+        assert name in named(solve_fe_coefficients.__doc__) and name in named(default_eta.__doc__), name
+    for name, record in METHODS.items():
+        assert {name, *record.aliases} <= named(canonical_method_name.__doc__), name
+        assert name in named(solve_fe_coefficients.__doc__) and name in named(default_eta.__doc__), name
+    sobolev_only = re.search(r"Sobolev-only options\s*\(([^)]*)\)", solve_fe_coefficients.__doc__).group(1)
+    assert set(re.findall(r"\*(\w+)\*", sobolev_only)) == set(OPTION_NAMES)

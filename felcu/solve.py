@@ -11,7 +11,7 @@ import numpy as np
 from felcu._coefficients import _value
 from felcu._fitted import _meets_target
 from felcu._logging import logger
-from felcu._methods import METHODS, _method_options
+from felcu._methods import METHODS, OPTION_NAMES, _method_options
 from felcu.spectral import _make_spec, _spectral_data
 from felcu.types import ConvergenceWarning, FourierExtensionResult
 from felcu.utils import (
@@ -61,14 +61,8 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         spectral_kind_used=spectral["kind"],
         matrix_shape=spectral["matrix_shape"],
         matrix_is_hermitian=spectral["matrix_is_hermitian"],
-        **_method_fields(spec, cand.get("fields", {})),
+        method_details=METHODS[spec["method"]].result_fields(spec) | cand.get("fields", {}),
     )
-
-
-def _method_fields(spec: dict, fields: dict) -> dict:
-    """The result fields only some methods fill: None unless the method gives them."""
-    out = dict.fromkeys(("lambda_used", "sobolev_r", "sobolev_w"))
-    return out | METHODS[spec["method"]].result_fields(spec) | fields
 
 
 def _constant_result(spec: dict, target: float, metric: str, value: float, m: int) -> FourierExtensionResult:
@@ -286,19 +280,11 @@ def solve_fe_coefficients(
     FourierExtensionResult
         The selected result; ``result.all_results`` contains every candidate.
     """
+    arguments = locals()  # the parameters, before any other local is made
     problem = canonical_problem_name(problem)
     method = canonical_method_name(method)
     metric = canonical_error_metric(error_metric)
-    options = _method_options(
-        method,
-        {
-            "lambdas": lambdas,
-            "sobolev_w": sobolev_w,
-            "sobolev_r": sobolev_r,
-            "order_fit": order_fit,
-            "fit_oversample": fit_oversample,
-        },
-    )
+    options = _method_options(method, {name: arguments[name] for name in OPTION_NAMES})
     if not target_error >= 0:  # also catches NaN
         raise ValueError("target_error must be non-negative.")
     if val_n < 3:

@@ -12,8 +12,8 @@ A leaf module: it imports nothing from felcu, so every other module can use it.
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 from typing import Literal
 
 import numpy as np
@@ -97,26 +97,29 @@ def _reciprocal_target(x: np.ndarray, tau: float, mu: float, d: int) -> np.ndarr
 
 
 # ---------------------------------------------------------------------------
-# Default Sobolev scales r (Sec. VI of the paper); see default_sobolev_r
+# Default Sobolev scales r (Sec. VI of the paper); see default_sobolev_r.
+# Each takes (spectral, tau, options), with the method's other options.
 # ---------------------------------------------------------------------------
 
 
-def _exp_r(spectral: dict, tau: float, w: float) -> float:
+def _exp_r(spectral: dict, tau: float, options: Mapping) -> float:
     # g' = g / tau
     return 1.0 / (1.0 + 1.0 / tau)
 
 
-def _sqrt_r(spectral: dict, tau: float, w: float) -> float:
+def _sqrt_r(spectral: dict, tau: float, options: Mapping) -> float:
+    w = options["sobolev_w"]
     kappa = spectral["sigma_max"] / spectral["sigma_min"]
     return kappa ** (-(2.0 * w - 1.0) / (2.0 * w))
 
 
-def _log_r(spectral: dict, tau: float, w: float) -> float:
+def _log_r(spectral: dict, tau: float, options: Mapping) -> float:
     kappa = spectral["sigma_max"] / spectral["sigma_min"]
-    return _sqrt_r(spectral, tau, w) * (1.0 + math.log(kappa)) ** (-1.0 / w)
+    w = options["sobolev_w"]
+    return _sqrt_r(spectral, tau, options) * (1.0 + math.log(kappa)) ** (-1.0 / w)
 
 
-def _reciprocal_r(spectral: dict, tau: float, w: float) -> float:
+def _reciprocal_r(spectral: dict, tau: float, options: Mapping) -> float:
     # The distance from the fitted set to the pole at 0.
     lo, hi, gap = spectral["fit_lo"], spectral["fit_hi"], spectral["fit_gap"]
     nearest = min(abs(lo), abs(hi)) if gap is None else min(-gap[0], gap[1])
@@ -140,8 +143,8 @@ class Problem:
     """``F^(d)(t)``."""
     series: Callable[[np.ndarray], np.ndarray]
     """The power series of ``F(u(z))`` from that of ``u(z)``."""
-    sobolev_r: float | Callable[[dict, float, float], float]
-    """The default Sobolev scale, or its rule ``(spectral, tau, w) -> r``."""
+    option_defaults: Mapping[str, float | Callable[[dict, float, Mapping], float]] = field(default_factory=dict)
+    """Defaults this problem sets for method options, as values or rules ``(spectral, tau, options) -> value``."""
     singularity: Literal["none", "pole", "branch"] = "none"
     """f is entire, or has a pole or a branch point at 0.
 
@@ -167,10 +170,13 @@ class Problem:
     def positive_definite(self) -> bool:
         return self.singularity == "branch"
 
-    def default_sobolev_r(self, spectral: dict, tau: float, sobolev_w: float) -> float:
-        """The default Sobolev scale r for a fit of *spectral* with scale *tau*."""
-        rule = self.sobolev_r
-        return rule(spectral, tau, sobolev_w) if callable(rule) else rule
+    def option_default(self, name: str, spectral: dict | None, tau: float | None, options: Mapping) -> object:
+        """The default for method option *name* on a fit of *spectral* with scale *tau*, or None if it sets none.
+
+        A fixed default needs no spectrum, so *spectral* and *tau* may then be None.
+        """
+        rule = self.option_defaults.get(name)
+        return rule(spectral, tau, options) if callable(rule) else rule
 
 
 PROBLEMS: dict[str, Problem] = {
@@ -182,7 +188,7 @@ PROBLEMS: dict[str, Problem] = {
             "x",
             _identity_d,
             lambda u: u,
-            sobolev_r=1.0,  # g is linear
+            option_defaults={"sobolev_r": 1.0},  # g is linear
             odd=True,
             affine=True,
         ),
@@ -192,7 +198,7 @@ PROBLEMS: dict[str, Problem] = {
             "1/x",
             _reciprocal_d,
             _series_reciprocal,
-            sobolev_r=_reciprocal_r,
+            option_defaults={"sobolev_r": _reciprocal_r},
             singularity="pole",
             odd=True,
             target=_reciprocal_target,
@@ -203,7 +209,7 @@ PROBLEMS: dict[str, Problem] = {
             "exp(x)",
             _exp_d,
             _series_exp,
-            sobolev_r=_exp_r,
+            option_defaults={"sobolev_r": _exp_r},
         ),
         Problem(
             "square_root",
@@ -211,7 +217,7 @@ PROBLEMS: dict[str, Problem] = {
             "sqrt(x)",
             _sqrt_d,
             _series_sqrt,
-            sobolev_r=_sqrt_r,
+            option_defaults={"sobolev_r": _sqrt_r},
             singularity="branch",
         ),
         Problem(
@@ -220,7 +226,7 @@ PROBLEMS: dict[str, Problem] = {
             "log(x)",
             _log_d,
             _series_log,
-            sobolev_r=_log_r,
+            option_defaults={"sobolev_r": _log_r},
             singularity="branch",
         ),
     )

@@ -34,8 +34,8 @@ class Method:
     candidate: Callable[[dict, int, float, str, int], dict]
     """``(spec, m, target, metric, val_n) -> {"m", "solve", "fields"?}``, the series of order *m*.
 
-    ``fields`` holds result fields that vary with the order, such as the
-    lambda a regularised fit used.
+    ``fields`` holds the ``method_details`` that vary with the order, such as
+    the lambda a regularised fit used.
     """
     default_eta: Callable[[Problem, dict | None], float]
     """The default eta for a problem on a spectrum (``None`` only for an entire f)."""
@@ -43,10 +43,10 @@ class Method:
     """The options it accepts, beyond the common ones, and their defaults."""
     prepare: Callable[[dict, dict], dict] = lambda spec, options: {}
     """Validates the options and returns what to add to the spec, ``(spec, options) -> dict``."""
-    result_fields: Callable[[dict], dict] = lambda spec: {}
-    """Result fields fixed for the whole fit, from the prepared spec."""
-    constant_fields: Mapping[str, object] = field(default_factory=dict)
-    """Result fields of the exact constant series of a point spectrum."""
+    result_fields: Callable[[dict], dict[str, float]] = lambda spec: {}
+    """``method_details`` of the result fixed for the whole fit, from the prepared spec."""
+    constant_fields: Mapping[str, float] = field(default_factory=dict)
+    """``method_details`` of the exact constant series of a point spectrum, beyond :attr:`result_fields`."""
     eta_min: tuple[float, bool] | None = None
     """``(bound, inclusive)``: a lower bound on eta beyond eta > 1."""
     explicit: bool = False
@@ -124,7 +124,7 @@ def _sobolev_prepare(spec: dict, options: dict) -> dict:
         raise ValueError("sobolev_w must exceed 0.5.")
     r = options["sobolev_r"]
     if r is None:
-        r = PROBLEMS[spec["problem"]].default_sobolev_r(spec["spectral"], spec["tau"], w)
+        r = PROBLEMS[spec["problem"]].option_default("sobolev_r", spec["spectral"], spec["tau"], options)
     if not 0 < r <= 1:
         raise ValueError("sobolev_r must satisfy 0 < sobolev_r <= 1.")
     return {
@@ -182,6 +182,9 @@ METHODS: dict[str, Method] = {
     )
 }
 
+
+# Every method option, each a keyword argument of solve_fe_coefficients.
+OPTION_NAMES = tuple(dict.fromkeys(name for m in METHODS.values() for name in m.options))
 
 _METHOD_ALIASES = {alias: m.name for m in METHODS.values() for alias in (m.name, *m.aliases)}
 

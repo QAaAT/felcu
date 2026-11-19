@@ -325,11 +325,13 @@ def default_sobolev_r(
         interval is invalid.
     """
     problem = canonical_problem(problem)
-    if not callable(PROBLEMS[problem].sobolev_r):
-        return PROBLEMS[problem].sobolev_r
+    options = {"sobolev_w": sobolev_w}
+    if not callable(PROBLEMS[problem].option_defaults.get("sobolev_r")):
+        # A fixed default needs no spectrum.
+        return PROBLEMS[problem].option_default("sobolev_r", None, None, options)
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
     tau = _make_spec(problem, spectral, eta, "sobolev")["tau"]
-    return PROBLEMS[problem].default_sobolev_r(spectral, tau, sobolev_w)
+    return PROBLEMS[problem].option_default("sobolev_r", spectral, tau, options)
 
 
 # ---------------------------------------------------------------------------
@@ -337,7 +339,7 @@ def default_sobolev_r(
 # ---------------------------------------------------------------------------
 
 
-def _make_spec(problem: str, spectral: dict, eta: float | None, method: str = "sobolev") -> dict:
+def _make_spec(problem: str, spectral: dict, eta: float | None, method: str) -> dict:
     """The fit of *problem* on *spectral*: ``g(x) = f(mu + x / tau)`` on ``tau (spectrum - mu)``.
 
     Every fit is centred: ``mu`` and ``delta`` are the centre and half-width

@@ -13,8 +13,8 @@ with mu the centre of the fitted spectrum and tau = pi / (eta delta), delta its
 half-width.  Singular values are fitted through the Hermitian dilation of the
 matrix, whose spectrum is symmetric, so mu = 0 and the series is odd.
 
-The coefficients come from one of three strategies (``method=``):
-Sobolev-regularised least squares (the default), reflected extensions, or
+The coefficients come from one of several strategies (``method=``), such as
+Sobolev-regularised least squares (the default), reflected extensions and
 arcsine-Taylor expansions.
 
 Typical usage

@@ -78,15 +78,12 @@ class FourierExtensionResult:
         Achieved maximum pointwise error on the fitted domain.
     converged : bool
         Whether *achieved_error* meets *target_error*.
-    lambda_used : float or None
-        Sobolev regularisation strength chosen for this ``m``; ``None``
-        for the explicit (``'reflected'``, ``'arcsine_taylor'``) methods.
-    sobolev_r : float or None
-        Scale *r* of the H_r^w regulariser that was used; ``None`` for the
-        explicit methods.
-    sobolev_w : float or None
-        Order *w* of the H_r^w regulariser that was used; ``None`` for the
-        explicit methods.
+    method_details : dict
+        Values particular to the method.  For ``'sobolev'``:
+        ``lambda_used``, the regularisation strength chosen for this ``m``,
+        and ``sobolev_r`` and ``sobolev_w``, the scale and order of the
+        H_r^w regulariser.  Empty for the explicit methods.  The Sobolev
+        values are also attributes; see :attr:`lambda_used`.
     a0 : float
         Constant term.
     ak : numpy.ndarray
@@ -139,9 +136,7 @@ class FourierExtensionResult:
     achieved_l2_error: float
     achieved_linf_error: float
     converged: bool
-    lambda_used: float | None
-    sobolev_r: float | None
-    sobolev_w: float | None
+    method_details: dict[str, float]
     a0: float
     ak: np.ndarray
     bk: np.ndarray
@@ -315,6 +310,21 @@ class FourierExtensionResult:
         See :func:`~felcu.format_circuit_coefficients`.
         """
         return _format_circuit_coefficients(self.a0, self.ak, self.bk)
+
+    @property
+    def lambda_used(self) -> float | None:
+        """Sobolev regularisation strength chosen for this ``m``; ``None`` for the explicit methods."""
+        return self.method_details.get("lambda_used")
+
+    @property
+    def sobolev_r(self) -> float | None:
+        """Scale *r* of the H_r^w regulariser that was used; ``None`` for the explicit methods."""
+        return self.method_details.get("sobolev_r")
+
+    @property
+    def sobolev_w(self) -> float | None:
+        """Order *w* of the H_r^w regulariser that was used; ``None`` for the explicit methods."""
+        return self.method_details.get("sobolev_w")
 
     @property
     def achieved_inf_error(self) -> float:

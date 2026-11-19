@@ -52,6 +52,19 @@ _SOLVER_RTOL = {
 }
 
 
+def _assert_close(name, x, y):
+    if y is None:
+        assert x is None, name
+    elif name in _CLOSED_FORM:
+        np.testing.assert_allclose(x, y, rtol=_CLOSED_FORM_RTOL, err_msg=name)
+    elif name in _SOLVER_RTOL:
+        np.testing.assert_allclose(x, y, rtol=_SOLVER_RTOL[name], err_msg=name)
+    elif isinstance(y, np.ndarray):
+        np.testing.assert_array_equal(x, y, err_msg=name)
+    else:
+        assert x == y, name
+
+
 def _series(result, x):
     return evaluate_fourier_series(x, result.a0, result.ak, result.bk)
 
@@ -64,16 +77,12 @@ def test_matches_reference(name):
         x, y = getattr(actual, field.name), getattr(expected, field.name)
         if field.name == "all_results" or field.name in _COEFFICIENTS:
             continue
-        if y is None:
-            assert x is None, field.name
-        elif field.name in _CLOSED_FORM:
-            np.testing.assert_allclose(x, y, rtol=_CLOSED_FORM_RTOL, err_msg=field.name)
-        elif field.name in _SOLVER_RTOL:
-            np.testing.assert_allclose(x, y, rtol=_SOLVER_RTOL[field.name], err_msg=field.name)
-        elif isinstance(y, np.ndarray):
-            np.testing.assert_array_equal(x, y, err_msg=field.name)
+        if field.name == "method_details":
+            assert x.keys() == y.keys(), field.name
+            for key in y:
+                _assert_close(key, x[key], y[key])
         else:
-            assert x == y, field.name
+            _assert_close(field.name, x, y)
 
     atol = _SERIES_ATOL * expected.target_error
     for x in fitted_domain_segments(expected, num=4001):

@@ -421,7 +421,7 @@ class TestLinearSolver:
             monkeypatch.setattr(np.linalg, "svd", svd)
 
         spectral = _spectral_data("exponentiation", None, 0.1, 2.0, None, "auto", 1e-12)
-        spec = _make_spec("exponentiation", spectral, None)
+        spec = _make_spec("exponentiation", spectral, None, "sobolev")
         m, r, w = 16, 0.5, 1.5
         spec |= {"sobolev_r": r, "sobolev_w": w, "order_fit": 1, "fit_oversample": 8}
         data = _make_fit_data(spec, m, 401)

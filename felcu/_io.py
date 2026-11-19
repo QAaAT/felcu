@@ -80,6 +80,10 @@ _BY_TYPE = {
     bool | None: _PLAIN,
     tuple[float, float] | None: _optional(_FLOAT_PAIR),
     tuple[int, int] | None: _optional(_INT_PAIR),
+    dict[str, float]: (
+        lambda d: {k: _encode_float(v) for k, v in d.items()},
+        lambda d: {k: float(v) for k, v in d.items()},
+    ),
 }
 _BY_NAME = {
     # An array's type does not say what it holds.
