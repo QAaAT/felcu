@@ -12,7 +12,9 @@ from typing import TYPE_CHECKING, Any, get_type_hints
 
 import numpy as np
 
-from felcu._problems import canonical_method, canonical_metric, canonical_problem
+from felcu._fitted import canonical_metric
+from felcu._methods import canonical_method
+from felcu._problems import canonical_problem
 
 if TYPE_CHECKING:
     from felcu.types import FourierExtensionResult

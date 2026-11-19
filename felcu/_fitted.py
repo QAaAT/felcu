@@ -14,6 +14,23 @@ import numpy as np
 from felcu._coefficients import _basis_matrix, _spec_target, _unpack_coefficients
 from felcu._linalg import _alpha, _validation_errors
 from felcu._logging import logger
+from felcu._problems import _canonical
+
+_METRIC_ALIASES = {
+    "l2": "l2",
+    "2": "l2",
+    "linf": "linf",
+    "l_inf": "linf",
+    "l-infinity": "linf",
+    "infinity": "linf",
+    "inf": "linf",
+    "max": "linf",
+}
+
+
+def canonical_metric(name: str) -> str:
+    """'l2' or 'linf', the error metrics a solve records."""
+    return _canonical(name, _METRIC_ALIASES, "error_metric")
 
 
 def _centre_and_halfwidth(spectral: dict) -> tuple[float, float]:

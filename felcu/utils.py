@@ -13,7 +13,10 @@ from felcu._coefficients import (
     _format_circuit_coefficients,
     _target,
 )
-from felcu._problems import canonical_method, canonical_metric, canonical_problem
+from felcu._fitted import canonical_metric
+from felcu._methods import canonical_method
+from felcu._methods import default_lambda_grid as default_lambda_grid  # re-exported
+from felcu._problems import canonical_problem
 from felcu.types import ArrayLike, FourierExtensionResult
 
 
@@ -146,41 +149,6 @@ def default_m_grid(
         return np.array([m_max], dtype=int)
     grid = m_min + (m_max - m_min) * np.linspace(0.0, 1.0, count) ** power
     return np.unique(grid.astype(int))
-
-
-def default_lambda_grid(
-    lambda_max: float = 1.0,
-    lambda_min: float = 1e-16,
-    count: int = 12,
-) -> np.ndarray:
-    """Return a log-spaced grid of regularisation parameters.
-
-    This is the default ``lambdas`` for
-    :func:`~felcu.solve_fe_coefficients`.  The solver sorts the grid
-    itself and searches beyond it, so the grid only needs to bracket the
-    answer roughly.
-
-    Parameters
-    ----------
-    lambda_max, lambda_min:
-        Largest and smallest value.
-    count:
-        Number of values.
-
-    Returns
-    -------
-    numpy.ndarray
-        *count* geometrically spaced values from *lambda_max* down to
-        *lambda_min*.
-
-    Raises
-    ------
-    ValueError
-        Unless ``0 < lambda_min <= lambda_max`` and ``count >= 2``.
-    """
-    if lambda_min <= 0 or lambda_max <= 0 or lambda_min > lambda_max or count < 2:
-        raise ValueError("Require 0 < lambda_min <= lambda_max and count >= 2.")
-    return np.geomspace(lambda_max, lambda_min, count)
 
 
 def evaluate_fourier_series(

@@ -10,10 +10,8 @@ import numpy as np
 from felcu._coefficients import _value
 from felcu._fitted import _centre_and_halfwidth
 from felcu._linalg import _as_double, _is_hermitian
-from felcu._methods import METHODS, _check_eta, _check_supports
-from felcu._problems import PROBLEMS
-from felcu._problems import canonical_method as canonical_method_name
-from felcu._problems import canonical_problem as canonical_problem_name
+from felcu._methods import METHODS, _check_eta, _check_supports, canonical_method
+from felcu._problems import PROBLEMS, _listing, canonical_problem
 
 PI = float(np.pi)
 
@@ -32,10 +30,8 @@ def _resolve_spectral_kind(problem: str, requested: str, matrix_is_hermitian: bo
     if kind == "auto":
         kind = "singular_values" if odd and matrix_is_hermitian is False else "eigenvalues"
     if kind == "singular_values" and not odd:
-        *others, last = [n for n, p in PROBLEMS.items() if p.odd]
-        raise ValueError(
-            f"{problem} uses an eigenvalue interval: singular values only support {', '.join(others)} and {last}."
-        )
+        odd = _listing((n for n, p in PROBLEMS.items() if p.odd), "and", "{}")
+        raise ValueError(f"{problem} uses an eigenvalue interval: singular values only support {odd}.")
     if kind == "eigenvalues" and matrix_is_hermitian is False:
         raise ValueError("Eigenvalue intervals require a Hermitian matrix; use spectral_kind='singular_values'.")
     return kind
@@ -243,8 +239,8 @@ def default_eta(
     logarithm; for
     identity and exponentiation it is ignored.
     """
-    problem = canonical_problem_name(problem)
-    method = canonical_method_name(method)
+    problem = canonical_problem(problem)
+    method = canonical_method(method)
     if PROBLEMS[problem].entire:
         return METHODS[method].default_eta(PROBLEMS[problem], None)
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
@@ -327,7 +323,7 @@ def default_sobolev_r(
         Except for identity, if no spectral information is given or the
         interval is invalid.
     """
-    problem = canonical_problem_name(problem)
+    problem = canonical_problem(problem)
     if not callable(PROBLEMS[problem].sobolev_r):
         return PROBLEMS[problem].sobolev_r
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)

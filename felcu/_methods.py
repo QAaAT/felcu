@@ -17,9 +17,8 @@ import numpy as np
 
 from felcu._explicit import _explicit_candidate
 from felcu._fitted import _centre_and_halfwidth
-from felcu._problems import PROBLEMS, Problem
+from felcu._problems import PROBLEMS, Problem, _canonical, _listing
 from felcu._solver import _candidate_for_m
-from felcu.utils import default_lambda_grid
 
 # Default eta of the arcsine-Taylor construction for an entire f (Sec. VI).
 ARCSINE_TAYLOR_ETA = 3.0
@@ -30,6 +29,7 @@ class Method:
     """One way of choosing the coefficients of each order."""
 
     name: str
+    aliases: tuple[str, ...]
     candidate: Callable[[dict, int, float, str, int], dict]
     """``(spec, m, target, metric, val_n) -> {"m", "lambda", "solve"}``, the series of order *m*."""
     default_eta: Callable[[Problem, dict | None], float]
@@ -62,6 +62,41 @@ def _sobolev_eta(problem: Problem, spectral: dict | None) -> float:
     # The pole or branch point at 0 lies at x = -tau mu, on the periodic
     # boundary when eta = |mu| / delta.
     return 2.0 if delta == 0 else abs(mu) / delta
+
+
+def default_lambda_grid(
+    lambda_max: float = 1.0,
+    lambda_min: float = 1e-16,
+    count: int = 12,
+) -> np.ndarray:
+    """Return a log-spaced grid of regularisation parameters.
+
+    This is the default ``lambdas`` for
+    :func:`~felcu.solve_fe_coefficients`.  The solver sorts the grid
+    itself and searches beyond it, so the grid only needs to bracket the
+    answer roughly.
+
+    Parameters
+    ----------
+    lambda_max, lambda_min:
+        Largest and smallest value.
+    count:
+        Number of values.
+
+    Returns
+    -------
+    numpy.ndarray
+        *count* geometrically spaced values from *lambda_max* down to
+        *lambda_min*.
+
+    Raises
+    ------
+    ValueError
+        Unless ``0 < lambda_min <= lambda_max`` and ``count >= 2``.
+    """
+    if lambda_min <= 0 or lambda_max <= 0 or lambda_min > lambda_max or count < 2:
+        raise ValueError("Require 0 < lambda_min <= lambda_max and count >= 2.")
+    return np.geomspace(lambda_max, lambda_min, count)
 
 
 def _lambda_grid(lambdas) -> np.ndarray:
@@ -110,6 +145,7 @@ METHODS: dict[str, Method] = {
     for m in (
         Method(
             "sobolev",
+            ("regularised", "regularized", "reg"),
             _candidate_for_m,
             _sobolev_eta,
             options=MappingProxyType(
@@ -119,6 +155,7 @@ METHODS: dict[str, Method] = {
         ),
         Method(
             "reflected",
+            ("refl", "reflected_extension", "reflected-extension"),
             _explicit_candidate,
             lambda problem, spectral: 2.0,
             eta_rule=("The reflected extension", ">=", 2.0),
@@ -127,6 +164,7 @@ METHODS: dict[str, Method] = {
         ),
         Method(
             "arcsine_taylor",
+            ("arcsine-taylor", "arcsine", "asin"),
             _explicit_candidate,
             _arcsine_taylor_eta,
             eta_rule=("The arcsine-Taylor construction", ">", 2.0),
@@ -137,6 +175,13 @@ METHODS: dict[str, Method] = {
 }
 
 
+_METHOD_ALIASES = {alias: m.name for m in METHODS.values() for alias in (m.name, *m.aliases)}
+
+
+def canonical_method(name: str) -> str:
+    return _canonical(name, _METHOD_ALIASES, "method")
+
+
 # ---------------------------------------------------------------------------
 # Checks shared by every method
 # ---------------------------------------------------------------------------
@@ -144,7 +189,7 @@ METHODS: dict[str, Method] = {
 
 def _check_supports(method: str, spectral: dict) -> None:
     if not METHODS[method].supports_gap and spectral["fit_gap"] is not None:
-        able = " or ".join(f"method='{m.name}'" for m in METHODS.values() if m.supports_gap)
+        able = _listing((m.name for m in METHODS.values() if m.supports_gap), fmt="method='{}'")
         raise ValueError(
             f"method='{method}' does not support a two-interval fit (inversion on an indefinite interval or on "
             f"singular values): the pole lies between the intervals.  Use {able}."
@@ -181,6 +226,6 @@ def _method_options(method: str, given: dict) -> dict:
     foreign = [name for name, value in given.items() if value is not None and name not in accepted]
     if foreign:
         owners = [m.name for m in METHODS.values() if all(name in m.options for name in foreign)]
-        owned = " or ".join(f"method='{name}'" for name in owners) or "no method"
+        owned = _listing(owners, fmt="method='{}'") or "no method"
         raise ValueError(f"{', '.join(foreign)} only apply to {owned}, not method='{method}'.")
     return {name: default if given.get(name) is None else given[name] for name, default in accepted.items()}

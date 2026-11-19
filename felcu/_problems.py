@@ -1,9 +1,10 @@
-"""The problems felcu fits, one record each, and the names it accepts.
+"""The problems felcu fits, one record each.
 
 Everything that depends on which function f is being fitted is defined here:
 f and its derivatives, its power series for the arcsine-Taylor construction,
-where it is defined, and its default Sobolev scale.  Adding a function means
-adding a record to :data:`PROBLEMS`.
+its names, where it is defined, and its default Sobolev scale.  Adding a
+function means adding a record to :data:`PROBLEMS`.  The design assumes f is
+entire or has its one singularity, a pole or a branch point, at 0.
 
 A leaf module: it imports nothing from felcu, so every other module can use it.
 """
@@ -13,6 +14,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 
@@ -140,18 +142,30 @@ class Problem:
     """The power series of ``F(u(z))`` from that of ``u(z)``."""
     sobolev_r: float | Callable[[dict, float, float], float]
     """The default Sobolev scale, or its rule ``(spectral, tau, w) -> r``."""
-    entire: bool = False
-    """Analytic on the whole plane.  Otherwise f has a pole or branch point at 0."""
+    singularity: Literal["none", "pole", "branch"] = "none"
+    """f is entire, or has a pole or a branch point at 0.
+
+    A pole needs a nonsingular matrix, and an indefinite spectrum is fitted on
+    two intervals; a branch point restricts f to a positive-definite spectrum.
+    """
     odd: bool = False
     """Odd, so it can act on singular values through the Hermitian dilation."""
     affine: bool = False
     """``g - g(0)`` is odd, so the series needs no cosines."""
-    pole_at_zero: bool = False
-    """A pole at 0: the matrix must be nonsingular, and an indefinite spectrum is fitted on two intervals."""
-    positive_definite: bool = False
-    """Defined only for a positive-definite spectrum (a branch point at 0)."""
     target: Callable[[np.ndarray, float, float, int], np.ndarray] | None = None
     """``g^(d)(x)`` for finite tau, when it is more accurate than scaling :attr:`derivative`."""
+
+    @property
+    def entire(self) -> bool:
+        return self.singularity == "none"
+
+    @property
+    def pole_at_zero(self) -> bool:
+        return self.singularity == "pole"
+
+    @property
+    def positive_definite(self) -> bool:
+        return self.singularity == "branch"
 
     def default_sobolev_r(self, spectral: dict, tau: float, sobolev_w: float) -> float:
         """The default Sobolev scale r for a fit of *spectral* with scale *tau*."""
@@ -169,7 +183,6 @@ PROBLEMS: dict[str, Problem] = {
             _identity_d,
             lambda u: u,
             sobolev_r=1.0,  # g is linear
-            entire=True,
             odd=True,
             affine=True,
         ),
@@ -180,8 +193,8 @@ PROBLEMS: dict[str, Problem] = {
             _reciprocal_d,
             _series_reciprocal,
             sobolev_r=_reciprocal_r,
+            singularity="pole",
             odd=True,
-            pole_at_zero=True,
             target=_reciprocal_target,
         ),
         Problem(
@@ -191,7 +204,6 @@ PROBLEMS: dict[str, Problem] = {
             _exp_d,
             _series_exp,
             sobolev_r=_exp_r,
-            entire=True,
         ),
         Problem(
             "square_root",
@@ -200,7 +212,7 @@ PROBLEMS: dict[str, Problem] = {
             _sqrt_d,
             _series_sqrt,
             sobolev_r=_sqrt_r,
-            positive_definite=True,
+            singularity="branch",
         ),
         Problem(
             "logarithm",
@@ -209,51 +221,25 @@ PROBLEMS: dict[str, Problem] = {
             _log_d,
             _series_log,
             sobolev_r=_log_r,
-            positive_definite=True,
+            singularity="branch",
         ),
     )
 }
 
 
 # ---------------------------------------------------------------------------
-# Names and aliases
+# Names, aliases, and name lists for messages
 # ---------------------------------------------------------------------------
 
 _PROBLEM_ALIASES = {alias: p.name for p in PROBLEMS.values() for alias in (p.name, *p.aliases)}
 
-_METHOD_ALIASES = {
-    "sobolev": "sobolev",
-    "regularised": "sobolev",
-    "regularized": "sobolev",
-    "reg": "sobolev",
-    "reflected": "reflected",
-    "refl": "reflected",
-    "reflected_extension": "reflected",
-    "reflected-extension": "reflected",
-    "arcsine_taylor": "arcsine_taylor",
-    "arcsine-taylor": "arcsine_taylor",
-    "arcsine": "arcsine_taylor",
-    "asin": "arcsine_taylor",
-}
 
-_METRIC_ALIASES = {
-    "l2": "l2",
-    "2": "l2",
-    "linf": "linf",
-    "l_inf": "linf",
-    "l-infinity": "linf",
-    "infinity": "linf",
-    "inf": "linf",
-    "max": "linf",
-}
-
-
-def _listing(names) -> str:
-    """``'a'``, ``'a' or 'b'``, or ``'a', 'b', or 'c'``."""
-    quoted = [f"'{n}'" for n in names]
+def _listing(names, conjunction: str = "or", fmt: str = "'{}'") -> str:
+    """``'a'``, ``'a' or 'b'``, or ``'a', 'b', or 'c'``, with each name written as *fmt*."""
+    quoted = [fmt.format(n) for n in names]
     if len(quoted) <= 2:
-        return " or ".join(quoted)
-    return ", ".join(quoted[:-1]) + ", or " + quoted[-1]
+        return f" {conjunction} ".join(quoted)
+    return ", ".join(quoted[:-1]) + f", {conjunction} " + quoted[-1]
 
 
 def _canonical(name: str, aliases: dict[str, str], what: str) -> str:
@@ -266,11 +252,3 @@ def _canonical(name: str, aliases: dict[str, str], what: str) -> str:
 
 def canonical_problem(name: str) -> str:
     return _canonical(name, _PROBLEM_ALIASES, "problem")
-
-
-def canonical_method(name: str) -> str:
-    return _canonical(name, _METHOD_ALIASES, "method")
-
-
-def canonical_metric(name: str) -> str:
-    return _canonical(name, _METRIC_ALIASES, "error_metric")
