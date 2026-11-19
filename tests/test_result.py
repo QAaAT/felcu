@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from felcu import ConvergenceWarning, solve_fe_coefficients
+from felcu._problems import POSITIVE_DEFINITE_PROBLEMS
 
 pytestmark = pytest.mark.interface
 
@@ -100,14 +101,11 @@ class TestApply:
         with pytest.raises(ValueError, match="Hermitian"):
             r.apply(A)
 
-    def test_domain_check_follows_positive_definite_problems(self, monkeypatch):
-        # A problem added to POSITIVE_DEFINITE_PROBLEMS gets the domain check, not a KeyError.
-        import felcu.spectral
-
-        r = _fit("exponentiation", sigma_min=-1.0, sigma_max=1.0)
-        monkeypatch.setattr(felcu.spectral, "POSITIVE_DEFINITE_PROBLEMS", frozenset({"exponentiation"}))
-        with pytest.raises(ValueError, match="domain of exponentiation.*positive definite"):
-            r.apply(np.diag([-0.5, 0.5]))
+    @pytest.mark.parametrize("problem", sorted(POSITIVE_DEFINITE_PROBLEMS))
+    def test_domain_check_covers_positive_definite_problems(self, problem):
+        r = _fit(problem, sigma_min=0.5, sigma_max=2.0)
+        with pytest.raises(ValueError, match="positive definite"):
+            r.apply(np.diag([-0.5, 1.0]))
 
     def test_rejects_non_square(self):
         r = _fit("exponentiation", sigma_min=0.1, sigma_max=2.0)

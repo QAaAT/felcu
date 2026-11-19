@@ -95,3 +95,30 @@ def _ridge_qr(A: np.ndarray, b: np.ndarray, lam: float) -> np.ndarray:
     n = A.shape[1]
     Q, R = np.linalg.qr(np.vstack([A, lam * np.eye(n)]))
     return np.linalg.solve(R, Q[: A.shape[0]].T @ b)
+
+
+def _as_double(A: np.ndarray) -> np.ndarray:
+    """*A* as float64, or complex128 if complex.
+
+    The fit and :meth:`~felcu.FourierExtensionResult.apply` both convert
+    with this, so they see the same eigenvalues whatever the input dtype
+    (float32 eigenvalues are only good to about 1e-7).
+    """
+    return A.astype(np.complex128 if np.iscomplexobj(A) else np.float64)
+
+
+def _is_hermitian(A: np.ndarray, tol: float) -> bool:
+    """Whether every ``|A_ij - conj(A_ji)| <= tol * max(|A_ij|, |A_ji|)``, up to rounding.
+
+    Each entry is compared with its mirror rather than with a fixed absolute
+    tolerance, so the test does not depend on the scale of *A*: a tiny
+    matrix that is far from Hermitian fails, and so does an asymmetry among
+    small entries next to a huge one.  The rounding floor,
+    ``4 n eps max |A|``, lets through the asymmetry that computing a
+    Hermitian matrix in floating point leaves in its near-zero entries.
+    """
+    if A.size == 0:
+        return True
+    AH = A.conj().T
+    floor = 4 * A.shape[0] * np.finfo(float).eps * np.max(np.abs(A))
+    return bool(np.all(np.abs(A - AH) <= tol * np.maximum(np.abs(A), np.abs(AH)) + floor))

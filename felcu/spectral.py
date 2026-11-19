@@ -8,21 +8,12 @@ from collections.abc import Sequence
 import numpy as np
 
 from felcu._coefficients import _value
-from felcu.utils import canonical_method_name, canonical_problem_name
+from felcu._linalg import _as_double, _is_hermitian
+from felcu._problems import ENTIRE_PROBLEMS, ODD_PROBLEMS, POSITIVE_DEFINITE_PROBLEMS
+from felcu._problems import canonical_method as canonical_method_name
+from felcu._problems import canonical_problem as canonical_problem_name
 
 PI = float(np.pi)
-
-# Functions with a branch point at 0, fitted on a positive-definite interval
-# only (Sec. VI D of the paper).
-POSITIVE_DEFINITE_PROBLEMS = frozenset({"square_root", "logarithm"})
-
-# Functions analytic on the whole plane.  The others have a pole or branch
-# point at 0 that bounds how far the explicit methods may extend them.
-ENTIRE_PROBLEMS = frozenset({"identity", "exponentiation"})
-
-# Odd functions.  Only these can act on singular values, through the odd
-# series that the Hermitian dilation of a general matrix needs.
-ODD_PROBLEMS = frozenset({"identity", "inversion"})
 
 # Default eta of the arcsine-Taylor construction for an entire f (Sec. VI).
 ARCSINE_TAYLOR_ETA = 3.0
@@ -31,33 +22,6 @@ ARCSINE_TAYLOR_ETA = 3.0
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
-
-def _as_double(A: np.ndarray) -> np.ndarray:
-    """*A* as float64, or complex128 if complex.
-
-    The fit and :meth:`~felcu.FourierExtensionResult.apply` both convert
-    with this, so they see the same eigenvalues whatever the input dtype
-    (float32 eigenvalues are only good to about 1e-7).
-    """
-    return A.astype(np.complex128 if np.iscomplexobj(A) else np.float64)
-
-
-def _is_hermitian(A: np.ndarray, tol: float) -> bool:
-    """Whether every ``|A_ij - conj(A_ji)| <= tol * max(|A_ij|, |A_ji|)``, up to rounding.
-
-    Each entry is compared with its mirror rather than with a fixed absolute
-    tolerance, so the test does not depend on the scale of *A*: a tiny
-    matrix that is far from Hermitian fails, and so does an asymmetry among
-    small entries next to a huge one.  The rounding floor,
-    ``4 n eps max |A|``, lets through the asymmetry that computing a
-    Hermitian matrix in floating point leaves in its near-zero entries.
-    """
-    if A.size == 0:
-        return True
-    AH = A.conj().T
-    floor = 4 * A.shape[0] * np.finfo(float).eps * np.max(np.abs(A))
-    return bool(np.all(np.abs(A - AH) <= tol * np.maximum(np.abs(A), np.abs(AH)) + floor))
 
 
 def _resolve_spectral_kind(problem: str, requested: str, matrix_is_hermitian: bool | None) -> str:

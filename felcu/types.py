@@ -8,6 +8,16 @@ from pathlib import Path
 
 import numpy as np
 
+from felcu import _io
+from felcu._coefficients import (
+    _circuit_coefficients,
+    _evaluate_series,
+    _format_circuit_coefficients,
+    _pack_coefficients,
+)
+from felcu._linalg import _as_double, _is_hermitian
+from felcu._problems import POSITIVE_DEFINITE_PROBLEMS
+
 ArrayLike = np.ndarray | Sequence[float] | float
 
 
@@ -158,8 +168,6 @@ class FourierExtensionResult:
         ``[ak]`` for ``'odd_sine'``, ``[a0, ak]`` for ``'const_plus_sine'``,
         and ``[a0, ak, bk]`` for ``'full'``.
         """
-        from felcu._coefficients import _pack_coefficients
-
         return _pack_coefficients(self.a0, self.ak, self.bk, self.basis_used)
 
     def evaluate(self, x: ArrayLike) -> np.ndarray:
@@ -181,13 +189,11 @@ class FourierExtensionResult:
         numpy.ndarray
             The approximation, with the same shape as *x*.
         """
-        from felcu.utils import evaluate_fourier_series
-
         x = np.asarray(x, dtype=float)
         if not np.isfinite(self.tau):
             # A zero-width interval: the series is the constant a0.
             return np.full(x.shape, self.a0)
-        return evaluate_fourier_series(self.tau * (x - self.mu), self.a0, self.ak, self.bk)
+        return _evaluate_series(self.tau * (x - self.mu), self.a0, self.ak, self.bk)
 
     def apply(
         self,
@@ -239,8 +245,6 @@ class FourierExtensionResult:
             If *matrix* is not square, not Hermitian, or has an eigenvalue
             outside the domain of ``f`` or outside the fitted spectrum.
         """
-        from felcu.spectral import _as_double, _is_hermitian
-
         H = _as_double(np.asarray(matrix))
         if H.ndim != 2 or H.shape[0] != H.shape[1]:
             raise ValueError("matrix must be square.")
@@ -270,8 +274,6 @@ class FourierExtensionResult:
         Independent of the interval slack, which can reach past 0 when the
         fitted spectrum ends close to it.
         """
-        from felcu.spectral import POSITIVE_DEFINITE_PROBLEMS
-
         if self.problem in POSITIVE_DEFINITE_PROBLEMS:
             return w <= 0, "the matrix must be positive definite"
         if self.problem != "inversion":
@@ -308,18 +310,14 @@ class FourierExtensionResult:
         Length ``2m + 2``: the zero after ``c_0`` is required by the
         compressed circuit.  See :func:`~felcu.to_circuit_coefficients`.
         """
-        from felcu.utils import to_circuit_coefficients
-
-        return to_circuit_coefficients(self)
+        return _circuit_coefficients(self.a0, self.ak, self.bk)
 
     def format_circuit_coefficients(self) -> str:
         """:attr:`circuit_coefficients` as a bare Python list literal, for pasting by hand.
 
         See :func:`~felcu.format_circuit_coefficients`.
         """
-        from felcu.utils import format_circuit_coefficients
-
-        return format_circuit_coefficients(self)
+        return _format_circuit_coefficients(self.a0, self.ak, self.bk)
 
     @property
     def achieved_inf_error(self) -> float:
@@ -340,9 +338,7 @@ class FourierExtensionResult:
         include_candidates:
             Also store :attr:`all_results`, every order tried in the sweep.
         """
-        from felcu._io import to_dict
-
-        return to_dict(self, include_candidates)
+        return _io.to_dict(self, include_candidates)
 
     @classmethod
     def from_dict(cls, data: dict) -> FourierExtensionResult:
@@ -354,9 +350,7 @@ class FourierExtensionResult:
             If *data* is not a saved felcu result, has an unsupported
             ``format_version``, or is missing a field.
         """
-        from felcu._io import from_dict
-
-        return from_dict(cls, data)
+        return _io.from_dict(cls, data)
 
     def to_json(
         self, path: str | Path | None = None, *, indent: int | None = 2, include_candidates: bool = False
@@ -386,9 +380,7 @@ class FourierExtensionResult:
         >>> result.to_json("exp_coefficients.json")
         >>> loaded = FourierExtensionResult.from_json("exp_coefficients.json")
         """
-        from felcu._io import to_json
-
-        return to_json(self, path, indent=indent, include_candidates=include_candidates)
+        return _io.to_json(self, path, indent=indent, include_candidates=include_candidates)
 
     @classmethod
     def from_json(cls, source: str | Path) -> FourierExtensionResult:
@@ -404,6 +396,4 @@ class FourierExtensionResult:
         ValueError
             As for :meth:`from_dict`.
         """
-        from felcu._io import from_json
-
-        return from_json(cls, source)
+        return _io.from_json(cls, source)

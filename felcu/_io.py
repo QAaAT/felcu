@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from felcu.utils import canonical_problem_name
+from felcu._problems import canonical_problem
 
 if TYPE_CHECKING:
     from felcu.types import FourierExtensionResult
@@ -95,7 +95,7 @@ def _fields_from_dict(cls: type[FourierExtensionResult], data: dict[str, Any]) -
             value = _decode_float(value)
         elif name == "problem":
             # Older files say 'action', an equivalent name for 'identity'.
-            value = canonical_problem_name(value)
+            value = canonical_problem(value)
         kwargs[name] = value
     c = data["complex_coefficients"]
     real = np.asarray([_decode_float(v) for v in c["real"]], dtype=float)

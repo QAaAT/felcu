@@ -15,8 +15,8 @@ import numpy as np
 
 from felcu._coefficients import _pack_coefficients, _spec_target
 from felcu._linalg import _gauss_interval
+from felcu._problems import ENTIRE_PROBLEMS
 from felcu._solver import _summarise, _validation_data
-from felcu.spectral import ENTIRE_PROBLEMS
 
 HALF_PI = 0.5 * math.pi
 
