@@ -6,7 +6,6 @@ import json
 import math
 from collections.abc import Callable
 from functools import cache
-from importlib import metadata
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, get_type_hints
 
@@ -24,6 +23,9 @@ FORMAT_VERSION = 1
 
 
 def _felcu_version() -> str | None:
+    # Imported here: importlib.metadata adds about 20 ms to importing felcu.
+    from importlib import metadata
+
     try:
         return metadata.version("felcu")
     except metadata.PackageNotFoundError:
@@ -48,10 +50,17 @@ def _optional(codec: tuple[Callable, Callable]) -> tuple[Callable, Callable]:
 
 _PLAIN = (lambda v: v, lambda v: v)
 _FLOAT = (_encode_float, float)
-_FLOATS = (lambda v: [_encode_float(x) for x in v], lambda v: np.asarray([float(x) for x in v], dtype=float))
-_INTS = (lambda v: [int(x) for x in v], lambda v: np.asarray(v, dtype=int))
-_FLOAT_PAIR = (lambda v: [_encode_float(x) for x in v], lambda v: tuple(float(x) for x in v))
-_INT_PAIR = (lambda v: [int(x) for x in v], lambda v: tuple(int(x) for x in v))
+
+
+def _sequence(encode: Callable, decode: Callable, container: Callable) -> tuple[Callable, Callable]:
+    """A list of values, each written with *encode* and read back with *decode* into *container*."""
+    return (lambda v: [encode(x) for x in v]), (lambda v: container([decode(x) for x in v]))
+
+
+_FLOATS = _sequence(_encode_float, float, lambda xs: np.asarray(xs, dtype=float))
+_INTS = _sequence(int, int, lambda xs: np.asarray(xs, dtype=int))
+_FLOAT_PAIR = _sequence(_encode_float, float, tuple)
+_INT_PAIR = _sequence(int, int, tuple)
 _COMPLEX = (
     lambda c: {
         "k": list(range(-(c.size // 2), c.size // 2 + 1)),
@@ -61,7 +70,7 @@ _COMPLEX = (
     lambda d: np.asarray([float(x) for x in d["real"]]) + 1j * np.asarray([float(x) for x in d["imag"]]),
 )
 
-# Codecs by type, and for arrays, whose type does not say what they hold, by name.
+# Codecs by type, and by name where the type does not say enough.
 _BY_TYPE = {
     str: _PLAIN,
     int: _PLAIN,
@@ -72,9 +81,13 @@ _BY_TYPE = {
     tuple[float, float] | None: _optional(_FLOAT_PAIR),
     tuple[int, int] | None: _optional(_INT_PAIR),
 }
-_ARRAYS = {"ak": _FLOATS, "bk": _FLOATS, "k": _INTS, "complex_coefficients": _COMPLEX}
-# Names are checked on loading, so an unknown one fails here, and an alias loads as its canonical name.
-_NAMES = {
+_BY_NAME = {
+    # An array's type does not say what it holds.
+    "ak": _FLOATS,
+    "bk": _FLOATS,
+    "k": _INTS,
+    "complex_coefficients": _COMPLEX,
+    # Names are checked on loading: an unknown one fails, and an alias loads as its canonical name.
     "problem": (_PLAIN[0], canonical_problem),
     "method": (_PLAIN[0], canonical_method),
     "error_metric": (_PLAIN[0], canonical_metric),
@@ -89,7 +102,7 @@ def _codecs(cls: type) -> dict[str, tuple[Callable, Callable]]:
     for name, hint in get_type_hints(cls).items():
         if name in _SKIP_FIELDS:
             continue
-        codec = _NAMES.get(name) or (_ARRAYS.get(name) if hint is np.ndarray else _BY_TYPE.get(hint))
+        codec = _BY_NAME.get(name) or _BY_TYPE.get(hint)
         if codec is None:
             raise TypeError(f"No JSON codec for field {name!r} of type {hint}.")
         codecs[name] = codec

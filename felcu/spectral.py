@@ -129,7 +129,8 @@ def _spectral_data(
         raise ValueError("Require sigma_min <= sigma_max.")
     p = PROBLEMS[problem]
     if gap is not None and not (kind == "eigenvalues" and p.pole_at_zero):
-        raise ValueError("gap only applies to inversion on an eigenvalue interval.")
+        poles = _listing((n for n, q in PROBLEMS.items() if q.pole_at_zero), fmt="{}")
+        raise ValueError(f"gap only applies to {poles} on an eigenvalue interval.")
 
     if kind == "singular_values":
         if lo < 0:
@@ -244,7 +245,7 @@ def default_eta(
     if PROBLEMS[problem].entire:
         return METHODS[method].default_eta(PROBLEMS[problem], None)
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
-    _check_supports(method, spectral)
+    _check_supports(method, problem, spectral)
     return METHODS[method].default_eta(PROBLEMS[problem], spectral)
 
 
@@ -327,7 +328,7 @@ def default_sobolev_r(
     if not callable(PROBLEMS[problem].sobolev_r):
         return PROBLEMS[problem].sobolev_r
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
-    tau = _make_spec(problem, spectral, eta)["tau"]
+    tau = _make_spec(problem, spectral, eta, "sobolev")["tau"]
     return PROBLEMS[problem].default_sobolev_r(spectral, tau, sobolev_w)
 
 
@@ -343,7 +344,7 @@ def _make_spec(problem: str, spectral: dict, eta: float | None, method: str = "s
     of the fitted set and ``tau = pi / (eta delta)``, so the fitted set
     spans ``[-pi/eta, pi/eta]``, less any gap around a pole.
     """
-    _check_supports(method, spectral)
+    _check_supports(method, problem, spectral)
     if eta is None:
         eta = METHODS[method].default_eta(PROBLEMS[problem], spectral)
     eta = float(eta)

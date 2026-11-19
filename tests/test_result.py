@@ -2,9 +2,9 @@
 
 import numpy as np
 import pytest
+from helpers import ALL_PROBLEMS, BRANCH_POINT_PROBLEMS, SINGULAR_PROBLEMS
 
 from felcu import ConvergenceWarning, solve_fe_coefficients
-from felcu._problems import PROBLEMS
 
 pytestmark = pytest.mark.interface
 
@@ -101,7 +101,7 @@ class TestApply:
         with pytest.raises(ValueError, match="Hermitian"):
             r.apply(A)
 
-    @pytest.mark.parametrize("problem", [n for n, p in PROBLEMS.items() if p.positive_definite])
+    @pytest.mark.parametrize("problem", BRANCH_POINT_PROBLEMS)
     def test_domain_check_covers_positive_definite_problems(self, problem):
         r = _fit(problem, sigma_min=0.5, sigma_max=2.0)
         with pytest.raises(ValueError, match="positive definite"):
@@ -133,7 +133,7 @@ class TestApply:
         with pytest.raises(ValueError, match="outside the fitted spectrum"):
             r.apply(np.diag([1.5, 1.6]))
 
-    @pytest.mark.parametrize("problem", ["inversion", "logarithm", "square_root"])
+    @pytest.mark.parametrize("problem", SINGULAR_PROBLEMS)
     def test_zero_width_interval_near_zero_rejects_zero(self, problem):
         r = solve_fe_coefficients(problem, sigma_min=1e-10, sigma_max=1e-10)
         with pytest.raises(ValueError, match="outside the domain"):
@@ -196,7 +196,7 @@ class TestApply:
         with pytest.raises(ValueError, match="outside the domain"):
             r.apply(np.zeros((6, 6)))
 
-    @pytest.mark.parametrize("problem", ["identity", "inversion", "exponentiation", "square_root", "logarithm"])
+    @pytest.mark.parametrize("problem", ALL_PROBLEMS)
     def test_accepts_the_float32_matrix_it_was_fitted_to(self, problem):
         # The fit computes eigenvalues in double precision; apply must too, or
         # float32 rounding (~1e-7) pushes them outside the 1e-8 slack.

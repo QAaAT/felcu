@@ -10,6 +10,7 @@ pole or branch point at 0.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 
 import numpy as np
 
@@ -125,16 +126,18 @@ def _arcsine_taylor_coefficients(spec: dict, m: int) -> tuple[float, np.ndarray,
 # Candidate for one m
 # ---------------------------------------------------------------------------
 
-_COEFFICIENTS = {
-    "reflected": _reflected_coefficients,
-    "arcsine_taylor": _arcsine_taylor_coefficients,
-}
 
-
-def _explicit_candidate(spec: dict, m: int, target: float, metric: str, val_n: int) -> dict:
-    """The closed-form series of order *m* for ``spec['method']``, in the format of ``_candidate_for_m``."""
-    a0, ak, bk = _COEFFICIENTS[spec["method"]](spec, m)
+def _explicit_candidate(
+    coefficients: Callable[[dict, int], tuple[float, np.ndarray, np.ndarray]],
+    spec: dict,
+    m: int,
+    target: float,
+    metric: str,
+    val_n: int,
+) -> dict:
+    """The closed-form series of order *m* from *coefficients*, in the format of ``_candidate_for_m``."""
+    a0, ak, bk = coefficients(spec, m)
     # Packing drops the modes the basis excludes, which vanish by symmetry.
     coeffs = _pack_coefficients(a0, ak, bk, spec["basis"])
     solve = _summarise(coeffs, _validation_data(spec, m, val_n), spec["basis"], m)
-    return {"m": m, "lambda": None, "solve": solve}
+    return {"m": m, "solve": solve}

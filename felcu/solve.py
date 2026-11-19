@@ -48,9 +48,6 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         achieved_l2_error=float(s["l2"]),
         achieved_linf_error=float(s["linf"]),
         converged=_meets_target(s, metric, target),
-        lambda_used=None if cand["lambda"] is None else float(cand["lambda"]),
-        sobolev_r=spec.get("sobolev_r"),
-        sobolev_w=spec.get("sobolev_w"),
         a0=a0,
         ak=ak.copy(),
         bk=bk.copy(),
@@ -64,13 +61,20 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         spectral_kind_used=spectral["kind"],
         matrix_shape=spectral["matrix_shape"],
         matrix_is_hermitian=spectral["matrix_is_hermitian"],
+        **_method_fields(spec, cand.get("fields", {})),
     )
+
+
+def _method_fields(spec: dict, fields: dict) -> dict:
+    """The result fields only some methods fill: None unless the method gives them."""
+    out = dict.fromkeys(("lambda_used", "sobolev_r", "sobolev_w"))
+    return out | METHODS[spec["method"]].result_fields(spec) | fields
 
 
 def _constant_result(spec: dict, target: float, metric: str, value: float, m: int) -> FourierExtensionResult:
     c = {
         "m": m,
-        "lambda": None if spec.get("lambdas") is None else 0.0,
+        "fields": dict(METHODS[spec["method"]].constant_fields),
         "solve": {
             "a0": value,
             "ak": np.zeros(m),
@@ -305,9 +309,7 @@ def solve_fe_coefficients(
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
     spec = _make_spec(problem, spectral, eta, method)
 
-    prepare = METHODS[method].prepare
-    if prepare is not None:
-        spec = spec | prepare(spec, options)
+    spec = spec | METHODS[method].prepare(spec, options)
 
     logger.info(
         "solve_fe_coefficients: problem=%s  method=%s  kind=%s  metric=%s  target=%.3e  basis=%s  x_gap=%s  "
@@ -342,14 +344,14 @@ def solve_fe_coefficients(
         c = METHODS[method].candidate(spec, int(mi), target, metric, val_n)
         feasible = _meets_target(c["solve"], metric, target)
         logger.info(
-            "[%d/%d] m=%d  done: error=%.3e  feasible=%s  lam=%s  alpha=%.3e",
+            "[%d/%d] m=%d  done: error=%.3e  feasible=%s  alpha=%.3e  %s",
             i + 1,
             len(m_grid),
             mi,
             c["solve"][metric],
             feasible,
-            "-" if c["lambda"] is None else f"{c['lambda']:.3e}",
             c["solve"]["alpha"],
+            "  ".join(f"{name}={value:.3e}" for name, value in c.get("fields", {}).items()),
         )
         candidates.append(c)
         if selection == "smallest_m" and feasible:

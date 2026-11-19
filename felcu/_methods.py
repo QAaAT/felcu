@@ -11,11 +11,12 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from functools import partial
 from types import MappingProxyType
 
 import numpy as np
 
-from felcu._explicit import _explicit_candidate
+from felcu._explicit import _arcsine_taylor_coefficients, _explicit_candidate, _reflected_coefficients
 from felcu._fitted import _centre_and_halfwidth
 from felcu._problems import PROBLEMS, Problem, _canonical, _listing
 from felcu._solver import _candidate_for_m
@@ -31,19 +32,26 @@ class Method:
     name: str
     aliases: tuple[str, ...]
     candidate: Callable[[dict, int, float, str, int], dict]
-    """``(spec, m, target, metric, val_n) -> {"m", "lambda", "solve"}``, the series of order *m*."""
+    """``(spec, m, target, metric, val_n) -> {"m", "solve", "fields"?}``, the series of order *m*.
+
+    ``fields`` holds result fields that vary with the order, such as the
+    lambda a regularised fit used.
+    """
     default_eta: Callable[[Problem, dict | None], float]
     """The default eta for a problem on a spectrum (``None`` only for an entire f)."""
     options: Mapping[str, object] = field(default_factory=dict)
     """The options it accepts, beyond the common ones, and their defaults."""
-    prepare: Callable[[dict, dict], dict] | None = None
+    prepare: Callable[[dict, dict], dict] = lambda spec, options: {}
     """Validates the options and returns what to add to the spec, ``(spec, options) -> dict``."""
-    eta_rule: tuple[str, str, float] | None = None
-    """``(construction, '>' or '>=', bound)``: the lower bound on eta, beyond eta > 1."""
-    supports_gap: bool = True
-    """Whether it can fit two intervals either side of a pole."""
-    evaluates_half_period: bool = False
-    """It evaluates g on [-pi/2, pi/2], which must stay clear of the singularity of f."""
+    result_fields: Callable[[dict], dict] = lambda spec: {}
+    """Result fields fixed for the whole fit, from the prepared spec."""
+    constant_fields: Mapping[str, object] = field(default_factory=dict)
+    """Result fields of the exact constant series of a point spectrum."""
+    eta_min: tuple[float, bool] | None = None
+    """``(bound, inclusive)``: a lower bound on eta beyond eta > 1."""
+    explicit: bool = False
+    """It builds g on [-pi/2, pi/2] in closed form.  That must stay clear of the
+    singularity of f, so it cannot fit two intervals either side of a pole."""
 
 
 # ---------------------------------------------------------------------------
@@ -152,24 +160,24 @@ METHODS: dict[str, Method] = {
                 {"lambdas": None, "sobolev_w": 1.0, "sobolev_r": None, "order_fit": 1, "fit_oversample": 8}
             ),
             prepare=_sobolev_prepare,
+            result_fields=lambda spec: {"sobolev_r": spec["sobolev_r"], "sobolev_w": spec["sobolev_w"]},
+            constant_fields=MappingProxyType({"lambda_used": 0.0}),
         ),
         Method(
             "reflected",
             ("refl", "reflected_extension", "reflected-extension"),
-            _explicit_candidate,
+            partial(_explicit_candidate, _reflected_coefficients),
             lambda problem, spectral: 2.0,
-            eta_rule=("The reflected extension", ">=", 2.0),
-            supports_gap=False,
-            evaluates_half_period=True,
+            eta_min=(2.0, True),
+            explicit=True,
         ),
         Method(
             "arcsine_taylor",
             ("arcsine-taylor", "arcsine", "asin"),
-            _explicit_candidate,
+            partial(_explicit_candidate, _arcsine_taylor_coefficients),
             _arcsine_taylor_eta,
-            eta_rule=("The arcsine-Taylor construction", ">", 2.0),
-            supports_gap=False,
-            evaluates_half_period=True,
+            eta_min=(2.0, False),
+            explicit=True,
         ),
     )
 }
@@ -187,11 +195,11 @@ def canonical_method(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _check_supports(method: str, spectral: dict) -> None:
-    if not METHODS[method].supports_gap and spectral["fit_gap"] is not None:
-        able = _listing((m.name for m in METHODS.values() if m.supports_gap), fmt="method='{}'")
+def _check_supports(method: str, problem: str, spectral: dict) -> None:
+    if METHODS[method].explicit and spectral["fit_gap"] is not None:
+        able = _listing((m.name for m in METHODS.values() if not m.explicit), fmt="method='{}'")
         raise ValueError(
-            f"method='{method}' does not support a two-interval fit (inversion on an indefinite interval or on "
+            f"method='{method}' does not support a two-interval fit ({problem} on an indefinite interval or on "
             f"singular values): the pole lies between the intervals.  Use {able}."
         )
 
@@ -204,11 +212,11 @@ def _check_eta(spec: dict) -> None:
     branch point at 0.
     """
     method, eta = METHODS[spec["method"]], spec["eta"]
-    if method.eta_rule is not None:
-        construction, op, bound = method.eta_rule
-        if eta < bound or (op == ">" and eta == bound):
-            raise ValueError(f"{construction} requires eta {op} {bound:g}.")
-    if not method.evaluates_half_period or PROBLEMS[spec["problem"]].entire or not math.isfinite(spec["tau"]):
+    if method.eta_min is not None:
+        bound, inclusive = method.eta_min
+        if eta < bound or (eta == bound and not inclusive):
+            raise ValueError(f"method='{method.name}' requires eta {'>=' if inclusive else '>'} {bound:g}.")
+    if not method.explicit or PROBLEMS[spec["problem"]].entire or not math.isfinite(spec["tau"]):
         return
     # Compare eta delta with 2 |mu| directly: recovering delta from tau, or
     # dividing by it, rounds and can admit eta = 2 |mu| / delta itself.
