@@ -110,27 +110,34 @@ def _lambda_grid(lambdas: Sequence[float] | None) -> np.ndarray:
     if lambdas is None:
         return default_lambda_grid()
     grid = np.asarray(lambdas, dtype=float)
-    if grid.ndim != 1 or grid.size == 0 or np.any(grid < 0):
-        raise ValueError("lambdas must be a non-empty sequence of positive values.")
+    if grid.ndim != 1 or grid.size == 0 or not np.all(grid >= 0):
+        raise ValueError("lambdas must be a non-empty sequence of non-negative values.")
     return grid
+
+
+def _orders(values, name: str) -> np.ndarray:
+    """*values* as a 1-D array of non-negative integers, rejecting fractions rather than truncating them."""
+    arr = np.asarray(values)
+    valid = (
+        arr.ndim == 1
+        and arr.size > 0
+        and arr.dtype.kind in "iuf"
+        and bool(np.all(np.isfinite(arr) & (arr >= 0) & (arr == np.round(arr))))
+    )
+    if not valid:
+        raise ValueError(f"{name} must be a non-negative integer or a non-empty sequence of them.")
+    return arr.astype(int)
 
 
 def _m_grid(m: int | None, m_values: Sequence[int] | int | None) -> np.ndarray:
     """Ascending candidate orders: *m* alone if given, else *m_values*, else the default grid."""
     if m is not None:
-        if m < 0:
-            raise ValueError("m must be non-negative.")
-        return np.array([int(m)], dtype=int)
+        if np.ndim(m) != 0:
+            raise ValueError("m must be a non-negative integer.")
+        return _orders([m], "m")
     if m_values is None:
         return default_m_grid()
-    if np.isscalar(m_values):
-        if int(m_values) < 0:
-            raise ValueError("m_values must be non-negative.")
-        return np.array([int(m_values)], dtype=int)
-    grid = np.unique(np.asarray(m_values, dtype=int))
-    if grid.ndim != 1 or grid.size == 0 or np.any(grid < 0):
-        raise ValueError("m_values must be a non-empty sequence of non-negative integers.")
-    return grid
+    return np.unique(_orders(np.atleast_1d(m_values), "m_values"))
 
 
 def _select(candidates: list[dict], metric: str, target: float, selection: str) -> tuple[dict, bool]:
@@ -304,7 +311,7 @@ def solve_fe_coefficients(
     sobolev_w = 1.0 if sobolev_w is None else sobolev_w
     order_fit = 1 if order_fit is None else order_fit
     fit_oversample = 8 if fit_oversample is None else fit_oversample
-    if target_error < 0:
+    if not target_error > 0:  # also catches NaN
         raise ValueError("target_error must be positive.")
     if order_fit < 0 or fit_oversample <= 0 or val_n < 3:
         raise ValueError("Require order_fit >= 0, fit_oversample > 0, and val_n >= 3.")

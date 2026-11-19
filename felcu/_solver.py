@@ -222,10 +222,7 @@ def _candidate_for_m(
         logger.debug("  m=%d converged at lam=0", m)
         return {"m": m, "lambda": 0.0, "solve": s0, "feasible": True}
 
-    grid = np.sort(np.unique(np.asarray(lambdas, dtype=float)))
-    grid = grid[grid >= 0]
-    if grid.size == 0:
-        raise ValueError("lambdas must contain at least one positive value.")
+    grid = np.unique(np.asarray(lambdas, dtype=float))  # sorted; validated by the caller
 
     low_lam, low_solve, low_error = 0.0, s0, e0
     high_lam = None

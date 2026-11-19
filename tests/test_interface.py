@@ -25,9 +25,39 @@ def _rotated(eigenvalues):
 
 
 class TestInputValidation:
-    def test_negative_target_error_raises(self):
+    @pytest.mark.parametrize("target", [-1.0, 0.0, np.nan])
+    def test_non_positive_target_error_raises(self, target):
         with pytest.raises(ValueError, match="target_error"):
-            solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, target_error=-1.0)
+            solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, target_error=target)
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            dict(m=4.5),
+            dict(m=[4]),
+            dict(m_values=[4.9, 8.7]),
+            dict(m_values=[[4, 8]]),
+            dict(m_values=[]),
+            dict(m_values=[4, np.inf]),
+        ],
+    )
+    def test_invalid_orders_raise(self, kwargs):
+        with pytest.raises(ValueError, match="m"):
+            solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, **kwargs)
+
+    def test_integral_float_orders_are_accepted(self):
+        r = solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, m_values=[8.0, 4.0], target_error=1.0)
+        assert r.m == 4
+
+    @pytest.mark.parametrize("lambdas", [[-1.0], [np.nan], [], [[1e-3]]])
+    def test_invalid_lambdas_raise(self, lambdas):
+        with pytest.raises(ValueError, match="non-negative"):
+            solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, lambdas=lambdas)
+
+    @pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
+    def test_zero_lambda_is_accepted(self):
+        r = solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, m=4, lambdas=[0.0])
+        assert r.lambda_used >= 0.0
 
     def test_matrix_and_sigma_raises(self):
         A = np.eye(2)
