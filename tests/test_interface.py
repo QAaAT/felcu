@@ -6,7 +6,7 @@ and exact constants.  Saving and loading are in ``test_io.py``.
 
 import numpy as np
 import pytest
-from helpers import max_error
+from helpers import ALL_PROBLEMS, BRANCH_POINT_PROBLEMS, NOT_ODD_PROBLEMS, SINGULAR_PROBLEMS, max_error
 
 from felcu import ConvergenceWarning, compute_fe_coefficients, default_sobolev_r, solve_fe_coefficients
 
@@ -79,7 +79,7 @@ class TestInputValidation:
                 selection="biggest_m",
             )
 
-    @pytest.mark.parametrize("problem", ["identity", "inversion", "exponentiation", "square_root", "logarithm"])
+    @pytest.mark.parametrize("problem", ALL_PROBLEMS)
     def test_requires_spectral_information(self, problem):
         with pytest.raises(ValueError, match="Provide a matrix"):
             solve_fe_coefficients(problem)
@@ -98,13 +98,13 @@ class TestInputValidation:
         assert result.converged
         assert result.matrix_shape == (3, 3)
 
-    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
+    @pytest.mark.parametrize("problem", BRANCH_POINT_PROBLEMS)
     @pytest.mark.parametrize("lo", [0.0, -0.5])
     def test_requires_positive_definite(self, problem, lo):
         with pytest.raises(ValueError, match="positive-definite"):
             solve_fe_coefficients(problem, sigma_min=lo, sigma_max=1.0)
 
-    @pytest.mark.parametrize("problem", ["exponentiation", "square_root", "logarithm"])
+    @pytest.mark.parametrize("problem", NOT_ODD_PROBLEMS)
     def test_singular_values_only_for_odd_problems(self, problem):
         with pytest.raises(ValueError, match="singular values only support"):
             solve_fe_coefficients(problem, sigma_min=0.5, sigma_max=1.0, spectral_kind="singular_values")
@@ -153,7 +153,7 @@ class TestInputValidation:
         with pytest.raises(ValueError, match="nonsingular"):
             solve_fe_coefficients("inversion", matrix=matrix)
 
-    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
+    @pytest.mark.parametrize("problem", BRANCH_POINT_PROBLEMS)
     @pytest.mark.parametrize("matrix", [np.diag([0.0, 1.0]), _rotated([0.0, 1.0, 2.0])])
     def test_singular_matrix_square_root_raises(self, problem, matrix):
         with pytest.raises(ValueError, match="positive-definite"):
@@ -181,7 +181,7 @@ class TestInputValidation:
         with pytest.raises(ValueError, match="eta > 2"):
             solve_fe_coefficients("identity", method="arcsine_taylor", sigma_min=-1.0, sigma_max=1.0, eta=2.0)
 
-    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
+    @pytest.mark.parametrize("problem", BRANCH_POINT_PROBLEMS)
     @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
     @pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
     def test_extension_must_avoid_the_singularity(self, method, problem):
@@ -191,7 +191,7 @@ class TestInputValidation:
         r = solve_fe_coefficients(problem, method=method, sigma_min=0.025, sigma_max=1.0, eta=2.05)
         assert np.isfinite(r.alpha) and r.alpha < 10.0
 
-    @pytest.mark.parametrize("problem", ["inversion", "square_root", "logarithm"])
+    @pytest.mark.parametrize("problem", SINGULAR_PROBLEMS)
     @pytest.mark.parametrize("method", ["reflected", "arcsine_taylor"])
     def test_singularity_bound_is_excluded(self, method, problem):
         # 2 mu / delta = 198 / 96 = 2.0625 exactly for [3, 195]; recovering
@@ -231,6 +231,11 @@ class TestSobolevOptions:
     def test_w_out_of_range_raises(self, w):
         with pytest.raises(ValueError, match="sobolev_w"):
             solve_fe_coefficients("exponentiation", sobolev_w=w, **self.common)
+
+    @pytest.mark.parametrize("order_fit", [-1, 1.5])
+    def test_order_fit_must_be_a_non_negative_integer(self, order_fit):
+        with pytest.raises(ValueError, match="order_fit"):
+            solve_fe_coefficients("exponentiation", order_fit=order_fit, **self.common)
 
     def test_solver_passes_eta_to_default_r(self):
         result = solve_fe_coefficients("exponentiation", eta=4.0, **self.common)
@@ -408,3 +413,34 @@ def test_action_is_an_equivalent_name_for_identity(name):
     r, expected = solve_fe_coefficients(name, **common), solve_fe_coefficients("identity", **common)
     assert r.problem == "identity"
     np.testing.assert_array_equal(r.ak, expected.ak)
+
+
+def test_every_method_option_is_a_keyword_of_solve():
+    import inspect
+
+    from felcu._methods import OPTION_NAMES
+
+    parameters = inspect.signature(solve_fe_coefficients).parameters
+    assert set(OPTION_NAMES) <= set(parameters)
+    assert all(parameters[name].default is None for name in OPTION_NAMES)
+
+
+def test_docstrings_name_every_problem_and_method():
+    # The docs are read statically, so they spell the records out; this keeps them in step.
+    import re
+
+    from felcu import canonical_method_name, canonical_problem_name, default_eta
+    from felcu._methods import METHODS, OPTION_NAMES
+    from felcu._problems import PROBLEMS
+
+    def named(doc):
+        return set(re.findall(r"``'([\w-]+)'``", doc))
+
+    for name, record in PROBLEMS.items():
+        assert {name, *record.aliases} <= named(canonical_problem_name.__doc__), name
+        assert name in named(solve_fe_coefficients.__doc__) and name in named(default_eta.__doc__), name
+    for name, record in METHODS.items():
+        assert {name, *record.aliases} <= named(canonical_method_name.__doc__), name
+        assert name in named(solve_fe_coefficients.__doc__) and name in named(default_eta.__doc__), name
+    sobolev_only = re.search(r"Sobolev-only options\s*\(([^)]*)\)", solve_fe_coefficients.__doc__).group(1)
+    assert set(re.findall(r"\*(\w+)\*", sobolev_only)) == set(OPTION_NAMES)

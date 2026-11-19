@@ -16,9 +16,6 @@
   "achieved_l2_error": 1.1551057159056716e-08,
   "achieved_linf_error": 8.90068324599369e-08,
   "converged": true,
-  "lambda_used": null,
-  "sobolev_r": null,
-  "sobolev_w": null,
   "a0": 0.8567372102101009,
   "ak": [
     0.17735499483628225,
@@ -620,5 +617,6 @@
       -3.2025664171879517e-18,
       0.0
     ]
-  }
+  },
+  "method_details": {}
 }

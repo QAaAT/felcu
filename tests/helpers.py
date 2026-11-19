@@ -3,7 +3,14 @@
 import numpy as np
 
 from felcu import evaluate_fourier_series
+from felcu._problems import PROBLEMS
 from felcu.utils import evaluate_target_function, fitted_domain_segments
+
+# Problem lists by property, so a new problem is tested wherever its properties apply.
+ALL_PROBLEMS = list(PROBLEMS)
+BRANCH_POINT_PROBLEMS = [name for name, p in PROBLEMS.items() if p.positive_definite]
+SINGULAR_PROBLEMS = [name for name, p in PROBLEMS.items() if not p.entire]
+NOT_ODD_PROBLEMS = [name for name, p in PROBLEMS.items() if not p.odd]
 
 
 def max_error(result, n=3001):

@@ -8,6 +8,7 @@ import math
 
 import numpy as np
 import pytest
+from helpers import ALL_PROBLEMS
 
 from felcu import canonical_method_name, default_eta, default_sobolev_r
 from felcu.utils import (
@@ -216,7 +217,7 @@ class TestCanonicalMethodName:
 
 
 class TestTargetFunction:
-    @pytest.mark.parametrize("problem", ["square_root", "logarithm"])
+    @pytest.mark.parametrize("problem", ALL_PROBLEMS)
     def test_target_derivatives(self, problem):
         from felcu._coefficients import _target
 
@@ -376,7 +377,7 @@ class TestSobolevWeight:
 
 class TestSeriesComposition:
     def test_logarithm_matches_the_taylor_series(self):
-        from felcu._explicit import _series_log
+        from felcu._problems import _series_log
 
         # log(mu + z) = log mu + sum_k (-1)^(k+1) z^k / (k mu^k)
         mu, n = 1.7, 12
@@ -385,8 +386,19 @@ class TestSeriesComposition:
         expected = [math.log(mu)] + [(-1) ** (k + 1) / (k * mu**k) for k in range(1, n + 1)]
         np.testing.assert_allclose(_series_log(u), expected, rtol=1e-13)
 
+    @pytest.mark.parametrize("problem", ALL_PROBLEMS)
+    def test_each_problem_series_matches_its_derivatives(self, problem):
+        # F(mu + z) = sum_k F^(k)(mu) z^k / k!, so a record's series and derivatives must agree.
+        from felcu._problems import PROBLEMS
+
+        p, mu, n = PROBLEMS[problem], 1.7, 6
+        u = np.zeros(n + 1)
+        u[:2] = mu, 1.0
+        expected = [float(p.derivative(np.array(mu), k)) / math.factorial(k) for k in range(n + 1)]
+        np.testing.assert_allclose(p.series(u), expected, rtol=1e-12, atol=1e-15)
+
     def test_logarithm_inverts_the_exponential(self):
-        from felcu._explicit import _series_exp, _series_log
+        from felcu._problems import _series_exp, _series_log
 
         u = np.array([0.3, 0.7, -0.2, 0.05, 0.4, -0.1, 0.0, 0.2])
         np.testing.assert_allclose(_series_log(_series_exp(u)), u, atol=1e-14)
@@ -409,14 +421,14 @@ class TestLinearSolver:
             monkeypatch.setattr(np.linalg, "svd", svd)
 
         spectral = _spectral_data("exponentiation", None, 0.1, 2.0, None, "auto", 1e-12)
-        spec = _make_spec("exponentiation", spectral, None)
+        spec = _make_spec("exponentiation", spectral, None, "sobolev")
         m, r, w = 16, 0.5, 1.5
-        spec |= {"sobolev_r": r, "sobolev_w": w}
-        data = _make_fit_data(spec, m, 8, 401)
+        spec |= {"sobolev_r": r, "sobolev_w": w, "order_fit": 1, "fit_oversample": 8}
+        data = _make_fit_data(spec, m, 401)
 
-        fast = _make_linear_solver(data, spec, m, 1)(lam)
+        fast = _make_linear_solver(data, spec, m)(lam)
 
-        A, b = _fit_system(data, spec, m, 1)
+        A, b = _fit_system(data, spec, m)
         p = _penalty(m, spec["basis"], lam, r, w)
         c, *_ = np.linalg.lstsq(np.vstack([A, np.diag(p)]), np.concatenate([b, np.zeros(len(p))]), rcond=None)
         # Two different solvers on an ill-conditioned system agree to rounding

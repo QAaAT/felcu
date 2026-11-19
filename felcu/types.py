@@ -8,6 +8,16 @@ from pathlib import Path
 
 import numpy as np
 
+from felcu import _io
+from felcu._coefficients import (
+    _circuit_coefficients,
+    _evaluate_series,
+    _format_circuit_coefficients,
+    _pack_coefficients,
+)
+from felcu._linalg import _as_double, _is_hermitian
+from felcu._problems import PROBLEMS
+
 ArrayLike = np.ndarray | Sequence[float] | float
 
 
@@ -18,10 +28,6 @@ class ConvergenceWarning(UserWarning):
     best candidate, with ``converged=False``.  Silence it with
     ``warnings.simplefilter("ignore", felcu.ConvergenceWarning)``.
     """
-
-
-# How f reads in error messages.
-_FORMULAS = {"inversion": "1/x", "square_root": "sqrt(x)", "logarithm": "log(x)"}
 
 
 @dataclass(frozen=True)
@@ -72,15 +78,12 @@ class FourierExtensionResult:
         Achieved maximum pointwise error on the fitted domain.
     converged : bool
         Whether *achieved_error* meets *target_error*.
-    lambda_used : float or None
-        Sobolev regularisation strength chosen for this ``m``; ``None``
-        for the explicit (``'reflected'``, ``'arcsine_taylor'``) methods.
-    sobolev_r : float or None
-        Scale *r* of the H_r^w regulariser that was used; ``None`` for the
-        explicit methods.
-    sobolev_w : float or None
-        Order *w* of the H_r^w regulariser that was used; ``None`` for the
-        explicit methods.
+    method_details : dict
+        Values particular to the method.  For ``'sobolev'``:
+        ``lambda_used``, the regularisation strength chosen for this ``m``,
+        and ``sobolev_r`` and ``sobolev_w``, the scale and order of the
+        H_r^w regulariser.  Empty for the explicit methods.  The Sobolev
+        values are also attributes; see :attr:`lambda_used`.
     a0 : float
         Constant term.
     ak : numpy.ndarray
@@ -133,9 +136,7 @@ class FourierExtensionResult:
     achieved_l2_error: float
     achieved_linf_error: float
     converged: bool
-    lambda_used: float | None
-    sobolev_r: float | None
-    sobolev_w: float | None
+    method_details: dict[str, float]
     a0: float
     ak: np.ndarray
     bk: np.ndarray
@@ -158,8 +159,6 @@ class FourierExtensionResult:
         ``[ak]`` for ``'odd_sine'``, ``[a0, ak]`` for ``'const_plus_sine'``,
         and ``[a0, ak, bk]`` for ``'full'``.
         """
-        from felcu._coefficients import _pack_coefficients
-
         return _pack_coefficients(self.a0, self.ak, self.bk, self.basis_used)
 
     def evaluate(self, x: ArrayLike) -> np.ndarray:
@@ -181,13 +180,11 @@ class FourierExtensionResult:
         numpy.ndarray
             The approximation, with the same shape as *x*.
         """
-        from felcu.utils import evaluate_fourier_series
-
         x = np.asarray(x, dtype=float)
         if not np.isfinite(self.tau):
             # A zero-width interval: the series is the constant a0.
             return np.full(x.shape, self.a0)
-        return evaluate_fourier_series(self.tau * (x - self.mu), self.a0, self.ak, self.bk)
+        return _evaluate_series(self.tau * (x - self.mu), self.a0, self.ak, self.bk)
 
     def apply(
         self,
@@ -239,8 +236,6 @@ class FourierExtensionResult:
             If *matrix* is not square, not Hermitian, or has an eigenvalue
             outside the domain of ``f`` or outside the fitted spectrum.
         """
-        from felcu.spectral import _as_double, _is_hermitian
-
         H = _as_double(np.asarray(matrix))
         if H.ndim != 2 or H.shape[0] != H.shape[1]:
             raise ValueError("matrix must be square.")
@@ -250,7 +245,7 @@ class FourierExtensionResult:
         bad, requirement = self._outside_domain(w)
         if bad.any():
             raise ValueError(
-                f"matrix has eigenvalues outside the domain of {_FORMULAS.get(self.problem, self.problem)}, "
+                f"matrix has eigenvalues outside the domain of {PROBLEMS[self.problem].formula}, "
                 f"e.g. {w[bad][0]:.6g}; {requirement}."
             )
         outside = self._outside_fitted_spectrum(w, interval_tol)
@@ -270,11 +265,10 @@ class FourierExtensionResult:
         Independent of the interval slack, which can reach past 0 when the
         fitted spectrum ends close to it.
         """
-        from felcu.spectral import POSITIVE_DEFINITE_PROBLEMS
-
-        if self.problem in POSITIVE_DEFINITE_PROBLEMS:
+        p = PROBLEMS[self.problem]
+        if p.positive_definite:
             return w <= 0, "the matrix must be positive definite"
-        if self.problem != "inversion":
+        if not p.pole_at_zero:
             return np.zeros(w.shape, dtype=bool), ""
         if self.spectral_kind_used == "eigenvalues" and self.sigma_min > 0:
             return w <= 0, "the fit is positive definite, so the matrix must be too"
@@ -308,18 +302,29 @@ class FourierExtensionResult:
         Length ``2m + 2``: the zero after ``c_0`` is required by the
         compressed circuit.  See :func:`~felcu.to_circuit_coefficients`.
         """
-        from felcu.utils import to_circuit_coefficients
-
-        return to_circuit_coefficients(self)
+        return _circuit_coefficients(self.a0, self.ak, self.bk)
 
     def format_circuit_coefficients(self) -> str:
         """:attr:`circuit_coefficients` as a bare Python list literal, for pasting by hand.
 
         See :func:`~felcu.format_circuit_coefficients`.
         """
-        from felcu.utils import format_circuit_coefficients
+        return _format_circuit_coefficients(self.a0, self.ak, self.bk)
 
-        return format_circuit_coefficients(self)
+    @property
+    def lambda_used(self) -> float | None:
+        """Sobolev regularisation strength chosen for this ``m``; ``None`` for the explicit methods."""
+        return self.method_details.get("lambda_used")
+
+    @property
+    def sobolev_r(self) -> float | None:
+        """Scale *r* of the H_r^w regulariser that was used; ``None`` for the explicit methods."""
+        return self.method_details.get("sobolev_r")
+
+    @property
+    def sobolev_w(self) -> float | None:
+        """Order *w* of the H_r^w regulariser that was used; ``None`` for the explicit methods."""
+        return self.method_details.get("sobolev_w")
 
     @property
     def achieved_inf_error(self) -> float:
@@ -340,9 +345,7 @@ class FourierExtensionResult:
         include_candidates:
             Also store :attr:`all_results`, every order tried in the sweep.
         """
-        from felcu._io import to_dict
-
-        return to_dict(self, include_candidates)
+        return _io.to_dict(self, include_candidates)
 
     @classmethod
     def from_dict(cls, data: dict) -> FourierExtensionResult:
@@ -354,9 +357,7 @@ class FourierExtensionResult:
             If *data* is not a saved felcu result, has an unsupported
             ``format_version``, or is missing a field.
         """
-        from felcu._io import from_dict
-
-        return from_dict(cls, data)
+        return _io.from_dict(cls, data)
 
     def to_json(
         self, path: str | Path | None = None, *, indent: int | None = 2, include_candidates: bool = False
@@ -386,9 +387,7 @@ class FourierExtensionResult:
         >>> result.to_json("exp_coefficients.json")
         >>> loaded = FourierExtensionResult.from_json("exp_coefficients.json")
         """
-        from felcu._io import to_json
-
-        return to_json(self, path, indent=indent, include_candidates=include_candidates)
+        return _io.to_json(self, path, indent=indent, include_candidates=include_candidates)
 
     @classmethod
     def from_json(cls, source: str | Path) -> FourierExtensionResult:
@@ -404,6 +403,4 @@ class FourierExtensionResult:
         ValueError
             As for :meth:`from_dict`.
         """
-        from felcu._io import from_json
-
-        return from_json(cls, source)
+        return _io.from_json(cls, source)
