@@ -14,9 +14,9 @@ import math
 import numpy as np
 
 from felcu._coefficients import _pack_coefficients, _spec_target
+from felcu._fitted import _summarise, _validation_data
 from felcu._linalg import _gauss_interval
 from felcu._problems import PROBLEMS
-from felcu._solver import _summarise, _validation_data
 
 HALF_PI = 0.5 * math.pi
 
@@ -131,7 +131,7 @@ _COEFFICIENTS = {
 }
 
 
-def _explicit_candidate(spec: dict, m: int, val_n: int) -> dict:
+def _explicit_candidate(spec: dict, m: int, target: float, metric: str, val_n: int) -> dict:
     """The closed-form series of order *m* for ``spec['method']``, in the format of ``_candidate_for_m``."""
     a0, ak, bk = _COEFFICIENTS[spec["method"]](spec, m)
     # Packing drops the modes the basis excludes, which vanish by symmetry.

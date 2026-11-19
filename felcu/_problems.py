@@ -153,6 +153,11 @@ class Problem:
     target: Callable[[np.ndarray, float, float, int], np.ndarray] | None = None
     """``g^(d)(x)`` for finite tau, when it is more accurate than scaling :attr:`derivative`."""
 
+    def default_sobolev_r(self, spectral: dict, tau: float, sobolev_w: float) -> float:
+        """The default Sobolev scale r for a fit of *spectral* with scale *tau*."""
+        rule = self.sobolev_r
+        return rule(spectral, tau, sobolev_w) if callable(rule) else rule
+
 
 PROBLEMS: dict[str, Problem] = {
     p.name: p

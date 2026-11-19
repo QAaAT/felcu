@@ -8,15 +8,14 @@ from collections.abc import Sequence
 import numpy as np
 
 from felcu._coefficients import _value
+from felcu._fitted import _centre_and_halfwidth
 from felcu._linalg import _as_double, _is_hermitian
+from felcu._methods import METHODS, _check_eta, _check_supports
 from felcu._problems import PROBLEMS
 from felcu._problems import canonical_method as canonical_method_name
 from felcu._problems import canonical_problem as canonical_problem_name
 
 PI = float(np.pi)
-
-# Default eta of the arcsine-Taylor construction for an entire f (Sec. VI).
-ARCSINE_TAYLOR_ETA = 3.0
 
 
 # ---------------------------------------------------------------------------
@@ -164,61 +163,6 @@ def _spectral_data(
     }
 
 
-def _check_method(method: str, spectral: dict) -> None:
-    if method != "sobolev" and spectral["fit_gap"] is not None:
-        raise ValueError(
-            f"method='{method}' does not support a two-interval fit (inversion on an indefinite interval or on "
-            "singular values): the pole lies between the intervals.  Use method='sobolev'."
-        )
-
-
-def _check_explicit_eta(spec: dict) -> None:
-    """Check that *eta* suits the reflected or arcsine-Taylor construction of *spec*.
-
-    Both evaluate g on [-pi/2, pi/2], i.e. f on [mu - eta delta/2, mu + eta delta/2],
-    which must stay clear of the pole or branch point at 0.
-    """
-    method, eta = spec["method"], spec["eta"]
-    if method == "reflected" and eta < 2.0:
-        raise ValueError("The reflected extension requires eta >= 2.")
-    if method == "arcsine_taylor" and eta <= 2.0:
-        raise ValueError("The arcsine-Taylor construction requires eta > 2.")
-    if PROBLEMS[spec["problem"]].entire or not math.isfinite(spec["tau"]):
-        return
-    # Compare eta delta with 2 |mu| directly: recovering delta from tau, or
-    # dividing by it, rounds and can admit eta = 2 |mu| / delta itself.
-    mu, delta = _centre_and_halfwidth(spec["spectral"])
-    if eta * delta >= 2.0 * abs(mu):
-        raise ValueError(
-            f"method='{method}' with eta={eta:.6g} extends {spec['problem']} past its singularity at 0; "
-            f"eta must be below 2|mu|/delta = {2.0 * abs(mu) / delta:.6g}."
-        )
-
-
-def _centre_and_halfwidth(spectral: dict) -> tuple[float, float]:
-    lo, hi = spectral["fit_lo"], spectral["fit_hi"]
-    return 0.5 * (lo + hi), 0.5 * (hi - lo)
-
-
-def _default_eta(problem: str, method: str, spectral: dict | None) -> float:
-    """The default eta; *spectral* is only read, and may only be omitted, for an entire f."""
-    if method == "reflected":
-        return 2.0
-    if PROBLEMS[problem].entire:
-        return ARCSINE_TAYLOR_ETA if method == "arcsine_taylor" else 2.0
-
-    mu, delta = _centre_and_halfwidth(spectral)
-    gap = spectral["fit_gap"]
-    if gap is not None:
-        # The gap around the pole and the free part of the period are equally wide.
-        return 1.0 + (gap[1] - gap[0]) / (2.0 * delta)
-    # The pole or branch point at 0 lies at x = -tau mu, on the periodic
-    # boundary when eta = |mu| / delta.
-    if method == "arcsine_taylor":
-        return ARCSINE_TAYLOR_ETA if delta == 0 else min(ARCSINE_TAYLOR_ETA, 1.0 + abs(mu) / delta)
-    return 2.0 if delta == 0 else abs(mu) / delta
-
-
 # ---------------------------------------------------------------------------
 # Public: default eta
 # ---------------------------------------------------------------------------
@@ -302,10 +246,10 @@ def default_eta(
     problem = canonical_problem_name(problem)
     method = canonical_method_name(method)
     if PROBLEMS[problem].entire:
-        return _default_eta(problem, method, None)
+        return METHODS[method].default_eta(PROBLEMS[problem], None)
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
-    _check_method(method, spectral)
-    return _default_eta(problem, method, spectral)
+    _check_supports(method, spectral)
+    return METHODS[method].default_eta(PROBLEMS[problem], spectral)
 
 
 # ---------------------------------------------------------------------------
@@ -387,13 +331,8 @@ def default_sobolev_r(
     if not callable(PROBLEMS[problem].sobolev_r):
         return PROBLEMS[problem].sobolev_r
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
-    return _default_sobolev_r(problem, spectral, _make_spec(problem, spectral, eta)["tau"], sobolev_w)
-
-
-def _default_sobolev_r(problem: str, spectral: dict, tau: float, sobolev_w: float) -> float:
-    """:func:`default_sobolev_r` for a canonical *problem* on *spectral*, fitted with scale *tau*."""
-    rule = PROBLEMS[problem].sobolev_r
-    return rule(spectral, tau, sobolev_w) if callable(rule) else rule
+    tau = _make_spec(problem, spectral, eta)["tau"]
+    return PROBLEMS[problem].default_sobolev_r(spectral, tau, sobolev_w)
 
 
 # ---------------------------------------------------------------------------
@@ -408,9 +347,9 @@ def _make_spec(problem: str, spectral: dict, eta: float | None, method: str = "s
     of the fitted set and ``tau = pi / (eta delta)``, so the fitted set
     spans ``[-pi/eta, pi/eta]``, less any gap around a pole.
     """
-    _check_method(method, spectral)
+    _check_supports(method, spectral)
     if eta is None:
-        eta = _default_eta(problem, method, spectral)
+        eta = METHODS[method].default_eta(PROBLEMS[problem], spectral)
     eta = float(eta)
     if eta <= 1.0:
         raise ValueError("eta must exceed 1.")
@@ -449,6 +388,5 @@ def _make_spec(problem: str, spectral: dict, eta: float | None, method: str = "s
         "basis": basis,
         "baseline": baseline,
     }
-    if method != "sobolev":
-        _check_explicit_eta(spec)
+    _check_eta(spec)
     return spec

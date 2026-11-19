@@ -9,16 +9,15 @@ from dataclasses import replace
 import numpy as np
 
 from felcu._coefficients import _value
-from felcu._explicit import _explicit_candidate
+from felcu._fitted import _meets_target
 from felcu._logging import logger
-from felcu._solver import _candidate_for_m, _meets_target
-from felcu.spectral import _default_sobolev_r, _make_spec, _spectral_data
+from felcu._methods import METHODS, _method_options
+from felcu.spectral import _make_spec, _spectral_data
 from felcu.types import ConvergenceWarning, FourierExtensionResult
 from felcu.utils import (
     canonical_error_metric,
     canonical_method_name,
     canonical_problem_name,
-    default_lambda_grid,
     default_m_grid,
     to_complex_coefficients,
 )
@@ -49,9 +48,9 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         achieved_l2_error=float(s["l2"]),
         achieved_linf_error=float(s["linf"]),
         converged=_meets_target(s, metric, target),
-        lambda_used=float(cand["lambda"]) if spec["method"] == "sobolev" else None,
-        sobolev_r=spec["sobolev_r"],
-        sobolev_w=spec["sobolev_w"],
+        lambda_used=None if cand["lambda"] is None else float(cand["lambda"]),
+        sobolev_r=spec.get("sobolev_r"),
+        sobolev_w=spec.get("sobolev_w"),
         a0=a0,
         ak=ak.copy(),
         bk=bk.copy(),
@@ -71,7 +70,7 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
 def _constant_result(spec: dict, target: float, metric: str, value: float, m: int) -> FourierExtensionResult:
     c = {
         "m": m,
-        "lambda": 0.0,
+        "lambda": None if spec.get("lambdas") is None else 0.0,
         "solve": {
             "a0": value,
             "ak": np.zeros(m),
@@ -102,15 +101,6 @@ def _exact_constant_if_any(
     if s["kind"] != "eigenvalues" or s["sigma_min"] != s["sigma_max"]:
         return None
     return _constant_result(spec, target, metric, _value(spec["problem"], s["sigma_min"]), m)
-
-
-def _lambda_grid(lambdas: Sequence[float] | None) -> np.ndarray:
-    if lambdas is None:
-        return default_lambda_grid()
-    grid = np.asarray(lambdas, dtype=float)
-    if grid.ndim != 1 or grid.size == 0 or not np.all(grid >= 0):
-        raise ValueError("lambdas must be a non-empty sequence of non-negative values.")
-    return grid
 
 
 def _orders(values, name: str) -> np.ndarray:
@@ -295,40 +285,29 @@ def solve_fe_coefficients(
     problem = canonical_problem_name(problem)
     method = canonical_method_name(method)
     metric = canonical_error_metric(error_metric)
-    sobolev_options = {
-        "lambdas": lambdas,
-        "sobolev_w": sobolev_w,
-        "sobolev_r": sobolev_r,
-        "order_fit": order_fit,
-        "fit_oversample": fit_oversample,
-    }
-    if method != "sobolev":
-        given = [name for name, value in sobolev_options.items() if value is not None]
-        if given:
-            raise ValueError(f"{', '.join(given)} only apply to method='sobolev', not method='{method}'.")
-    sobolev_w = 1.0 if sobolev_w is None else sobolev_w
-    order_fit = 1 if order_fit is None else order_fit
-    fit_oversample = 8 if fit_oversample is None else fit_oversample
+    options = _method_options(
+        method,
+        {
+            "lambdas": lambdas,
+            "sobolev_w": sobolev_w,
+            "sobolev_r": sobolev_r,
+            "order_fit": order_fit,
+            "fit_oversample": fit_oversample,
+        },
+    )
     if not target_error >= 0:  # also catches NaN
         raise ValueError("target_error must be non-negative.")
-    if order_fit < 0 or fit_oversample <= 0 or val_n < 3:
-        raise ValueError("Require order_fit >= 0, fit_oversample > 0, and val_n >= 3.")
-    if not sobolev_w > 0.5:
-        raise ValueError("sobolev_w must exceed 0.5.")
+    if val_n < 3:
+        raise ValueError("val_n must be at least 3.")
     if selection not in {"smallest_m", "smallest_alpha"}:
         raise ValueError("selection must be 'smallest_m' or 'smallest_alpha'.")
 
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
     spec = _make_spec(problem, spectral, eta, method)
 
-    if method != "sobolev":
-        spec = spec | {"sobolev_r": None, "sobolev_w": None}
-    else:
-        if sobolev_r is None:
-            sobolev_r = _default_sobolev_r(problem, spectral, spec["tau"], sobolev_w)
-        if not 0 < sobolev_r <= 1:
-            raise ValueError("sobolev_r must satisfy 0 < sobolev_r <= 1.")
-        spec = spec | {"sobolev_r": float(sobolev_r), "sobolev_w": float(sobolev_w)}
+    prepare = METHODS[method].prepare
+    if prepare is not None:
+        spec = spec | prepare(spec, options)
 
     logger.info(
         "solve_fe_coefficients: problem=%s  method=%s  kind=%s  metric=%s  target=%.3e  basis=%s  x_gap=%s  "
@@ -346,7 +325,6 @@ def solve_fe_coefficients(
     )
 
     target = float(target_error)
-    lambdas = _lambda_grid(lambdas) if method == "sobolev" else None
     m_grid = _m_grid(m, m_values)
 
     # Exact at any order, so the smallest one asked for, or 0 if none was.
@@ -361,19 +339,7 @@ def solve_fe_coefficients(
     candidates = []
     for i, mi in enumerate(m_grid):
         logger.info("[%d/%d] m=%d ...", i + 1, len(m_grid), mi)
-        if method == "sobolev":
-            c = _candidate_for_m(
-                spec,
-                int(mi),
-                lambdas,
-                target,
-                metric,
-                order_fit,
-                fit_oversample,
-                val_n,
-            )
-        else:
-            c = _explicit_candidate(spec, int(mi), val_n)
+        c = METHODS[method].candidate(spec, int(mi), target, metric, val_n)
         feasible = _meets_target(c["solve"], metric, target)
         logger.info(
             "[%d/%d] m=%d  done: error=%.3e  feasible=%s  lam=%s  alpha=%.3e",
