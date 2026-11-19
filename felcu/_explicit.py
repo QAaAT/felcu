@@ -15,7 +15,7 @@ import numpy as np
 
 from felcu._coefficients import _pack_coefficients, _spec_target
 from felcu._linalg import _gauss_interval
-from felcu._solver import _meets_target, _summarise, _validation_data
+from felcu._solver import _summarise, _validation_data
 from felcu.spectral import ENTIRE_PROBLEMS
 
 HALF_PI = 0.5 * math.pi
@@ -71,11 +71,11 @@ def _reflected_coefficients(spec: dict, m: int) -> tuple[float, np.ndarray, np.n
     """
     x, w = _reflected_quadrature(spec, m)
     wg = w * _spec_target(x, spec)
-    k = np.arange(1, m + 1)
-    kx = np.outer(k, x)
     a0 = float(np.sum(wg)) / math.pi
-    ak = np.where(k % 2 == 1, (2.0 / math.pi) * (np.sin(kx) @ wg), 0.0)
-    bk = np.where(k % 2 == 0, (2.0 / math.pi) * (np.cos(kx) @ wg), 0.0)
+    ak, bk = np.zeros(m), np.zeros(m)
+    odd, even = np.arange(1, m + 1, 2), np.arange(2, m + 1, 2)
+    ak[odd - 1] = (2.0 / math.pi) * (np.sin(np.outer(odd, x)) @ wg)
+    bk[even - 1] = (2.0 / math.pi) * (np.cos(np.outer(even, x)) @ wg)
     return a0, ak, bk
 
 
@@ -178,10 +178,10 @@ _COEFFICIENTS = {
 }
 
 
-def _explicit_candidate(spec: dict, m: int, target: float, metric: str, val_n: int) -> dict:
+def _explicit_candidate(spec: dict, m: int, val_n: int) -> dict:
     """The closed-form series of order *m* for ``spec['method']``, in the format of ``_candidate_for_m``."""
     a0, ak, bk = _COEFFICIENTS[spec["method"]](spec, m)
     # Packing drops the modes the basis excludes, which vanish by symmetry.
     coeffs = _pack_coefficients(a0, ak, bk, spec["basis"])
     solve = _summarise(coeffs, _validation_data(spec, m, val_n), spec["basis"], m)
-    return {"m": m, "lambda": None, "solve": solve, "feasible": _meets_target(solve, metric, target)}
+    return {"m": m, "lambda": None, "solve": solve}

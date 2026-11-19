@@ -40,13 +40,27 @@ def _assemble(basis: str, constant, sine, cosine, axis: int = -1) -> np.ndarray:
     return np.concatenate(parts, axis=axis)
 
 
-def _basis_matrix(x: np.ndarray, m: int, basis: str, d: int = 0) -> np.ndarray:
-    """The basis functions (or their d-th derivatives) evaluated at *x*, one column each."""
+def _basis_matrices(x: np.ndarray, m: int, basis: str, order: int = 0) -> list[np.ndarray]:
+    """The basis functions and their first *order* derivatives at *x*, one column each.
+
+    sin and cos are evaluated once: each derivative maps (sin kx, cos kx) to
+    (k cos kx, -k sin kx).
+    """
     k = np.arange(1, m + 1, dtype=float)
-    kx = np.outer(x, k) + d * np.pi / 2  # d-th derivative of sin/cos is a phase shift
-    scale = k**d
-    constant = np.full((x.size, 1), 1.0 if d == 0 else 0.0)
-    return _assemble(basis, constant, scale * np.sin(kx), scale * np.cos(kx), axis=1)
+    kx = np.outer(x, k)
+    sine, cosine = np.sin(kx), np.cos(kx)
+    out = []
+    for d in range(order + 1):
+        constant = np.full((x.size, 1), 1.0 if d == 0 else 0.0)
+        out.append(_assemble(basis, constant, sine, cosine, axis=1))
+        if d < order:
+            sine, cosine = k * cosine, -k * sine
+    return out
+
+
+def _basis_matrix(x: np.ndarray, m: int, basis: str) -> np.ndarray:
+    """The basis functions evaluated at *x*, one column each."""
+    return _basis_matrices(x, m, basis)[0]
 
 
 # ---------------------------------------------------------------------------
@@ -98,11 +112,17 @@ def _spec_target(x: np.ndarray, spec: dict, d: int = 0) -> np.ndarray:
 # ---------------------------------------------------------------------------
 
 
-def _pack_coefficients(a0: float, ak: Sequence, bk: Sequence, basis: str) -> np.ndarray:
-    ak = np.asarray(ak, dtype=float).reshape(-1)
-    bk = np.asarray(bk, dtype=float).reshape(-1)
+def _coefficient_arrays(ak: Sequence, bk: Sequence, dtype=None) -> tuple[np.ndarray, np.ndarray]:
+    """*ak* and *bk* as flat arrays of equal length."""
+    ak = np.asarray(ak, dtype=dtype).reshape(-1)
+    bk = np.asarray(bk, dtype=dtype).reshape(-1)
     if ak.shape != bk.shape:
         raise ValueError("ak and bk must have the same length.")
+    return ak, bk
+
+
+def _pack_coefficients(a0: float, ak: Sequence, bk: Sequence, basis: str) -> np.ndarray:
+    ak, bk = _coefficient_arrays(ak, bk, float)
     return _assemble(basis, [a0], ak, bk)
 
 

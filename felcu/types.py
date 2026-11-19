@@ -247,11 +247,11 @@ class FourierExtensionResult:
         if not _is_hermitian(H, hermitian_tol):
             raise ValueError("matrix must be Hermitian; apply the result to its Hermitian dilation instead.")
         w, V = np.linalg.eigh(H)
-        bad = self._outside_domain(w)
+        bad, requirement = self._outside_domain(w)
         if bad.any():
             raise ValueError(
                 f"matrix has eigenvalues outside the domain of {_FORMULAS.get(self.problem, self.problem)}, "
-                f"e.g. {w[bad][0]:.6g}; {self._domain_description()}."
+                f"e.g. {w[bad][0]:.6g}; {requirement}."
             )
         outside = self._outside_fitted_spectrum(w, interval_tol)
         if outside.any():
@@ -263,8 +263,9 @@ class FourierExtensionResult:
             )
         return (V * self.evaluate(w)) @ V.conj().T
 
-    def _outside_domain(self, w: np.ndarray) -> np.ndarray:
-        """Mask of the eigenvalues *w* where f is undefined, or across its singularity from the fit.
+    def _outside_domain(self, w: np.ndarray) -> tuple[np.ndarray, str]:
+        """Mask of the eigenvalues *w* where f is undefined, or across its singularity from the fit,
+        and what the matrix must satisfy instead, for the error message.
 
         Independent of the interval slack, which can reach past 0 when the
         fitted spectrum ends close to it.
@@ -272,26 +273,14 @@ class FourierExtensionResult:
         from felcu.spectral import POSITIVE_DEFINITE_PROBLEMS
 
         if self.problem in POSITIVE_DEFINITE_PROBLEMS:
-            return w <= 0
-        if self.problem == "inversion":
-            if self.spectral_kind_used == "eigenvalues" and self.sigma_min > 0:
-                return w <= 0
-            if self.spectral_kind_used == "eigenvalues" and self.sigma_max < 0:
-                return w >= 0
-            return w == 0
-        return np.zeros(w.shape, dtype=bool)
-
-    def _domain_description(self) -> str:
-        """What :meth:`_outside_domain` requires, for its error message."""
-        from felcu.spectral import POSITIVE_DEFINITE_PROBLEMS
-
-        if self.problem in POSITIVE_DEFINITE_PROBLEMS:
-            return "the matrix must be positive definite"
+            return w <= 0, "the matrix must be positive definite"
+        if self.problem != "inversion":
+            return np.zeros(w.shape, dtype=bool), ""
         if self.spectral_kind_used == "eigenvalues" and self.sigma_min > 0:
-            return "the fit is positive definite, so the matrix must be too"
+            return w <= 0, "the fit is positive definite, so the matrix must be too"
         if self.spectral_kind_used == "eigenvalues" and self.sigma_max < 0:
-            return "the fit is negative definite, so the matrix must be too"
-        return "the matrix must be nonsingular"
+            return w >= 0, "the fit is negative definite, so the matrix must be too"
+        return w == 0, "the matrix must be nonsingular"
 
     def _outside_fitted_spectrum(self, w: np.ndarray, tol: float) -> np.ndarray:
         """Mask of the eigenvalues *w* that lie outside the fitted set, with relative slack *tol*."""

@@ -12,7 +12,7 @@ from felcu._coefficients import _value
 from felcu._explicit import _explicit_candidate
 from felcu._logging import logger
 from felcu._solver import _candidate_for_m, _meets_target
-from felcu.spectral import _make_spec, _spectral_data, default_sobolev_r
+from felcu.spectral import _default_sobolev_r, _make_spec, _spectral_data
 from felcu.types import ConvergenceWarning, FourierExtensionResult
 from felcu.utils import (
     canonical_error_metric,
@@ -34,8 +34,6 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
     a0 = float(s["a0"])
     ak = np.asarray(s["ak"], dtype=float)
     bk = np.asarray(s["bk"], dtype=float)
-
-    sobolev = spec["method"] == "sobolev"
     return FourierExtensionResult(
         problem=spec["problem"],
         method=spec["method"],
@@ -51,9 +49,9 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
         achieved_l2_error=float(s["l2"]),
         achieved_linf_error=float(s["linf"]),
         converged=_meets_target(s, metric, target),
-        lambda_used=float(cand["lambda"]) if sobolev else None,
-        sobolev_r=float(spec["sobolev_r"]) if sobolev else None,
-        sobolev_w=float(spec["sobolev_w"]) if sobolev else None,
+        lambda_used=float(cand["lambda"]) if spec["method"] == "sobolev" else None,
+        sobolev_r=spec["sobolev_r"],
+        sobolev_w=spec["sobolev_w"],
         a0=a0,
         ak=ak.copy(),
         bk=bk.copy(),
@@ -70,7 +68,7 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
     )
 
 
-def _constant_result(spec: dict, target: float, metric: str, value: float, m: int = 0) -> FourierExtensionResult:
+def _constant_result(spec: dict, target: float, metric: str, value: float, m: int) -> FourierExtensionResult:
     c = {
         "m": m,
         "lambda": 0.0,
@@ -91,7 +89,7 @@ def _exact_constant_if_any(
     spec: dict,
     target: float,
     metric: str,
-    m: int = 0,
+    m: int,
 ) -> FourierExtensionResult | None:
     """The exact constant series when the eigenvalue interval is a single point.
 
@@ -327,16 +325,7 @@ def solve_fe_coefficients(
         spec = spec | {"sobolev_r": None, "sobolev_w": None}
     else:
         if sobolev_r is None:
-            sobolev_r = default_sobolev_r(
-                problem,
-                sigma_min=spectral["sigma_min"],
-                sigma_max=spectral["sigma_max"],
-                gap=spectral["gap"],
-                spectral_kind=spectral["kind"],
-                hermitian_tol=hermitian_tol,
-                eta=spec["eta"],
-                sobolev_w=sobolev_w,
-            )
+            sobolev_r = _default_sobolev_r(problem, spectral, spec["tau"], sobolev_w)
         if not 0 < sobolev_r <= 1:
             raise ValueError("sobolev_r must satisfy 0 < sobolev_r <= 1.")
         spec = spec | {"sobolev_r": float(sobolev_r), "sobolev_w": float(sobolev_w)}
@@ -380,25 +369,24 @@ def solve_fe_coefficients(
                 target,
                 metric,
                 order_fit,
-                spec["sobolev_r"],
-                spec["sobolev_w"],
                 fit_oversample,
                 val_n,
             )
         else:
-            c = _explicit_candidate(spec, int(mi), target, metric, val_n)
+            c = _explicit_candidate(spec, int(mi), val_n)
+        feasible = _meets_target(c["solve"], metric, target)
         logger.info(
             "[%d/%d] m=%d  done: error=%.3e  feasible=%s  lam=%s  alpha=%.3e",
             i + 1,
             len(m_grid),
             mi,
             c["solve"][metric],
-            c["feasible"],
+            feasible,
             "-" if c["lambda"] is None else f"{c['lambda']:.3e}",
             c["solve"]["alpha"],
         )
         candidates.append(c)
-        if selection == "smallest_m" and _meets_target(c["solve"], metric, target):
+        if selection == "smallest_m" and feasible:
             # m_grid is ascending, so no later m can be smaller.
             logger.info("smallest feasible m found, stopping sweep")
             break
@@ -413,9 +401,10 @@ def solve_fe_coefficients(
             stacklevel=2,
         )
 
-    all_results = tuple(_make_result(spec, target, metric, c) for c in sorted(candidates, key=lambda c: c["m"]))
-    selected = _make_result(spec, target, metric, best)
-    return replace(selected, all_results=all_results)
+    # m_grid has no repeats, so each order has one result.
+    results = {c["m"]: _make_result(spec, target, metric, c) for c in candidates}
+    all_results = tuple(results[mi] for mi in sorted(results))
+    return replace(results[best["m"]], all_results=all_results)
 
 
 def compute_fe_coefficients(*args, **kwargs) -> tuple[float, np.ndarray, np.ndarray]:

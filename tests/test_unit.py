@@ -411,9 +411,10 @@ class TestLinearSolver:
         spectral = _spectral_data("exponentiation", None, 0.1, 2.0, None, "auto", 1e-12)
         spec = _make_spec("exponentiation", spectral, None)
         m, r, w = 16, 0.5, 1.5
+        spec |= {"sobolev_r": r, "sobolev_w": w}
         data = _make_fit_data(spec, m, 8, 401)
 
-        fast = _make_linear_solver(data, spec, m, 1, r, w)(lam)
+        fast = _make_linear_solver(data, spec, m, 1)(lam)
 
         A, b = _fit_system(data, spec, m, 1)
         p = _penalty(m, spec["basis"], lam, r, w)
