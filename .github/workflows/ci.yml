@@ -137,9 +137,10 @@ jobs:
           path: ${{ runner.temp }}/regression-results
 
   # Every other job uses an editable install, which never checks that the
-  # built package is complete.  Install it normally and run the whole suite
-  # against it from outside the checkout, so felcu can only come from
-  # site-packages.
+  # built package is complete.  Build the sdist and wheel as a release would,
+  # install the wheel, and run the test suite shipped in the sdist against it
+  # from outside the checkout, so felcu can only come from site-packages and
+  # a file missing from either archive fails here rather than on release.
   install:
     needs: lint
     runs-on: ubuntu-latest
@@ -151,15 +152,24 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install package (not editable) and dev dependencies
-        run: pip install ".[dev]"
+      - name: Build sdist and wheel
+        run: |
+          pip install build twine
+          python -m build --outdir "${{ runner.temp }}/dist"
+          twine check --strict "${{ runner.temp }}"/dist/*
 
-      - name: Run tests against the installed package
+      - name: Run the sdist's tests against the installed wheel
         working-directory: ${{ runner.temp }}
         run: |
-          cp -r "$GITHUB_WORKSPACE/tests" "$GITHUB_WORKSPACE/pyproject.toml" .
+          pip install dist/*.whl pytest
+          mkdir sdist run && tar -xzf dist/*.tar.gz -C sdist --strip-components=1
+          # Only the tests and pytest config: the sdist's own felcu/ must not
+          # shadow the installed wheel.
+          cp -r sdist/tests sdist/pyproject.toml run/
+          cd run
           python -c "import felcu; print(felcu.__file__)" | grep site-packages
-          python -m pytest tests/ -q
+          python -c "import pathlib, felcu; assert (pathlib.Path(felcu.__file__).parent / 'py.typed').exists()"
+          python -m pytest tests/ -q -p no:cacheprovider
 
   # Runs last: there is no point running the examples against a broken library.
   examples:

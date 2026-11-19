@@ -35,6 +35,7 @@ nav:
   - Examples: examples.md
   - API reference: api.md
   - Development: development.md
+  - Changelog: changelog.md
 
 markdown_extensions:
   - admonition

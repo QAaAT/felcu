@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "felcu"
-version = "0.1.0"
+version = "1.0.0"
 description = "Fourier-extension coefficients for LCU block encodings"
 readme = "README.md"
 license = "MIT"
@@ -16,7 +16,7 @@ authors = [
 ]
 requires-python = ">=3.13"
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Scientific/Engineering :: Physics",
@@ -24,6 +24,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3.15",
+    "Typing :: Typed",
 ]
 dependencies = ["numpy>=2.2"]
 
@@ -33,6 +34,7 @@ Documentation = "https://qaaat.github.io/felcu/"
 Repository = "https://github.com/QAaAT/felcu"
 Issues = "https://github.com/QAaAT/felcu/issues"
 Paper = "https://arxiv.org/abs/2601.18024"
+Changelog = "https://github.com/QAaAT/felcu/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov", "ruff==0.17.3"]
@@ -42,6 +44,9 @@ docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.5", "mkdocstrings[python]>=0.26"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["felcu*"]
+
+[tool.setuptools.package-data]
+felcu = ["py.typed"]
 
 [tool.ruff]
 line-length = 120

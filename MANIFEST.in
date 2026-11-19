@@ -1,0 +1,6 @@
+# The sdist carries the full test suite, so the tests can be run from it
+# (conda-forge does).  setuptools would otherwise pick up only test_*.py and
+# miss conftest.py, the helpers and the regression references.
+graft tests
+include CHANGELOG.md CITATION.cff
+global-exclude __pycache__ *.py[cod]

@@ -3,8 +3,8 @@
 [![CI](https://github.com/QAaAT/felcu/actions/workflows/ci.yml/badge.svg)](https://github.com/QAaAT/felcu/actions/workflows/ci.yml)
 [![Docs](https://github.com/QAaAT/felcu/actions/workflows/docs.yml/badge.svg)](https://qaaat.github.io/felcu/)
 [![arXiv](https://img.shields.io/badge/arXiv-2601.18024-b31b1b.svg)](https://arxiv.org/abs/2601.18024)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FQAaAT%2Ffelcu%2Fmain%2Fpyproject.toml)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/QAaAT/felcu/blob/main/LICENSE)
+[![Python](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FQAaAT%2Ffelcu%2Fmain%2Fpyproject.toml)](https://pypi.org/project/felcu/)
 [![SPEC 0](https://img.shields.io/badge/SPEC-0-green?labelColor=%23004811&color=%235CA038)](https://scientific-python.org/specs/spec-0000/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
@@ -17,44 +17,46 @@ It supports five problems:
 
 | Problem | Function |
 |---|---|
-| `identity` (or `action`) | $f(\mathcal H) = \mathcal H$ |
-| `inversion` | $f(\mathcal H) = \mathcal H^{-1}$ |
-| `exponentiation` | $f(\mathcal H) = e^{\mathcal H}$ |
-| `square_root` | $f(\mathcal H) = \sqrt{\mathcal H}$ ($\mathcal H$ positive definite) |
-| `logarithm` | $f(\mathcal H) = \log \mathcal H$ ($\mathcal H$ positive definite) |
+| `identity` (or `action`) | f(H) = H |
+| `inversion` | f(H) = H⁻¹ |
+| `exponentiation` | f(H) = exp(H) |
+| `square_root` | f(H) = √H (H positive definite) |
+| `logarithm` | f(H) = log H (H positive definite) |
 
 A matrix or spectral bounds are required.  Every fit is centred on the
 spectrum,
 
-$$
-f(\mathcal H) = g\bigl(\tau(\mathcal H - \mu I)\bigr),
-\qquad
-g(x) \approx g_m(x) = \sum_{k=-m}^{m} c_k e^{ikx},
-$$
+```text
+f(H) = g(τ (H − μ I)),     g(x) ≈ g_m(x) = Σ_{k=−m}^{m} c_k e^{ikx},
+```
 
 so the block encoding is a linear combination of Hamiltonian simulations
-$e^{ik\tau\mathcal H}$.  Identity and inversion also work on singular values,
-for non-Hermitian matrices, through the Hermitian dilation ($\mu = 0$, odd
-series).  Inversion handles definite and indefinite spectra.
+e^{ikτH}.  Identity and inversion also work on singular values, for
+non-Hermitian matrices, through the Hermitian dilation (μ = 0, odd series).
+Inversion handles definite and indefinite spectra.
 
 The coefficients come from one of the paper's three strategies, chosen with
 `method=`:
 
-| Method | Convergence | Subnormalisation $\alpha_m = \sum_k \lvert c_k\rvert$ |
+| Method | Convergence | Subnormalisation α_m = Σ_k \|c_k\| |
 |---|---|---|
-| `sobolev` (default) | near-exponential, down to the target | $O(\lVert f(\mathcal H)\rVert)$ |
-| `reflected` | algebraic, $O(m^{-1})$ | $\lVert f(\mathcal H)\rVert$ (optimal) for convex $f$ |
-| `arcsine_taylor` | exponential, $O(\sin^m(\pi/\eta))$ | bounded, larger than optimal |
+| `sobolev` (default) | near-exponential, down to the target | O(‖f(H)‖) |
+| `reflected` | algebraic, O(1/m) | ‖f(H)‖ (optimal) for convex f |
+| `arcsine_taylor` | exponential, O(sinᵐ(π/η)) | bounded, larger than optimal |
 
 ## Installation
 
 ```bash
-pip install .
+pip install felcu
 ```
 
-Or, for development (editable install plus test dependencies):
+Add `[plots]` to install matplotlib for the plotting examples.  For
+development (an editable install of a clone, plus the test dependencies),
+see [Development](https://qaaat.github.io/felcu/development/):
 
 ```bash
+git clone https://github.com/QAaAT/felcu.git
+cd felcu
 pip install -e ".[dev]"
 ```
 
@@ -89,10 +91,11 @@ Full documentation is at **https://qaaat.github.io/felcu/**:
 - [Problems and constructions](https://qaaat.github.io/felcu/guide/problems/): spectra, scaling, bases, indefinite inversion
 - [Method](https://qaaat.github.io/felcu/guide/method/): the Sobolev-regularised, reflected and arcsine-Taylor extensions
 - [Tuning the solver](https://qaaat.github.io/felcu/guide/parameters/): every parameter
-- [Examples](https://qaaat.github.io/felcu/examples/): the scripts in [`examples/`](examples/)
+- [Examples](https://qaaat.github.io/felcu/examples/): the scripts in [`examples/`](https://github.com/QAaAT/felcu/tree/main/examples)
 - [API reference](https://qaaat.github.io/felcu/api/)
 
-To build it locally:
+The [changelog](https://github.com/QAaAT/felcu/blob/main/CHANGELOG.md) lists the changes in each release.
+To build the documentation locally:
 
 ```bash
 pip install -e ".[docs]"
@@ -108,8 +111,8 @@ If you use `felcu` in your work, please cite the paper:
 > bounds*, arXiv:2601.18024 (2026).
 
 GitHub's "Cite this repository" button gives the same reference in BibTeX and
-APA formats, from [`CITATION.cff`](CITATION.cff).
+APA formats, from [`CITATION.cff`](https://github.com/QAaAT/felcu/blob/main/CITATION.cff).
 
 ## License
 
-`felcu` is released under the [MIT License](LICENSE).
+`felcu` is released under the [MIT License](https://github.com/QAaAT/felcu/blob/main/LICENSE).
