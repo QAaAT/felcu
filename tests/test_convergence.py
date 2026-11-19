@@ -197,6 +197,15 @@ class TestReflected:
         assert r.a0 == pytest.approx(2.5, abs=1e-14)
         assert r.basis_used == "const_plus_sine"
 
+    def test_inversion_near_its_pole(self):
+        # At the default eta the pole of g sits 3e-4 past the end of [-pi/2, pi/2];
+        # a0 = (1/pi) int tau / (x + tau mu) dx has a closed form.
+        r = solve_fe_coefficients("inversion", method="reflected", sigma_min=1.0, sigma_max=1e4, m=16)
+        c = r.tau * r.mu
+        assert c - np.pi / 2 < 1e-3
+        a0 = r.tau / np.pi * math.log((c + np.pi / 2) / (c - np.pi / 2))
+        assert r.a0 == pytest.approx(a0, rel=1e-13)
+
     def test_square_root_is_bounded(self):
         kw = dict(method="reflected", sigma_min=0.15, sigma_max=1.0)
         alphas = [solve_fe_coefficients("square_root", m=m, **kw).alpha for m in (16, 64, 256)]

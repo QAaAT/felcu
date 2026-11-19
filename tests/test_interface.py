@@ -25,9 +25,44 @@ def _rotated(eigenvalues):
 
 
 class TestInputValidation:
-    def test_negative_target_error_raises(self):
+    @pytest.mark.parametrize("target", [-1.0, np.nan])
+    def test_negative_or_nan_target_error_raises(self, target):
         with pytest.raises(ValueError, match="target_error"):
-            solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, target_error=-1.0)
+            solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, target_error=target)
+
+    @pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
+    def test_zero_target_error_asks_for_the_best_fit(self):
+        r = solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, target_error=0.0, m=5)
+        assert r.m == 5 and r.target_error == 0.0
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            dict(m=4.5),
+            dict(m=[4]),
+            dict(m_values=[4.9, 8.7]),
+            dict(m_values=[[4, 8]]),
+            dict(m_values=[]),
+            dict(m_values=[4, np.inf]),
+        ],
+    )
+    def test_invalid_orders_raise(self, kwargs):
+        with pytest.raises(ValueError, match="m"):
+            solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, **kwargs)
+
+    def test_integral_float_orders_are_accepted(self):
+        r = solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, m_values=[8.0, 4.0], target_error=1.0)
+        assert r.m == 4
+
+    @pytest.mark.parametrize("lambdas", [[-1.0], [np.nan], [], [[1e-3]]])
+    def test_invalid_lambdas_raise(self, lambdas):
+        with pytest.raises(ValueError, match="non-negative"):
+            solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, lambdas=lambdas)
+
+    @pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
+    def test_zero_lambda_is_accepted(self):
+        r = solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, m=4, lambdas=[0.0])
+        assert r.lambda_used >= 0.0
 
     def test_matrix_and_sigma_raises(self):
         A = np.eye(2)
@@ -327,6 +362,18 @@ class TestExactConstant:
         r = solve_fe_coefficients("square_root", method="arcsine_taylor", sigma_min=4.0, sigma_max=4.0)
         assert r.m == 0 and r.a0 == 2.0
         assert r.method == "arcsine_taylor" and r.lambda_used is None
+
+    def test_requested_order_is_kept(self):
+        r = solve_fe_coefficients("exponentiation", sigma_min=1.0, sigma_max=1.0, m=8)
+        assert r.m == 8 and r.ak.size == r.bk.size == 8
+        assert not r.ak.any() and not r.bk.any()
+        assert r.a0 == pytest.approx(np.e)
+        assert solve_fe_coefficients("exponentiation", sigma_min=1.0, sigma_max=1.0, m_values=[16, 4]).m == 4
+
+    @pytest.mark.parametrize("kwargs", [dict(m=-1), dict(m_values=[-3]), dict(lambdas=[-1.0])])
+    def test_invalid_orders_are_rejected(self, kwargs):
+        with pytest.raises(ValueError):
+            solve_fe_coefficients("exponentiation", sigma_min=1.0, sigma_max=1.0, **kwargs)
 
     def test_rotated_scalar_matrix_is_exact(self):
         # Rounding spreads the eigenvalues of Q (2 I) Q^T; it is still 2 I.

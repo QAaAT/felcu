@@ -20,6 +20,10 @@ class ConvergenceWarning(UserWarning):
     """
 
 
+# How f reads in error messages.
+_FORMULAS = {"inversion": "1/x", "square_root": "sqrt(x)", "logarithm": "log(x)"}
+
+
 @dataclass(frozen=True)
 class FourierExtensionResult:
     """Result of a Fourier-extension coefficient computation.
@@ -215,7 +219,8 @@ class FourierExtensionResult:
         matrix:
             Square Hermitian matrix ``H``.
         hermitian_tol:
-            Relative tolerance for the Hermitian test.
+            Relative tolerance for the Hermitian test, which compares each
+            entry of *matrix* with its mirror.
         interval_tol:
             How far, relative to the half-width of the fitted spectrum, an
             eigenvalue may stray outside it before it is rejected.  At the
@@ -245,8 +250,7 @@ class FourierExtensionResult:
         bad = self._outside_domain(w)
         if bad.any():
             raise ValueError(
-                f"matrix has eigenvalues outside the domain of "
-                f"{ {'inversion': '1/x', 'square_root': 'sqrt(x)', 'logarithm': 'log(x)'}[self.problem] }, "
+                f"matrix has eigenvalues outside the domain of {_FORMULAS.get(self.problem, self.problem)}, "
                 f"e.g. {w[bad][0]:.6g}; {self._domain_description()}."
             )
         outside = self._outside_fitted_spectrum(w, interval_tol)
@@ -265,7 +269,9 @@ class FourierExtensionResult:
         Independent of the interval slack, which can reach past 0 when the
         fitted spectrum ends close to it.
         """
-        if self.problem in ("square_root", "logarithm"):
+        from felcu.spectral import POSITIVE_DEFINITE_PROBLEMS
+
+        if self.problem in POSITIVE_DEFINITE_PROBLEMS:
             return w <= 0
         if self.problem == "inversion":
             if self.spectral_kind_used == "eigenvalues" and self.sigma_min > 0:
@@ -277,7 +283,9 @@ class FourierExtensionResult:
 
     def _domain_description(self) -> str:
         """What :meth:`_outside_domain` requires, for its error message."""
-        if self.problem in ("square_root", "logarithm"):
+        from felcu.spectral import POSITIVE_DEFINITE_PROBLEMS
+
+        if self.problem in POSITIVE_DEFINITE_PROBLEMS:
             return "the matrix must be positive definite"
         if self.spectral_kind_used == "eigenvalues" and self.sigma_min > 0:
             return "the fit is positive definite, so the matrix must be too"

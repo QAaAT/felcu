@@ -70,14 +70,14 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
     )
 
 
-def _constant_result(spec: dict, target: float, metric: str, value: float) -> FourierExtensionResult:
+def _constant_result(spec: dict, target: float, metric: str, value: float, m: int = 0) -> FourierExtensionResult:
     c = {
-        "m": 0,
+        "m": m,
         "lambda": 0.0,
         "solve": {
             "a0": value,
-            "ak": np.zeros(0),
-            "bk": np.zeros(0),
+            "ak": np.zeros(m),
+            "bk": np.zeros(m),
             "l2": 0.0,
             "linf": 0.0,
             "alpha": abs(value),
@@ -91,44 +91,53 @@ def _exact_constant_if_any(
     spec: dict,
     target: float,
     metric: str,
+    m: int = 0,
 ) -> FourierExtensionResult | None:
     """The exact constant series when the eigenvalue interval is a single point.
 
     A point eigenvalue interval means H = lambda I.  Equal singular values do
     not make A a multiple of the identity (A may be any scaled unitary), so
-    singular-value fits are fitted as usual.
+    singular-value fits are fitted as usual.  The series has order *m*, with
+    every coefficient but the constant zero.
     """
     s = spec["spectral"]
     if s["kind"] != "eigenvalues" or s["sigma_min"] != s["sigma_max"]:
         return None
-    return _constant_result(spec, target, metric, _value(spec["problem"], s["sigma_min"]))
+    return _constant_result(spec, target, metric, _value(spec["problem"], s["sigma_min"]), m)
 
 
 def _lambda_grid(lambdas: Sequence[float] | None) -> np.ndarray:
     if lambdas is None:
         return default_lambda_grid()
     grid = np.asarray(lambdas, dtype=float)
-    if grid.ndim != 1 or grid.size == 0 or np.any(grid < 0):
-        raise ValueError("lambdas must be a non-empty sequence of positive values.")
+    if grid.ndim != 1 or grid.size == 0 or not np.all(grid >= 0):
+        raise ValueError("lambdas must be a non-empty sequence of non-negative values.")
     return grid
+
+
+def _orders(values, name: str) -> np.ndarray:
+    """*values* as a 1-D array of non-negative integers, rejecting fractions rather than truncating them."""
+    arr = np.asarray(values)
+    valid = (
+        arr.ndim == 1
+        and arr.size > 0
+        and arr.dtype.kind in "iuf"
+        and bool(np.all(np.isfinite(arr) & (arr >= 0) & (arr == np.round(arr))))
+    )
+    if not valid:
+        raise ValueError(f"{name} must be a non-negative integer or a non-empty sequence of them.")
+    return arr.astype(int)
 
 
 def _m_grid(m: int | None, m_values: Sequence[int] | int | None) -> np.ndarray:
     """Ascending candidate orders: *m* alone if given, else *m_values*, else the default grid."""
     if m is not None:
-        if m < 0:
-            raise ValueError("m must be non-negative.")
-        return np.array([int(m)], dtype=int)
+        if np.ndim(m) != 0:
+            raise ValueError("m must be a non-negative integer.")
+        return _orders([m], "m")
     if m_values is None:
         return default_m_grid()
-    if np.isscalar(m_values):
-        if int(m_values) < 0:
-            raise ValueError("m_values must be non-negative.")
-        return np.array([int(m_values)], dtype=int)
-    grid = np.unique(np.asarray(m_values, dtype=int))
-    if grid.ndim != 1 or grid.size == 0 or np.any(grid < 0):
-        raise ValueError("m_values must be a non-empty sequence of non-negative integers.")
-    return grid
+    return np.unique(_orders(np.atleast_1d(m_values), "m_values"))
 
 
 def _select(candidates: list[dict], metric: str, target: float, selection: str) -> tuple[dict, bool]:
@@ -277,7 +286,8 @@ def solve_fe_coefficients(
         stops the sweep there, so ``result.all_results`` only holds the
         orders up to it.
     hermitian_tol:
-        Tolerance for the Hermitian test.
+        Relative tolerance for the Hermitian test, which compares each entry
+        of *matrix* with its mirror.
 
     Returns
     -------
@@ -301,8 +311,8 @@ def solve_fe_coefficients(
     sobolev_w = 1.0 if sobolev_w is None else sobolev_w
     order_fit = 1 if order_fit is None else order_fit
     fit_oversample = 8 if fit_oversample is None else fit_oversample
-    if target_error < 0:
-        raise ValueError("target_error must be positive.")
+    if not target_error >= 0:  # also catches NaN
+        raise ValueError("target_error must be non-negative.")
     if order_fit < 0 or fit_oversample <= 0 or val_n < 3:
         raise ValueError("Require order_fit >= 0, fit_oversample > 0, and val_n >= 3.")
     if not sobolev_w > 0.5:
@@ -347,13 +357,16 @@ def solve_fe_coefficients(
     )
 
     target = float(target_error)
-    exact = _exact_constant_if_any(spec, target, metric)
+    lambdas = _lambda_grid(lambdas) if method == "sobolev" else None
+    m_grid = _m_grid(m, m_values)
+
+    # Exact at any order, so the smallest one asked for, or 0 if none was.
+    exact_m = int(m_grid[0]) if m is not None or m_values is not None else 0
+    exact = _exact_constant_if_any(spec, target, metric, exact_m)
     if exact is not None:
         logger.info("exact constant solution found, returning immediately")
         return exact
 
-    lambdas = _lambda_grid(lambdas) if method == "sobolev" else None
-    m_grid = _m_grid(m, m_values)
     logger.info("sweeping %d m values: %s ... %s", len(m_grid), m_grid[0], m_grid[-1])
 
     candidates = []
