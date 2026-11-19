@@ -7,6 +7,8 @@ from collections.abc import Sequence
 
 import numpy as np
 
+from felcu._problems import PROBLEMS
+
 # ---------------------------------------------------------------------------
 # Basis layout
 # ---------------------------------------------------------------------------
@@ -71,30 +73,15 @@ def _basis_matrix(x: np.ndarray, m: int, basis: str) -> np.ndarray:
 def _target(x: np.ndarray, problem: str, tau: float, mu: float, d: int = 0) -> np.ndarray:
     """d-th derivative of the fitted target g(x) = F(x / tau + mu).
 
-    F is ``t``, ``1/t``, ``exp(t)``, ``sqrt(t)`` or ``log(t)`` for identity,
-    inversion, exponentiation, square root and logarithm.  ``tau = inf`` (a zero-width
-    interval) makes g constant.
+    ``tau = inf`` (a zero-width interval) makes g constant.
     """
-    x = np.asarray(x, dtype=float)
-    t = x / tau + mu
-    if problem == "identity":
-        F_d = t if d == 0 else np.full_like(t, 1.0 if d == 1 else 0.0)
-    elif problem == "inversion":
-        if math.isfinite(tau):
-            # (1 / tau^d) F^(d)(t), written without dividing x by tau.
-            return tau * (-1.0) ** d * math.factorial(d) / (x + tau * mu) ** (d + 1)
-        F_d = (-1.0) ** d * math.factorial(d) / t ** (d + 1)
-    elif problem == "exponentiation":
-        F_d = np.exp(t)
-    elif problem == "square_root":
-        # d-th derivative of t^(1/2) is (1/2)(1/2 - 1)...(1/2 - d + 1) t^(1/2 - d)
-        F_d = math.prod(0.5 - j for j in range(d)) * t ** (0.5 - d)
-    elif problem == "logarithm":
-        # d-th derivative of log t is (-1)^(d-1) (d-1)! t^(-d) for d >= 1
-        F_d = np.log(t) if d == 0 else (-1.0) ** (d - 1) * math.factorial(d - 1) / t**d
-    else:
+    if problem not in PROBLEMS:
         raise ValueError(f"Unknown problem '{problem}'.")
-    return (1.0 / tau**d) * F_d
+    p = PROBLEMS[problem]
+    x = np.asarray(x, dtype=float)
+    if p.target is not None and math.isfinite(tau):
+        return p.target(x, tau, mu, d)
+    return (1.0 / tau**d) * p.derivative(x / tau + mu, d)
 
 
 def _value(problem: str, t: float) -> float:

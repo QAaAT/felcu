@@ -16,7 +16,7 @@ from felcu._coefficients import (
     _pack_coefficients,
 )
 from felcu._linalg import _as_double, _is_hermitian
-from felcu._problems import POSITIVE_DEFINITE_PROBLEMS
+from felcu._problems import PROBLEMS
 
 ArrayLike = np.ndarray | Sequence[float] | float
 
@@ -28,10 +28,6 @@ class ConvergenceWarning(UserWarning):
     best candidate, with ``converged=False``.  Silence it with
     ``warnings.simplefilter("ignore", felcu.ConvergenceWarning)``.
     """
-
-
-# How f reads in error messages.
-_FORMULAS = {"inversion": "1/x", "square_root": "sqrt(x)", "logarithm": "log(x)"}
 
 
 @dataclass(frozen=True)
@@ -254,7 +250,7 @@ class FourierExtensionResult:
         bad, requirement = self._outside_domain(w)
         if bad.any():
             raise ValueError(
-                f"matrix has eigenvalues outside the domain of {_FORMULAS.get(self.problem, self.problem)}, "
+                f"matrix has eigenvalues outside the domain of {PROBLEMS[self.problem].formula}, "
                 f"e.g. {w[bad][0]:.6g}; {requirement}."
             )
         outside = self._outside_fitted_spectrum(w, interval_tol)
@@ -274,9 +270,10 @@ class FourierExtensionResult:
         Independent of the interval slack, which can reach past 0 when the
         fitted spectrum ends close to it.
         """
-        if self.problem in POSITIVE_DEFINITE_PROBLEMS:
+        p = PROBLEMS[self.problem]
+        if p.positive_definite:
             return w <= 0, "the matrix must be positive definite"
-        if self.problem != "inversion":
+        if not p.pole_at_zero:
             return np.zeros(w.shape, dtype=bool), ""
         if self.spectral_kind_used == "eigenvalues" and self.sigma_min > 0:
             return w <= 0, "the fit is positive definite, so the matrix must be too"

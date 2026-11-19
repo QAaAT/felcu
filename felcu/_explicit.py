@@ -15,7 +15,7 @@ import numpy as np
 
 from felcu._coefficients import _pack_coefficients, _spec_target
 from felcu._linalg import _gauss_interval
-from felcu._problems import ENTIRE_PROBLEMS
+from felcu._problems import PROBLEMS
 from felcu._solver import _summarise, _validation_data
 
 HALF_PI = 0.5 * math.pi
@@ -43,7 +43,7 @@ def _reflected_quadrature(spec: dict, m: int) -> tuple[np.ndarray, np.ndarray]:
     """
     n_oscillation = 8 * (m + 1) + 64
     x_sing = -spec["tau"] * spec["mu"]
-    if spec["problem"] in ENTIRE_PROBLEMS or not math.isfinite(x_sing) or abs(x_sing) <= HALF_PI:
+    if PROBLEMS[spec["problem"]].entire or not math.isfinite(x_sing) or abs(x_sing) <= HALF_PI:
         # Generous fixed floor: an entire g may still grow steeply.
         return _gauss_interval(-HALF_PI, HALF_PI, max(n_oscillation, 600))
 
@@ -98,58 +98,11 @@ def _arcsin_series(n: int) -> np.ndarray:
     return s
 
 
-def _series_exp(u: np.ndarray) -> np.ndarray:
-    """exp(u) as a power series, from y' = u' y."""
-    y = np.zeros_like(u)
-    y[0] = math.exp(u[0])
-    ju = np.arange(u.size) * u
-    for k in range(1, u.size):
-        y[k] = (ju[1 : k + 1] @ y[k - 1 :: -1]) / k
-    return y
-
-
-def _series_reciprocal(u: np.ndarray) -> np.ndarray:
-    """1 / u as a power series, from u y = 1."""
-    y = np.zeros_like(u)
-    y[0] = 1.0 / u[0]
-    for k in range(1, u.size):
-        y[k] = -(u[1 : k + 1] @ y[k - 1 :: -1]) / u[0]
-    return y
-
-
-def _series_sqrt(u: np.ndarray) -> np.ndarray:
-    """sqrt(u) as a power series, from y^2 = u."""
-    y = np.zeros_like(u)
-    y[0] = math.sqrt(u[0])
-    for k in range(1, u.size):
-        y[k] = (u[k] - y[1:k] @ y[k - 1 : 0 : -1]) / (2.0 * y[0])
-    return y
-
-
-def _series_log(u: np.ndarray) -> np.ndarray:
-    """log(u) as a power series, from u y' = u'."""
-    y = np.zeros_like(u)
-    y[0] = math.log(u[0])
-    j = np.arange(u.size)
-    for k in range(1, u.size):
-        y[k] = (k * u[k] - (j[1:k] * y[1:k]) @ u[k - 1 : 0 : -1]) / (k * u[0])
-    return y
-
-
-_COMPOSE = {
-    "identity": lambda u: u,
-    "inversion": _series_reciprocal,
-    "exponentiation": _series_exp,
-    "square_root": _series_sqrt,
-    "logarithm": _series_log,
-}
-
-
 def _taylor_coefficients(spec: dict, m: int) -> np.ndarray:
     """d_0, ..., d_m: the Taylor coefficients of g(arcsin z)."""
     u = _arcsin_series(m) / spec["tau"]
     u[0] = spec["mu"]
-    return _COMPOSE[spec["problem"]](u)
+    return PROBLEMS[spec["problem"]].series(u)
 
 
 def _arcsine_taylor_coefficients(spec: dict, m: int) -> tuple[float, np.ndarray, np.ndarray]:

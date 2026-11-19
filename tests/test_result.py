@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from felcu import ConvergenceWarning, solve_fe_coefficients
-from felcu._problems import POSITIVE_DEFINITE_PROBLEMS
+from felcu._problems import PROBLEMS
 
 pytestmark = pytest.mark.interface
 
@@ -101,7 +101,7 @@ class TestApply:
         with pytest.raises(ValueError, match="Hermitian"):
             r.apply(A)
 
-    @pytest.mark.parametrize("problem", sorted(POSITIVE_DEFINITE_PROBLEMS))
+    @pytest.mark.parametrize("problem", [n for n, p in PROBLEMS.items() if p.positive_definite])
     def test_domain_check_covers_positive_definite_problems(self, problem):
         r = _fit(problem, sigma_min=0.5, sigma_max=2.0)
         with pytest.raises(ValueError, match="positive definite"):

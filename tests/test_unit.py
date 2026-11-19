@@ -376,7 +376,7 @@ class TestSobolevWeight:
 
 class TestSeriesComposition:
     def test_logarithm_matches_the_taylor_series(self):
-        from felcu._explicit import _series_log
+        from felcu._problems import _series_log
 
         # log(mu + z) = log mu + sum_k (-1)^(k+1) z^k / (k mu^k)
         mu, n = 1.7, 12
@@ -385,8 +385,24 @@ class TestSeriesComposition:
         expected = [math.log(mu)] + [(-1) ** (k + 1) / (k * mu**k) for k in range(1, n + 1)]
         np.testing.assert_allclose(_series_log(u), expected, rtol=1e-13)
 
+    @pytest.mark.parametrize("problem", ["identity", "inversion", "exponentiation", "square_root", "logarithm"])
+    def test_each_problem_series_matches_its_derivatives(self, problem):
+        # F(mu + z) = sum_k F^(k)(mu) z^k / k!, so a record's series and derivatives must agree.
+        from felcu._problems import PROBLEMS
+
+        p, mu, n = PROBLEMS[problem], 1.7, 6
+        u = np.zeros(n + 1)
+        u[:2] = mu, 1.0
+        expected = [float(p.derivative(np.array(mu), k)) / math.factorial(k) for k in range(n + 1)]
+        np.testing.assert_allclose(p.series(u), expected, rtol=1e-12, atol=1e-15)
+
+    def test_every_problem_is_tested(self):
+        from felcu._problems import PROBLEMS
+
+        assert set(PROBLEMS) == {"identity", "inversion", "exponentiation", "square_root", "logarithm"}
+
     def test_logarithm_inverts_the_exponential(self):
-        from felcu._explicit import _series_exp, _series_log
+        from felcu._problems import _series_exp, _series_log
 
         u = np.array([0.3, 0.7, -0.2, 0.05, 0.4, -0.1, 0.0, 0.2])
         np.testing.assert_allclose(_series_log(_series_exp(u)), u, atol=1e-14)

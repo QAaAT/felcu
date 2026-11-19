@@ -9,7 +9,7 @@ import numpy as np
 
 from felcu._coefficients import _value
 from felcu._linalg import _as_double, _is_hermitian
-from felcu._problems import ENTIRE_PROBLEMS, ODD_PROBLEMS, POSITIVE_DEFINITE_PROBLEMS
+from felcu._problems import PROBLEMS
 from felcu._problems import canonical_method as canonical_method_name
 from felcu._problems import canonical_problem as canonical_problem_name
 
@@ -29,10 +29,14 @@ def _resolve_spectral_kind(problem: str, requested: str, matrix_is_hermitian: bo
     if requested not in {"auto", "eigenvalues", "singular_values"}:
         raise ValueError("spectral_kind must be 'auto', 'eigenvalues', or 'singular_values'.")
     kind = requested
+    odd = PROBLEMS[problem].odd
     if kind == "auto":
-        kind = "singular_values" if problem in ODD_PROBLEMS and matrix_is_hermitian is False else "eigenvalues"
-    if kind == "singular_values" and problem not in ODD_PROBLEMS:
-        raise ValueError(f"{problem} uses an eigenvalue interval: singular values only support identity and inversion.")
+        kind = "singular_values" if odd and matrix_is_hermitian is False else "eigenvalues"
+    if kind == "singular_values" and not odd:
+        *others, last = [n for n, p in PROBLEMS.items() if p.odd]
+        raise ValueError(
+            f"{problem} uses an eigenvalue interval: singular values only support {', '.join(others)} and {last}."
+        )
     if kind == "eigenvalues" and matrix_is_hermitian is False:
         raise ValueError("Eigenvalue intervals require a Hermitian matrix; use spectral_kind='singular_values'.")
     return kind
@@ -57,29 +61,32 @@ def _matrix_spectrum(A: np.ndarray, kind: str, problem: str) -> tuple[float, flo
     values = np.linalg.eigvalsh(A) if kind == "eigenvalues" else np.linalg.svd(A, compute_uv=False)
     res = 4 * A.shape[0] * np.finfo(float).eps * float(np.max(np.abs(values)))
     values = np.where(np.abs(values) <= res, 0.0, values)
-    if problem == "inversion" and np.any(values == 0):
+    pole = PROBLEMS[problem].pole_at_zero
+    if pole and np.any(values == 0):
         raise ValueError(
-            "Inversion requires a nonsingular matrix: it has an eigenvalue or singular value of 0 to working precision."
+            f"{problem} requires a nonsingular matrix: it has an eigenvalue or singular value of 0 "
+            "to working precision."
         )
     lo, hi = float(np.min(values)), float(np.max(values))
     if hi - lo <= res:
         lo = hi
-    gap = _eigenvalue_gap(values) if kind == "eigenvalues" and problem == "inversion" else None
+    gap = _eigenvalue_gap(values) if kind == "eigenvalues" and pole else None
     if gap is not None:
         gap = (lo if gap[0] - lo <= res else gap[0], hi if hi - gap[1] <= res else gap[1])
     return lo, hi, gap
 
 
-def _check_inversion_interval(lo: float, hi: float, gap: tuple[float, float] | None) -> None:
+def _check_pole_interval(problem: str, lo: float, hi: float, gap: tuple[float, float] | None) -> None:
+    """Check an eigenvalue interval for f with a pole at 0: clear of 0, or around it with the gap given."""
     if lo > 0 or hi < 0:
         if gap is not None:
             raise ValueError("gap only applies to an indefinite interval, sigma_min < 0 < sigma_max.")
         return
     if lo == 0 or hi == 0:
-        raise ValueError("Inversion requires an interval clear of 0: sigma_min and sigma_max must be nonzero.")
+        raise ValueError(f"{problem} requires an interval clear of 0: sigma_min and sigma_max must be nonzero.")
     if gap is None:
         raise ValueError(
-            "Inversion on an indefinite interval needs the gap around 0: pass gap=(a, b), the eigenvalues "
+            f"{problem} on an indefinite interval needs the gap around 0: pass gap=(a, b), the eigenvalues "
             "closest to 0 on either side."
         )
     a, b = gap
@@ -125,20 +132,21 @@ def _spectral_data(
         shape = (int(A.shape[0]), int(A.shape[1]))
     if lo > hi:
         raise ValueError("Require sigma_min <= sigma_max.")
-    if gap is not None and not (kind == "eigenvalues" and problem == "inversion"):
+    p = PROBLEMS[problem]
+    if gap is not None and not (kind == "eigenvalues" and p.pole_at_zero):
         raise ValueError("gap only applies to inversion on an eigenvalue interval.")
 
     if kind == "singular_values":
         if lo < 0:
             raise ValueError("Singular-value bounds require 0 <= sigma_min <= sigma_max.")
-        if problem == "inversion" and lo == 0:
-            raise ValueError("Inversion requires sigma_min > 0.")
-        fit_gap = (-lo, lo) if problem == "inversion" else None
+        if p.pole_at_zero and lo == 0:
+            raise ValueError(f"{problem} requires sigma_min > 0.")
+        fit_gap = (-lo, lo) if p.pole_at_zero else None
         fit_lo, fit_hi = -hi, hi
     else:
-        if problem == "inversion":
-            _check_inversion_interval(lo, hi, gap)
-        if problem in POSITIVE_DEFINITE_PROBLEMS and lo <= 0:
+        if p.pole_at_zero:
+            _check_pole_interval(problem, lo, hi, gap)
+        if p.positive_definite and lo <= 0:
             raise ValueError(f"{problem} requires a positive-definite interval, 0 < sigma_min <= sigma_max.")
         fit_gap = gap
         fit_lo, fit_hi = lo, hi
@@ -175,7 +183,7 @@ def _check_explicit_eta(spec: dict) -> None:
         raise ValueError("The reflected extension requires eta >= 2.")
     if method == "arcsine_taylor" and eta <= 2.0:
         raise ValueError("The arcsine-Taylor construction requires eta > 2.")
-    if spec["problem"] in ENTIRE_PROBLEMS or not math.isfinite(spec["tau"]):
+    if PROBLEMS[spec["problem"]].entire or not math.isfinite(spec["tau"]):
         return
     # Compare eta delta with 2 |mu| directly: recovering delta from tau, or
     # dividing by it, rounds and can admit eta = 2 |mu| / delta itself.
@@ -196,7 +204,7 @@ def _default_eta(problem: str, method: str, spectral: dict | None) -> float:
     """The default eta; *spectral* is only read, and may only be omitted, for an entire f."""
     if method == "reflected":
         return 2.0
-    if problem in ENTIRE_PROBLEMS:
+    if PROBLEMS[problem].entire:
         return ARCSINE_TAYLOR_ETA if method == "arcsine_taylor" else 2.0
 
     mu, delta = _centre_and_halfwidth(spectral)
@@ -293,7 +301,7 @@ def default_eta(
     """
     problem = canonical_problem_name(problem)
     method = canonical_method_name(method)
-    if problem in ENTIRE_PROBLEMS:
+    if PROBLEMS[problem].entire:
         return _default_eta(problem, method, None)
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
     _check_method(method, spectral)
@@ -376,29 +384,16 @@ def default_sobolev_r(
         interval is invalid.
     """
     problem = canonical_problem_name(problem)
-    if problem == "identity":
-        return 1.0
+    if not callable(PROBLEMS[problem].sobolev_r):
+        return PROBLEMS[problem].sobolev_r
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
     return _default_sobolev_r(problem, spectral, _make_spec(problem, spectral, eta)["tau"], sobolev_w)
 
 
 def _default_sobolev_r(problem: str, spectral: dict, tau: float, sobolev_w: float) -> float:
     """:func:`default_sobolev_r` for a canonical *problem* on *spectral*, fitted with scale *tau*."""
-    if problem == "identity":
-        return 1.0
-    if problem == "exponentiation":
-        return 1.0 / (1.0 + 1.0 / tau)
-
-    if problem in POSITIVE_DEFINITE_PROBLEMS:
-        kappa = spectral["sigma_max"] / spectral["sigma_min"]
-        r = kappa ** (-(2.0 * sobolev_w - 1.0) / (2.0 * sobolev_w))
-        if problem == "logarithm":
-            r *= (1.0 + math.log(kappa)) ** (-1.0 / sobolev_w)
-        return r
-    # Inversion: the distance from the fitted set to the pole at 0.
-    lo, hi, gap = spectral["fit_lo"], spectral["fit_hi"], spectral["fit_gap"]
-    nearest = min(abs(lo), abs(hi)) if gap is None else min(-gap[0], gap[1])
-    return min(1.0, tau * nearest)
+    rule = PROBLEMS[problem].sobolev_r
+    return rule(spectral, tau, sobolev_w) if callable(rule) else rule
 
 
 # ---------------------------------------------------------------------------
@@ -439,7 +434,7 @@ def _make_spec(problem: str, spectral: dict, eta: float | None, method: str = "s
     if spectral["kind"] == "singular_values":
         basis, baseline = "odd_sine", 0.0
     else:
-        basis = "const_plus_sine" if problem == "identity" else "full"
+        basis = "const_plus_sine" if PROBLEMS[problem].affine else "full"
         baseline = 0.0 if gap is not None else _value(problem, mu)
 
     spec = {
