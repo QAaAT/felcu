@@ -16,6 +16,7 @@ import numpy as np
 from felcu._coefficients import _pack_coefficients, _spec_target
 from felcu._linalg import _gauss_interval
 from felcu._solver import _meets_target, _summarise, _validation_data
+from felcu.spectral import ENTIRE_PROBLEMS
 
 HALF_PI = 0.5 * math.pi
 
@@ -25,14 +26,50 @@ HALF_PI = 0.5 * math.pi
 # ---------------------------------------------------------------------------
 
 
+_GRADING_RATIO = 0.25  # each panel toward the singularity is this fraction of the last
+_PANEL_MIN_NODES = 24
+
+
+def _reflected_quadrature(spec: dict, m: int) -> tuple[np.ndarray, np.ndarray]:
+    """Gauss nodes and weights on [-pi/2, pi/2] for the reflected coefficients.
+
+    The pole or branch point of g at x = -tau mu may lie just outside the
+    interval (at the largest allowed eta, on its end), where a uniform rule
+    converges slowly.  Panels shrink geometrically toward the nearer end until
+    they are no wider than the distance to the singularity, so every panel
+    sees it at a fixed relative distance and converges at a fixed rate.  Each
+    panel also gets nodes in proportion to its width to resolve the modes up
+    to *m*.
+    """
+    n_oscillation = 8 * (m + 1) + 64
+    x_sing = -spec["tau"] * spec["mu"]
+    if spec["problem"] in ENTIRE_PROBLEMS or not math.isfinite(x_sing) or abs(x_sing) <= HALF_PI:
+        # Generous fixed floor: an entire g may still grow steeply.
+        return _gauss_interval(-HALF_PI, HALF_PI, max(n_oscillation, 600))
+
+    # Breakpoints by distance u from the end nearest the singularity.
+    distance = abs(x_sing) - HALF_PI
+    u = [math.pi]
+    while u[-1] > distance:
+        u.append(u[-1] * _GRADING_RATIO)
+    u.append(0.0)
+    xs, ws = [], []
+    for lo, hi in zip(u[1:], u[:-1], strict=True):
+        n = _PANEL_MIN_NODES + math.ceil(n_oscillation * (hi - lo) / math.pi)
+        x, w = _gauss_interval(lo, hi, n)
+        xs.append(x)
+        ws.append(w)
+    end = math.copysign(HALF_PI, x_sing)
+    return end - math.copysign(1.0, x_sing) * np.concatenate(xs), np.concatenate(ws)
+
+
 def _reflected_coefficients(spec: dict, m: int) -> tuple[float, np.ndarray, np.ndarray]:
     """Fourier coefficients of the endpoint reflection F(x) = g(arcsin(sin x)).
 
     F reflects g about x = +-pi/2, so F(pi - x) = F(x): only the odd sine and
     even cosine modes survive, each twice its integral over [-pi/2, pi/2].
     """
-    # Generous fixed floor: g may be sharply peaked near a spectral endpoint.
-    x, w = _gauss_interval(-HALF_PI, HALF_PI, max(8 * (m + 1) + 64, 600))
+    x, w = _reflected_quadrature(spec, m)
     wg = w * _spec_target(x, spec)
     k = np.arange(1, m + 1)
     kx = np.outer(k, x)
