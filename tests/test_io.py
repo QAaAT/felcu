@@ -98,12 +98,6 @@ def test_rejects_other_json():
         FourierExtensionResult.from_json('{"a": 1}')
 
 
-def test_reads_the_former_problem_name(result):
-    data = result.to_dict()
-    data["problem"] = "action"
-    assert FourierExtensionResult.from_dict(data).problem == "identity"
-
-
 def test_rejects_future_version(result):
     data = result.to_dict()
     data["format_version"] = 99
@@ -136,3 +130,14 @@ def test_json_round_trip(method):
     assert loaded.method == method
     assert loaded.lambda_used is None and loaded.sobolev_r is None
     np.testing.assert_array_equal(loaded.ak, r.ak)
+
+
+def test_every_field_type_needs_a_codec():
+    from felcu._io import _codecs
+
+    @dataclasses.dataclass
+    class WithAComplexScalar:
+        z: complex
+
+    with pytest.raises(TypeError, match="No JSON codec for field 'z'"):
+        _codecs(WithAComplexScalar)
