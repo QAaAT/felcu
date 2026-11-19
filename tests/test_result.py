@@ -94,6 +94,15 @@ class TestApply:
         s = solve_fe_coefficients("inversion", matrix=1e8 * H, target_error=1e-3)
         assert s.spectral_kind_used == "eigenvalues"
 
+    def test_domain_check_follows_positive_definite_problems(self, monkeypatch):
+        # A problem added to POSITIVE_DEFINITE_PROBLEMS gets the domain check, not a KeyError.
+        import felcu.spectral
+
+        r = _fit("exponentiation", sigma_min=-1.0, sigma_max=1.0)
+        monkeypatch.setattr(felcu.spectral, "POSITIVE_DEFINITE_PROBLEMS", frozenset({"exponentiation"}))
+        with pytest.raises(ValueError, match="domain of exponentiation.*positive definite"):
+            r.apply(np.diag([-0.5, 0.5]))
+
     def test_rejects_non_square(self):
         r = _fit("exponentiation", sigma_min=0.1, sigma_max=2.0)
         with pytest.raises(ValueError, match="square"):
