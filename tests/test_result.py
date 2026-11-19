@@ -93,6 +93,12 @@ class TestApply:
         H[0, 1] += 1e-14
         s = solve_fe_coefficients("inversion", matrix=1e8 * H, target_error=1e-3)
         assert s.spectral_kind_used == "eigenvalues"
+        # An asymmetry among small entries is not hidden by a huge one elsewhere.
+        A = np.array([[1e12, 0.5], [0.0, 1.0]])
+        with pytest.warns(ConvergenceWarning):  # m = 4 is far too low for this spectrum; only the kind matters
+            assert solve_fe_coefficients("identity", matrix=A, m=4).spectral_kind_used == "singular_values"
+        with pytest.raises(ValueError, match="Hermitian"):
+            r.apply(A)
 
     def test_domain_check_follows_positive_definite_problems(self, monkeypatch):
         # A problem added to POSITIVE_DEFINITE_PROBLEMS gets the domain check, not a KeyError.

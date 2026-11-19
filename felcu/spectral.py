@@ -44,15 +44,20 @@ def _as_double(A: np.ndarray) -> np.ndarray:
 
 
 def _is_hermitian(A: np.ndarray, tol: float) -> bool:
-    """Whether ``max |A - A^H| <= tol * max |A|``.
+    """Whether every ``|A_ij - conj(A_ji)| <= tol * max(|A_ij|, |A_ji|)``, up to rounding.
 
-    The test is relative to the whole matrix rather than entrywise, so it does
-    not depend on the scale of *A*: rounding asymmetry in a large matrix
-    passes, and a tiny matrix that is far from Hermitian does not.
+    Each entry is compared with its mirror rather than with a fixed absolute
+    tolerance, so the test does not depend on the scale of *A*: a tiny
+    matrix that is far from Hermitian fails, and so does an asymmetry among
+    small entries next to a huge one.  The rounding floor,
+    ``4 n eps max |A|``, lets through the asymmetry that computing a
+    Hermitian matrix in floating point leaves in its near-zero entries.
     """
     if A.size == 0:
         return True
-    return bool(np.max(np.abs(A - A.conj().T)) <= tol * np.max(np.abs(A)))
+    AH = A.conj().T
+    floor = 4 * A.shape[0] * np.finfo(float).eps * np.max(np.abs(A))
+    return bool(np.all(np.abs(A - AH) <= tol * np.maximum(np.abs(A), np.abs(AH)) + floor))
 
 
 def _resolve_spectral_kind(problem: str, requested: str, matrix_is_hermitian: bool | None) -> str:
@@ -301,8 +306,8 @@ def default_eta(
     spectral_kind:
         ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.
     hermitian_tol:
-        Tolerance for the Hermitian test, relative to the largest entry of
-        *matrix*.
+        Relative tolerance for the Hermitian test, which compares each entry
+        of *matrix* with its mirror.
 
     Returns
     -------
@@ -386,8 +391,8 @@ def default_sobolev_r(
     spectral_kind:
         ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.
     hermitian_tol:
-        Tolerance for the Hermitian test, relative to the largest entry of
-        *matrix*.
+        Relative tolerance for the Hermitian test, which compares each entry
+        of *matrix* with its mirror.
     eta:
         Extension parameter of the fit.  Defaults to
         :func:`~felcu.default_eta` for the same problem.

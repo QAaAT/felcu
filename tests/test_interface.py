@@ -25,10 +25,15 @@ def _rotated(eigenvalues):
 
 
 class TestInputValidation:
-    @pytest.mark.parametrize("target", [-1.0, 0.0, np.nan])
-    def test_non_positive_target_error_raises(self, target):
+    @pytest.mark.parametrize("target", [-1.0, np.nan])
+    def test_negative_or_nan_target_error_raises(self, target):
         with pytest.raises(ValueError, match="target_error"):
             solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, target_error=target)
+
+    @pytest.mark.filterwarnings("ignore::felcu.ConvergenceWarning")
+    def test_zero_target_error_asks_for_the_best_fit(self):
+        r = solve_fe_coefficients("exponentiation", sigma_min=0.5, sigma_max=1.5, target_error=0.0, m=5)
+        assert r.m == 5 and r.target_error == 0.0
 
     @pytest.mark.parametrize(
         "kwargs",

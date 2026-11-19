@@ -286,8 +286,8 @@ def solve_fe_coefficients(
         stops the sweep there, so ``result.all_results`` only holds the
         orders up to it.
     hermitian_tol:
-        Tolerance for the Hermitian test, relative to the largest entry of
-        *matrix*.
+        Relative tolerance for the Hermitian test, which compares each entry
+        of *matrix* with its mirror.
 
     Returns
     -------
@@ -311,8 +311,8 @@ def solve_fe_coefficients(
     sobolev_w = 1.0 if sobolev_w is None else sobolev_w
     order_fit = 1 if order_fit is None else order_fit
     fit_oversample = 8 if fit_oversample is None else fit_oversample
-    if not target_error > 0:  # also catches NaN
-        raise ValueError("target_error must be positive.")
+    if not target_error >= 0:  # also catches NaN
+        raise ValueError("target_error must be non-negative.")
     if order_fit < 0 or fit_oversample <= 0 or val_n < 3:
         raise ValueError("Require order_fit >= 0, fit_oversample > 0, and val_n >= 3.")
     if not sobolev_w > 0.5:
