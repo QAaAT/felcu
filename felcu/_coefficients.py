@@ -112,11 +112,17 @@ def _spec_target(x: np.ndarray, spec: dict, d: int = 0) -> np.ndarray:
 # ---------------------------------------------------------------------------
 
 
-def _pack_coefficients(a0: float, ak: Sequence, bk: Sequence, basis: str) -> np.ndarray:
-    ak = np.asarray(ak, dtype=float).reshape(-1)
-    bk = np.asarray(bk, dtype=float).reshape(-1)
+def _coefficient_arrays(ak: Sequence, bk: Sequence, dtype=None) -> tuple[np.ndarray, np.ndarray]:
+    """*ak* and *bk* as flat arrays of equal length."""
+    ak = np.asarray(ak, dtype=dtype).reshape(-1)
+    bk = np.asarray(bk, dtype=dtype).reshape(-1)
     if ak.shape != bk.shape:
         raise ValueError("ak and bk must have the same length.")
+    return ak, bk
+
+
+def _pack_coefficients(a0: float, ak: Sequence, bk: Sequence, basis: str) -> np.ndarray:
+    ak, bk = _coefficient_arrays(ak, bk, float)
     return _assemble(basis, [a0], ak, bk)
 
 

@@ -6,8 +6,63 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from felcu._coefficients import _target
+from felcu._coefficients import _coefficient_arrays, _target
 from felcu.types import ArrayLike, FourierExtensionResult
+
+_PROBLEM_ALIASES = {
+    "identity": "identity",
+    "action": "identity",
+    "matrix-action": "identity",
+    "inversion": "inversion",
+    "inverse": "inversion",
+    "exp": "exponentiation",
+    "exponentiation": "exponentiation",
+    "exponential": "exponentiation",
+    "square_root": "square_root",
+    "square-root": "square_root",
+    "sqrt": "square_root",
+    "logarithm": "logarithm",
+    "log": "logarithm",
+    "ln": "logarithm",
+}
+
+_METHOD_ALIASES = {
+    "sobolev": "sobolev",
+    "regularised": "sobolev",
+    "regularized": "sobolev",
+    "reg": "sobolev",
+    "reflected": "reflected",
+    "refl": "reflected",
+    "reflected_extension": "reflected",
+    "reflected-extension": "reflected",
+    "arcsine_taylor": "arcsine_taylor",
+    "arcsine-taylor": "arcsine_taylor",
+    "arcsine": "arcsine_taylor",
+    "asin": "arcsine_taylor",
+}
+
+_METRIC_ALIASES = {
+    "l2": "l2",
+    "2": "l2",
+    "linf": "linf",
+    "l_inf": "linf",
+    "l-infinity": "linf",
+    "infinity": "linf",
+    "inf": "linf",
+    "max": "linf",
+}
+
+
+def _canonical(name: str, aliases: dict[str, str], message: str) -> str:
+    """The canonical name for *name* in *aliases*, ignoring case and surrounding whitespace."""
+    key = name.strip().lower()
+    if key not in aliases:
+        raise ValueError(message)
+    return aliases[key]
+
+
+# Trig entries evaluate_fourier_series builds at once (about 8 MB each for sin and cos).
+_EVAL_BLOCK = 1 << 20
 
 
 def canonical_problem_name(name: str) -> str:
@@ -35,26 +90,11 @@ def canonical_problem_name(name: str) -> str:
     ValueError
         If *name* is not a recognised problem or alias.
     """
-    aliases = {
-        "identity": "identity",
-        "action": "identity",
-        "matrix-action": "identity",
-        "inversion": "inversion",
-        "inverse": "inversion",
-        "exp": "exponentiation",
-        "exponentiation": "exponentiation",
-        "exponential": "exponentiation",
-        "square_root": "square_root",
-        "square-root": "square_root",
-        "sqrt": "square_root",
-        "logarithm": "logarithm",
-        "log": "logarithm",
-        "ln": "logarithm",
-    }
-    key = name.strip().lower()
-    if key not in aliases:
-        raise ValueError("problem must be 'identity', 'inversion', 'exponentiation', 'square_root', or 'logarithm'.")
-    return aliases[key]
+    return _canonical(
+        name,
+        _PROBLEM_ALIASES,
+        "problem must be 'identity', 'inversion', 'exponentiation', 'square_root', or 'logarithm'.",
+    )
 
 
 def canonical_method_name(name: str) -> str:
@@ -81,24 +121,7 @@ def canonical_method_name(name: str) -> str:
     ValueError
         If *name* is not a recognised method or alias.
     """
-    aliases = {
-        "sobolev": "sobolev",
-        "regularised": "sobolev",
-        "regularized": "sobolev",
-        "reg": "sobolev",
-        "reflected": "reflected",
-        "refl": "reflected",
-        "reflected_extension": "reflected",
-        "reflected-extension": "reflected",
-        "arcsine_taylor": "arcsine_taylor",
-        "arcsine-taylor": "arcsine_taylor",
-        "arcsine": "arcsine_taylor",
-        "asin": "arcsine_taylor",
-    }
-    key = name.strip().lower()
-    if key not in aliases:
-        raise ValueError("method must be 'sobolev', 'reflected', or 'arcsine_taylor'.")
-    return aliases[key]
+    return _canonical(name, _METHOD_ALIASES, "method must be 'sobolev', 'reflected', or 'arcsine_taylor'.")
 
 
 def canonical_error_metric(name: str) -> str:
@@ -123,20 +146,7 @@ def canonical_error_metric(name: str) -> str:
     ValueError
         If *name* is not a recognised metric or alias.
     """
-    aliases = {
-        "l2": "l2",
-        "2": "l2",
-        "linf": "linf",
-        "l_inf": "linf",
-        "l-infinity": "linf",
-        "infinity": "linf",
-        "inf": "linf",
-        "max": "linf",
-    }
-    key = name.strip().lower()
-    if key not in aliases:
-        raise ValueError("error_metric must be 'l2' or 'linf'.")
-    return aliases[key]
+    return _canonical(name, _METRIC_ALIASES, "error_metric must be 'l2' or 'linf'.")
 
 
 def default_m_grid(
@@ -248,18 +258,18 @@ def evaluate_fourier_series(
         If *ak* and *bk* have different lengths.
     """
     x = np.asarray(x)
-    x_flat = x.reshape(-1)
-    ak = np.asarray(ak).reshape(-1)
-    bk = np.asarray(bk).reshape(-1)
-    if ak.shape != bk.shape:
-        raise ValueError("ak and bk must have the same length.")
+    x_flat = x.reshape(-1).astype(float)
+    ak, bk = _coefficient_arrays(ak, bk)
 
     dtype = np.result_type(x, a0, ak, bk, float)
     y = np.full(x_flat.shape, a0, dtype=dtype)
     if ak.size:
         k = np.arange(1, ak.size + 1, dtype=float)
-        angles = np.outer(x_flat.astype(float), k)
-        y = y + np.sin(angles) @ ak + np.cos(angles) @ bk
+        # In blocks of points, so the (points x m) trig arrays stay small for a dense x.
+        step = max(1, _EVAL_BLOCK // ak.size)
+        for i in range(0, x_flat.size, step):
+            angles = np.outer(x_flat[i : i + step], k)
+            y[i : i + step] += np.sin(angles) @ ak + np.cos(angles) @ bk
     return y.reshape(x.shape)
 
 
@@ -307,10 +317,7 @@ def to_complex_coefficients(
     else:
         a0 = a0_or_result
 
-    ak = np.asarray(ak, dtype=np.complex128).reshape(-1)
-    bk = np.asarray(bk, dtype=np.complex128).reshape(-1)
-    if ak.shape != bk.shape:
-        raise ValueError("ak and bk must have the same length.")
+    ak, bk = _coefficient_arrays(ak, bk, np.complex128)
 
     c0 = np.array([complex(a0)], dtype=np.complex128)
     if ak.size == 0:
