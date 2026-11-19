@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING, Any, get_type_hints
 
 import numpy as np
 
+from felcu._problems import canonical_method, canonical_metric, canonical_problem
+
 if TYPE_CHECKING:
     from felcu.types import FourierExtensionResult
 
@@ -69,6 +71,12 @@ _BY_TYPE = {
     tuple[int, int] | None: _optional(_INT_PAIR),
 }
 _ARRAYS = {"ak": _FLOATS, "bk": _FLOATS, "k": _INTS, "complex_coefficients": _COMPLEX}
+# Names are checked on loading, so an unknown one fails here, and an alias loads as its canonical name.
+_NAMES = {
+    "problem": (_PLAIN[0], canonical_problem),
+    "method": (_PLAIN[0], canonical_method),
+    "error_metric": (_PLAIN[0], canonical_metric),
+}
 _SKIP_FIELDS = {"all_results"}  # written separately
 
 
@@ -79,7 +87,7 @@ def _codecs(cls: type) -> dict[str, tuple[Callable, Callable]]:
     for name, hint in get_type_hints(cls).items():
         if name in _SKIP_FIELDS:
             continue
-        codec = _ARRAYS.get(name) if hint is np.ndarray else _BY_TYPE.get(hint)
+        codec = _NAMES.get(name) or (_ARRAYS.get(name) if hint is np.ndarray else _BY_TYPE.get(hint))
         if codec is None:
             raise TypeError(f"No JSON codec for field {name!r} of type {hint}.")
         codecs[name] = codec

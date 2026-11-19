@@ -75,8 +75,8 @@ def _lambda_grid(lambdas) -> np.ndarray:
 
 def _sobolev_prepare(spec: dict, options: dict) -> dict:
     w, order_fit, fit_oversample = options["sobolev_w"], options["order_fit"], options["fit_oversample"]
-    if order_fit < 0 or fit_oversample <= 0:
-        raise ValueError("Require order_fit >= 0 and fit_oversample > 0.")
+    if not (order_fit >= 0 and float(order_fit).is_integer()) or not fit_oversample > 0:
+        raise ValueError("Require order_fit to be a non-negative integer and fit_oversample > 0.")
     if not w > 0.5:
         raise ValueError("sobolev_w must exceed 0.5.")
     r = options["sobolev_r"]

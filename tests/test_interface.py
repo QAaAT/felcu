@@ -232,6 +232,11 @@ class TestSobolevOptions:
         with pytest.raises(ValueError, match="sobolev_w"):
             solve_fe_coefficients("exponentiation", sobolev_w=w, **self.common)
 
+    @pytest.mark.parametrize("order_fit", [-1, 1.5])
+    def test_order_fit_must_be_a_non_negative_integer(self, order_fit):
+        with pytest.raises(ValueError, match="order_fit"):
+            solve_fe_coefficients("exponentiation", order_fit=order_fit, **self.common)
+
     def test_solver_passes_eta_to_default_r(self):
         result = solve_fe_coefficients("exponentiation", eta=4.0, **self.common)
         assert result.sobolev_r == default_sobolev_r("exponentiation", sigma_min=0.5, sigma_max=1.5, eta=4.0)

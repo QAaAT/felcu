@@ -141,3 +141,12 @@ def test_every_field_type_needs_a_codec():
 
     with pytest.raises(TypeError, match="No JSON codec for field 'z'"):
         _codecs(WithAComplexScalar)
+
+
+def test_names_are_checked_on_loading(result):
+    data = result.to_dict()
+    data["problem"] = "action"  # an alias loads as its canonical name
+    assert FourierExtensionResult.from_dict(data).problem == "identity"
+    data["problem"] = "cosine"
+    with pytest.raises(ValueError, match="problem must be"):
+        FourierExtensionResult.from_dict(data)
