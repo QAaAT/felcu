@@ -84,6 +84,16 @@ class TestApply:
         with pytest.raises(ValueError, match="Hermitian"):
             r.apply(np.array([[1.0, 1.0], [0.0, 1.0]]))
 
+    def test_hermitian_test_is_scale_relative(self):
+        r = _fit("exponentiation", sigma_min=0.1, sigma_max=2.0)
+        with pytest.raises(ValueError, match="Hermitian"):
+            r.apply(1e-13 * np.array([[1.0, 1.0], [0.0, 2.0]]))
+        # Rounding-level asymmetry in a large-scale Hermitian matrix is accepted.
+        H = _random_hermitian(np.linspace(0.5, 2.0, 6), seed=3)
+        H[0, 1] += 1e-14
+        s = solve_fe_coefficients("inversion", matrix=1e8 * H, target_error=1e-3)
+        assert s.spectral_kind_used == "eigenvalues"
+
     def test_rejects_non_square(self):
         r = _fit("exponentiation", sigma_min=0.1, sigma_max=2.0)
         with pytest.raises(ValueError, match="square"):

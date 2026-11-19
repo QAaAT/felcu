@@ -215,7 +215,8 @@ class FourierExtensionResult:
         matrix:
             Square Hermitian matrix ``H``.
         hermitian_tol:
-            Relative tolerance for the Hermitian test.
+            Tolerance for the Hermitian test, relative to the largest entry
+            of *matrix*.
         interval_tol:
             How far, relative to the half-width of the fitted spectrum, an
             eigenvalue may stray outside it before it is rejected.  At the

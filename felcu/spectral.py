@@ -44,7 +44,15 @@ def _as_double(A: np.ndarray) -> np.ndarray:
 
 
 def _is_hermitian(A: np.ndarray, tol: float) -> bool:
-    return bool(np.allclose(A, A.conj().T, rtol=tol, atol=tol))
+    """Whether ``max |A - A^H| <= tol * max |A|``.
+
+    The test is relative to the whole matrix rather than entrywise, so it does
+    not depend on the scale of *A*: rounding asymmetry in a large matrix
+    passes, and a tiny matrix that is far from Hermitian does not.
+    """
+    if A.size == 0:
+        return True
+    return bool(np.max(np.abs(A - A.conj().T)) <= tol * np.max(np.abs(A)))
 
 
 def _resolve_spectral_kind(problem: str, requested: str, matrix_is_hermitian: bool | None) -> str:
@@ -293,7 +301,8 @@ def default_eta(
     spectral_kind:
         ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.
     hermitian_tol:
-        Tolerance for the Hermitian test.
+        Tolerance for the Hermitian test, relative to the largest entry of
+        *matrix*.
 
     Returns
     -------
@@ -377,7 +386,8 @@ def default_sobolev_r(
     spectral_kind:
         ``'auto'``, ``'eigenvalues'``, or ``'singular_values'``.
     hermitian_tol:
-        Tolerance for the Hermitian test.
+        Tolerance for the Hermitian test, relative to the largest entry of
+        *matrix*.
     eta:
         Extension parameter of the fit.  Defaults to
         :func:`~felcu.default_eta` for the same problem.

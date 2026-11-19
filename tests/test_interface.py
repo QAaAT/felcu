@@ -328,6 +328,18 @@ class TestExactConstant:
         assert r.m == 0 and r.a0 == 2.0
         assert r.method == "arcsine_taylor" and r.lambda_used is None
 
+    def test_requested_order_is_kept(self):
+        r = solve_fe_coefficients("exponentiation", sigma_min=1.0, sigma_max=1.0, m=8)
+        assert r.m == 8 and r.ak.size == r.bk.size == 8
+        assert not r.ak.any() and not r.bk.any()
+        assert r.a0 == pytest.approx(np.e)
+        assert solve_fe_coefficients("exponentiation", sigma_min=1.0, sigma_max=1.0, m_values=[16, 4]).m == 4
+
+    @pytest.mark.parametrize("kwargs", [dict(m=-1), dict(m_values=[-3]), dict(lambdas=[-1.0])])
+    def test_invalid_orders_are_rejected(self, kwargs):
+        with pytest.raises(ValueError):
+            solve_fe_coefficients("exponentiation", sigma_min=1.0, sigma_max=1.0, **kwargs)
+
     def test_rotated_scalar_matrix_is_exact(self):
         # Rounding spreads the eigenvalues of Q (2 I) Q^T; it is still 2 I.
         r = solve_fe_coefficients("exponentiation", matrix=_rotated([2.0] * 5))

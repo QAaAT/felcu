@@ -70,14 +70,14 @@ def _make_result(spec: dict, target: float, metric: str, cand: dict) -> FourierE
     )
 
 
-def _constant_result(spec: dict, target: float, metric: str, value: float) -> FourierExtensionResult:
+def _constant_result(spec: dict, target: float, metric: str, value: float, m: int = 0) -> FourierExtensionResult:
     c = {
-        "m": 0,
+        "m": m,
         "lambda": 0.0,
         "solve": {
             "a0": value,
-            "ak": np.zeros(0),
-            "bk": np.zeros(0),
+            "ak": np.zeros(m),
+            "bk": np.zeros(m),
             "l2": 0.0,
             "linf": 0.0,
             "alpha": abs(value),
@@ -91,17 +91,19 @@ def _exact_constant_if_any(
     spec: dict,
     target: float,
     metric: str,
+    m: int = 0,
 ) -> FourierExtensionResult | None:
     """The exact constant series when the eigenvalue interval is a single point.
 
     A point eigenvalue interval means H = lambda I.  Equal singular values do
     not make A a multiple of the identity (A may be any scaled unitary), so
-    singular-value fits are fitted as usual.
+    singular-value fits are fitted as usual.  The series has order *m*, with
+    every coefficient but the constant zero.
     """
     s = spec["spectral"]
     if s["kind"] != "eigenvalues" or s["sigma_min"] != s["sigma_max"]:
         return None
-    return _constant_result(spec, target, metric, _value(spec["problem"], s["sigma_min"]))
+    return _constant_result(spec, target, metric, _value(spec["problem"], s["sigma_min"]), m)
 
 
 def _lambda_grid(lambdas: Sequence[float] | None) -> np.ndarray:
@@ -277,7 +279,8 @@ def solve_fe_coefficients(
         stops the sweep there, so ``result.all_results`` only holds the
         orders up to it.
     hermitian_tol:
-        Tolerance for the Hermitian test.
+        Tolerance for the Hermitian test, relative to the largest entry of
+        *matrix*.
 
     Returns
     -------
@@ -347,13 +350,16 @@ def solve_fe_coefficients(
     )
 
     target = float(target_error)
-    exact = _exact_constant_if_any(spec, target, metric)
+    lambdas = _lambda_grid(lambdas) if method == "sobolev" else None
+    m_grid = _m_grid(m, m_values)
+
+    # Exact at any order, so the smallest one asked for, or 0 if none was.
+    exact_m = int(m_grid[0]) if m is not None or m_values is not None else 0
+    exact = _exact_constant_if_any(spec, target, metric, exact_m)
     if exact is not None:
         logger.info("exact constant solution found, returning immediately")
         return exact
 
-    lambdas = _lambda_grid(lambdas) if method == "sobolev" else None
-    m_grid = _m_grid(m, m_values)
     logger.info("sweeping %d m values: %s ... %s", len(m_grid), m_grid[0], m_grid[-1])
 
     candidates = []

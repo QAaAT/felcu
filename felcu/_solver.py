@@ -271,7 +271,7 @@ def _candidate_for_m(
             mid = 0.5 * (left + right)
             s = solve(from_u(mid))
             logger.debug("  bisect[%d] lam=%.3e  error=%.3e", i, from_u(mid), s[metric])
-            if s[metric] <= target:
+            if _meets_target(s, metric, target):
                 left = mid
             else:
                 right = mid
