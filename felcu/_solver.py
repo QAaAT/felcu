@@ -9,6 +9,7 @@ import numpy as np
 
 from felcu._coefficients import (
     _add_baseline,
+    _basis_matrices,
     _basis_matrix,
     _basis_size,
     _spec_target,
@@ -41,19 +42,16 @@ def _validation_data(spec: dict, m: int, val_n: int) -> list[tuple[np.ndarray, n
     Each interval gets a uniform grid with trapezoid weights, and a point one
     node with the weight of :func:`_point_weight`.
     """
-    basis = spec["basis"]
-    parts = _fitted_parts(spec)
-    length = sum(hi - lo for lo, hi in parts)
-    out = []
-    for lo, hi in parts:
-        if lo == hi:
-            xv, wv = np.array([lo]), np.array([_point_weight(length)])
-        else:
-            xv = np.linspace(lo, hi, max(int(val_n * (hi - lo) / length), 201))
-            wv = np.full(xv.size, xv[1] - xv[0])
-            wv[[0, -1]] /= 2
-        out.append((xv, _basis_matrix(xv, m, basis), _spec_target(xv, spec), wv))
-    return out
+
+    def trapezoid(lo: float, hi: float, share: float) -> tuple[np.ndarray, np.ndarray]:
+        xv = np.linspace(lo, hi, max(int(val_n * share), 201))
+        wv = np.full(xv.size, xv[1] - xv[0])
+        wv[[0, -1]] /= 2
+        return xv, wv
+
+    return [
+        (xv, _basis_matrix(xv, m, spec["basis"]), _spec_target(xv, spec), wv) for xv, wv in _part_rules(spec, trapezoid)
+    ]
 
 
 def _fitted_parts(spec: dict) -> list[tuple[float, float]]:
@@ -62,6 +60,23 @@ def _fitted_parts(spec: dict) -> list[tuple[float, float]]:
     if gap is None:
         return [(-x_max, x_max)]
     return [(-x_max, gap[0]), (gap[1], x_max)]
+
+
+def _part_rules(
+    spec: dict, interval_rule: Callable[[float, float, float], tuple[np.ndarray, np.ndarray]]
+) -> list[tuple[np.ndarray, np.ndarray]]:
+    """Nodes and weights ``(x, w)`` for each part of the fitted set.
+
+    An interval gets ``interval_rule(lo, hi, share)``, where *share* is its
+    fraction of the set's length; a point gets one node with the weight of
+    :func:`_point_weight`.
+    """
+    parts = _fitted_parts(spec)
+    length = sum(hi - lo for lo, hi in parts)
+    return [
+        (np.array([lo]), np.array([_point_weight(length)])) if lo == hi else interval_rule(lo, hi, (hi - lo) / length)
+        for lo, hi in parts
+    ]
 
 
 def _point_weight(length: float) -> float:
@@ -78,16 +93,9 @@ def _make_fit_data(spec: dict, m: int, fit_oversample: int, val_n: int) -> dict:
     ncols = _basis_size(basis, m)
 
     # Quadrature nodes are shared between the intervals in proportion to their lengths.
-    parts = _fitted_parts(spec)
-    length = sum(hi - lo for lo, hi in parts)
-    floor = 48 if len(parts) == 1 else 32
+    floor = 48 if spec["x_gap"] is None else 32
     nodes = fit_oversample * max(ncols, 1)
-    rules = [
-        (np.array([lo]), np.array([_point_weight(length)]))
-        if lo == hi
-        else _gauss_interval(lo, hi, max(math.ceil(nodes * (hi - lo) / length), floor))
-        for lo, hi in parts
-    ]
+    rules = _part_rules(spec, lambda lo, hi, share: _gauss_interval(lo, hi, max(math.ceil(nodes * share), floor)))
     logger.debug(
         "  fit_data: x_gap=%s  basis=%s  m=%d  ncols=%d  nq=%s  val_n=%d",
         spec["x_gap"],
@@ -104,23 +112,16 @@ def _make_fit_data(spec: dict, m: int, fit_oversample: int, val_n: int) -> dict:
 
 
 def _fit_system(data: dict, spec: dict, m: int, order_fit: int) -> tuple[np.ndarray, np.ndarray]:
-    basis = spec["basis"]
-    x = data["x"]
-    sw = data["sw"]
-    A_blocks = []
-    b_blocks = []
-    for d in range(order_fit + 1):
-        Ad = _basis_matrix(x, m, basis, d)
-        # The constant baseline is fitted exactly, so only the remainder is fitted here.
-        bd = _spec_target(x, spec, d) - (spec["baseline"] if d == 0 else 0.0)
-        A_blocks.append(Ad * sw[:, None])
-        b_blocks.append(bd * sw)
-    return np.vstack(A_blocks), np.concatenate(b_blocks)
+    x, sw = data["x"], data["sw"]
+    A = np.vstack(_basis_matrices(x, m, spec["basis"], order_fit)) * np.tile(sw, order_fit + 1)[:, None]
+    # The constant baseline is fitted exactly, so only the remainder is fitted here.
+    b_blocks = [(_spec_target(x, spec, d) - (spec["baseline"] if d == 0 else 0.0)) * sw for d in range(order_fit + 1)]
+    return A, np.concatenate(b_blocks)
 
 
-def _finish_solve(residual_coeffs: np.ndarray, data: dict, spec: dict, m: int) -> dict:
+def _finish_solve(residual_coeffs: np.ndarray, val: list, spec: dict, m: int) -> dict:
     coeffs = _add_baseline(residual_coeffs, spec["basis"], spec["baseline"])
-    return _summarise(coeffs, data["val"], spec["basis"], m)
+    return _summarise(coeffs, val, spec["basis"], m)
 
 
 def _summarise(coeffs: np.ndarray, val: list, basis: str, m: int) -> dict:
@@ -137,8 +138,6 @@ def _make_linear_solver(
     spec: dict,
     m: int,
     order_fit: int,
-    sobolev_r: float,
-    sobolev_w: float,
 ) -> Callable[[float], dict]:
     """Return ``solve(lam)`` for one m, building the fit system only once.
 
@@ -152,20 +151,20 @@ def _make_linear_solver(
     on the BLAS build and the CPU it runs on.  If it does, every ``lam > 0`` is
     solved by QR instead, which is slower but always succeeds.
     """
-    basis = spec["basis"]
+    basis, val = spec["basis"], data["val"]
     ncols = _basis_size(basis, m)
     if ncols == 0:
-        return lambda lam: _finish_solve(np.zeros(0), data, spec, m)
+        return lambda lam: _finish_solve(np.zeros(0), val, spec, m)
 
     A, b = _fit_system(data, spec, m, order_fit)
     logger.debug("    fit system shape: %s", A.shape)
-    d = _penalty(m, basis, 1.0, sobolev_r, sobolev_w)
+    d = _penalty(m, basis, 1.0, spec["sobolev_r"], spec["sobolev_w"])
     svd: dict[str, np.ndarray] = {}
 
     def solve(lam: float) -> dict:
         logger.debug("    solve: m=%d  lam=%.3e", m, lam)
         if lam == 0.0:
-            return _finish_solve(_lstsq(A, b), data, spec, m)
+            return _finish_solve(_lstsq(A, b), val, spec, m)
         if not svd:
             # Factorise lazily: an m that is infeasible at lam = 0 never needs it.
             Ad = A / d
@@ -182,7 +181,7 @@ def _make_linear_solver(
         else:
             s = svd["s"]
             y = svd["V"] @ (s / (s**2 + lam**2) * svd["Ut_b"])
-        return _finish_solve(y / d, data, spec, m)
+        return _finish_solve(y / d, val, spec, m)
 
     return solve
 
@@ -194,14 +193,12 @@ def _candidate_for_m(
     target: float,
     metric: str,
     order_fit: int,
-    sobolev_r: float,
-    sobolev_w: float,
     fit_oversample: int,
     val_n: int,
 ) -> dict:
     logger.debug("candidate_for_m: m=%d  target=%.3e  metric=%s", m, target, metric)
     data = _make_fit_data(spec, m, fit_oversample, val_n)
-    linear_solve = _make_linear_solver(data, spec, m, order_fit, sobolev_r, sobolev_w)
+    linear_solve = _make_linear_solver(data, spec, m, order_fit)
     cache: dict[float, dict] = {}
 
     def solve(lam: float) -> dict:
@@ -215,12 +212,12 @@ def _candidate_for_m(
     e0 = s0[metric]
     logger.debug("  unregularised error: %.3e  (target=%.3e)", e0, target)
 
-    if e0 > target + tol:
+    if not _meets_target(s0, metric, target):
         logger.debug("  m=%d infeasible even at lam=0, skipping lambda search", m)
-        return {"m": m, "lambda": 0.0, "solve": s0, "feasible": False}
+        return {"m": m, "lambda": 0.0, "solve": s0}
     if math.isclose(e0, target, rel_tol=1e-11, abs_tol=tol):
         logger.debug("  m=%d converged at lam=0", m)
-        return {"m": m, "lambda": 0.0, "solve": s0, "feasible": True}
+        return {"m": m, "lambda": 0.0, "solve": s0}
 
     grid = np.unique(np.asarray(lambdas, dtype=float))  # sorted; validated by the caller
 
@@ -231,7 +228,7 @@ def _candidate_for_m(
         s = solve(float(lam))
         e = s[metric]
         logger.debug("  grid lam=%.3e -> error=%.3e", lam, e)
-        if e <= target + tol:
+        if _meets_target(s, metric, target):
             low_lam, low_solve, low_error = float(lam), s, e
         elif float(lam) > low_lam:
             high_lam = float(lam)
@@ -245,7 +242,7 @@ def _candidate_for_m(
             s = solve(high)
             e = s[metric]
             logger.debug("  expand lam=%.3e -> error=%.3e", high, e)
-            if e <= target + tol:
+            if _meets_target(s, metric, target):
                 low_lam, low_solve, low_error = high, s, e
             else:
                 high_lam = high
@@ -253,10 +250,10 @@ def _candidate_for_m(
 
     if high_lam is None:
         logger.debug("  m=%d: no high bracket found, returning best so far (lam=%.3e)", m, low_lam)
-        return {"m": m, "lambda": low_lam, "solve": low_solve, "feasible": True}
+        return {"m": m, "lambda": low_lam, "solve": low_solve}
     if math.isclose(low_error, target, rel_tol=1e-11, abs_tol=tol):
         logger.debug("  m=%d: low_error already close enough, skipping bisection", m)
-        return {"m": m, "lambda": low_lam, "solve": low_solve, "feasible": True}
+        return {"m": m, "lambda": low_lam, "solve": low_solve}
 
     logger.debug("  bisecting lam in [%.3e, %.3e]...", low_lam, high_lam)
 
@@ -276,11 +273,11 @@ def _candidate_for_m(
         s_star = solve(lam_star)
     except (np.linalg.LinAlgError, FloatingPointError, OverflowError) as exc:
         logger.warning("m=%d: lambda bisection failed (%s); using lam=%.3e", m, exc, low_lam)
-        return {"m": m, "lambda": low_lam, "solve": low_solve, "feasible": True}
+        return {"m": m, "lambda": low_lam, "solve": low_solve}
 
     feasible = _meets_target(s_star, metric, target)
     logger.debug("  m=%d bisection done: lam_star=%.3e  feasible=%s", m, lam_star, feasible)
     if not feasible:
         # low_lam met the target on the scan, so fall back to it.
-        return {"m": m, "lambda": low_lam, "solve": low_solve, "feasible": True}
-    return {"m": m, "lambda": lam_star, "solve": s_star, "feasible": True}
+        return {"m": m, "lambda": low_lam, "solve": low_solve}
+    return {"m": m, "lambda": lam_star, "solve": s_star}

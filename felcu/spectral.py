@@ -415,7 +415,13 @@ def default_sobolev_r(
     if problem == "identity":
         return 1.0
     spectral = _spectral_data(problem, matrix, sigma_min, sigma_max, gap, spectral_kind, hermitian_tol)
-    tau = _make_spec(problem, spectral, eta)["tau"]
+    return _default_sobolev_r(problem, spectral, _make_spec(problem, spectral, eta)["tau"], sobolev_w)
+
+
+def _default_sobolev_r(problem: str, spectral: dict, tau: float, sobolev_w: float) -> float:
+    """:func:`default_sobolev_r` for a canonical *problem* on *spectral*, fitted with scale *tau*."""
+    if problem == "identity":
+        return 1.0
     if problem == "exponentiation":
         return 1.0 / (1.0 + 1.0 / tau)
 
