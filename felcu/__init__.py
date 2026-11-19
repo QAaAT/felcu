@@ -24,8 +24,6 @@ Typical usage
 >>> result.a0, result.ak, result.bk
 """
 
-from importlib.metadata import PackageNotFoundError, version
-
 from felcu.solve import compute_fe_coefficients, solve_fe_coefficients
 from felcu.spectral import default_eta, default_sobolev_r
 from felcu.types import ConvergenceWarning, FourierExtensionResult
@@ -43,11 +41,6 @@ from felcu.utils import (
     to_circuit_coefficients,
     to_complex_coefficients,
 )
-
-try:
-    __version__ = version("felcu")
-except PackageNotFoundError:  # running from a source tree that was never installed
-    __version__ = "unknown"
 
 __all__ = [
     "__version__",
@@ -73,3 +66,18 @@ __all__ = [
     "to_circuit_coefficients",
     "format_circuit_coefficients",
 ]
+
+
+def __getattr__(name: str) -> str:
+    # __version__ is read from the package metadata on first use, so that
+    # importing felcu does not load importlib.metadata.
+    if name != "__version__":
+        raise AttributeError(f"module 'felcu' has no attribute {name!r}")
+    from importlib.metadata import PackageNotFoundError, version
+
+    global __version__
+    try:
+        __version__ = version("felcu")
+    except PackageNotFoundError:  # running from a source tree that was never installed
+        __version__ = "unknown"
+    return __version__
